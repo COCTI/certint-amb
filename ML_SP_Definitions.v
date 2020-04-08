@@ -386,9 +386,11 @@ Inductive typing(gc:gc_info) : kenv -> env -> trm -> typ -> Prop :=
       binds x M E -> 
       proper_instance K (sch_kinds M) Us ->
       K ; E | gc |= (trm_fvar x) ~: (M ^^ Us)
-  | typing_abs : forall L (K : kenv) E U T t1 V pf1 pf2,
+  | typing_abs : forall L (K : kenv) E U T t1 V l pf1 pf2,
       type U ->
-      get V K = Some (Some (@Kind Cstr.arrow pf1 ((Cstr.arrow_dom, U) :: (Cstr.arrow_cod, T) :: nil) pf2)) ->
+      get V K = Some (Some (@Kind Cstr.arrow pf1 l pf2)) ->
+      In (Cstr.arrow_dom, U) l ->
+      In (Cstr.arrow_cod, T) l ->
       (forall x, x \notin L -> 
         K ; (E & x ~ Sch U nil) | gc_raise gc |= (t1 ^ x) ~: T) ->
       K ; E | gc |= (trm_abs t1) ~: typ_fvar V
