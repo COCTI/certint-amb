@@ -12,6 +12,9 @@ Require Import Metatheory List Arith.
 
 Module Type CstrIntf.
   Parameter cstr attr : Set.
+  Parameter arrow : cstr.
+  Parameter arrow_dom : attr.
+  Parameter arrow_cod : attr.
   Parameter valid : cstr -> Prop.
   Parameter valid_dec : forall c, sumbool (valid c) (~valid c).
   Parameter eq_dec : forall x y:attr, {x=y}+{x<>y}.
@@ -379,11 +382,12 @@ Inductive typing(gc:gc_info) : kenv -> env -> trm -> typ -> Prop :=
       binds x M E -> 
       proper_instance K (sch_kinds M) Us ->
       K ; E | gc |= (trm_fvar x) ~: (M ^^ Us)
-  | typing_abs : forall L K E U T t1, 
+  | typing_abs : forall L (K : kenv) E U T t1 V pf1 pf2,
       type U ->
+      get V K = Some (Some (@Kind Cstr.arrow pf1 ((Cstr.arrow_dom, U) :: (Cstr.arrow_cod, T) :: nil) pf2)) ->
       (forall x, x \notin L -> 
-        K ; (E & x ~ Sch U nil) | gc_raise gc |= (t1 ^ x) ~: T) -> 
-      K ; E | gc |= (trm_abs t1) ~: (typ_arrow U T)
+        K ; (E & x ~ Sch U nil) | gc_raise gc |= (t1 ^ x) ~: T) ->
+      K ; E | gc |= (trm_abs t1) ~: typ_fvar V
   | typing_let : forall M L1 L2 K E T2 t1 t2,
       (forall Xs, fresh L1 (sch_arity M) Xs ->
          (K & kinds_open_vars (sch_kinds M) Xs); E | gc_raise gc |=
