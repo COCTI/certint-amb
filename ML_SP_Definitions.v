@@ -12,9 +12,6 @@ Require Import Metatheory List Arith.
 
 Module Type CstrIntf.
   Parameter cstr attr : Set.
-  Parameter arrow : cstr.
-  Parameter arrow_dom : attr.
-  Parameter arrow_cod : attr.
   Parameter valid : cstr -> Prop.
   Parameter valid_dec : forall c, sumbool (valid c) (~valid c).
   Parameter eq_dec : forall x y:attr, {x=y}+{x<>y}.
@@ -31,6 +28,13 @@ Module Type CstrIntf.
     entails c1 c2 -> unique c2 v = true -> unique c1 v = true.
   Parameter entails_valid : forall c1 c2,
     entails c1 c2 -> valid c1 -> valid c2.
+
+  Parameter arrow : cstr.
+  Parameter arrow_dom : attr.
+  Parameter arrow_cod : attr.
+  Parameter valid_arrow : valid arrow.
+  Parameter unique_dom : unique arrow arrow_dom = true.
+  Parameter unique_cod : unique arrow arrow_cod = true.
 End CstrIntf.
 
 Module Type CstIntf.
