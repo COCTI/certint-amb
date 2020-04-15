@@ -309,7 +309,7 @@ Fixpoint typ_fv (T : typ) {struct T} : vars :=
   match T with
   | typ_bvar i      => {}
   | typ_fvar x      => {{x}}
-  | typ_arrow T1 T2 => (typ_fv T1) \u (typ_fv T2)
+(*   | typ_arrow T1 T2 => (typ_fv T1) \u (typ_fv T2) *)
   end.
 
 (** Computing free variables of a list of terms. *)
