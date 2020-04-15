@@ -55,8 +55,8 @@ Module MkDefs(Cstr:CstrIntf)(Const:CstIntf).
 
 Inductive typ : Set :=
   | typ_bvar  : nat -> typ
-  | typ_fvar  : var -> typ
-  | typ_arrow : typ -> typ -> typ.
+  | typ_fvar  : var -> typ.
+  (* | typ_arrow : typ -> typ -> typ. *)
 
 (** Types are inhabited, giving us a default value. *)
 
@@ -94,7 +94,7 @@ Fixpoint typ_open (T : typ) (Vs : list typ) {struct T} : typ :=
   match T with
   | typ_bvar i      => nth i Vs typ_def
   | typ_fvar x      => typ_fvar x 
-  | typ_arrow T1 T2 => typ_arrow (typ_open T1 Vs) (typ_open T2 Vs)
+  (* | typ_arrow T1 T2 => typ_arrow (typ_open T1 Vs) (typ_open T2 Vs) *)
   end.
 
 (** Opening body of type schemes with variables *)
@@ -125,11 +125,11 @@ Open Scope typ_scope.
 
 Inductive type : typ -> Prop :=
   | type_fvar : forall X, 
-      type (typ_fvar X)
-  | type_arrow : forall T1 T2,
+      type (typ_fvar X).
+  (* | type_arrow : forall T1 T2,
       type T1 -> 
       type T2 -> 
-      type (typ_arrow T1 T2).
+      type (typ_arrow T1 T2). *)
 
 (** List of n locally closed types *)
 
