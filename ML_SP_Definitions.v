@@ -401,8 +401,11 @@ Inductive typing(gc:gc_info) : kenv -> env -> trm -> typ -> Prop :=
       (forall x, x \notin L2 ->
          K ; (E & x ~ M) | gc_raise gc |= (t2 ^ x) ~: T2) -> 
       K ; E | gc |= (trm_let t1 t2) ~: T2
-  | typing_app : forall K E S T t1 t2, 
-      K ; E | gc_lower gc |= t1 ~: (typ_arrow S T) ->
+  | typing_app : forall K E V l pf1 pf2 S T t1 t2,
+      get V K = Some (Some (@Kind Cstr.arrow pf1 l pf2)) ->
+      In (Cstr.arrow_dom, S) l ->
+      In (Cstr.arrow_cod, T) l ->
+      K ; E | gc_lower gc |= t1 ~: typ_fvar V ->
       K ; E | gc_lower gc |= t2 ~: S ->   
       K ; E | gc |= (trm_app t1 t2) ~: T
   | typing_cst : forall K E Us c,
