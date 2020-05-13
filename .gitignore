@@ -4,3 +4,6 @@
 .coqdeps.d
 Makefile
 Makefile.conf
+.Makefile.d
+*.vos
+*.vok
