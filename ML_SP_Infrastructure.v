@@ -1066,7 +1066,7 @@ Lemma typing_regular : forall gc K E e T,
   typing gc K E e T -> kenv_ok K /\ env_ok E /\ term e /\ type T.
 Proof.
   introv H.
-  induction* H; split4*.
+  induction* H; try (pick_freshes (length Ks) Xs; forward~ (H1 Xs)); split4*.
   (* typing_var *)
   assert (scheme M) by apply* env_prop_binds.
   pick_fresh y. destruct* H2.
@@ -1081,24 +1081,17 @@ Proof.
     pick_freshes (sch_arity M) Xs.
     forward~ (H0 Xs) as [_ [_ [G _]]].
   forward~ (H2 y) as [_ [_ [G _]]].
-  pick_fresh y.
-  forward~ (H2 y) as [_ [_ [_ G]]].
+  pick_fresh y. forward~ (H2 y) as [_ [_ [_ G]]].
   (* typing_app *)
   destruct IHtyping1 as [[OkK TK] _].
   specialize (env_prop_binds H TK).
   unfold All_kind_types; simpl.
   intros HL.
   apply (list_forall_out HL T).
-  unfold list_snd.
-  apply* (in_map snd l (Cstr.arrow_cod, T)).
+  apply* (in_map snd l _ H1).
   (* typing_cst *)
   puts (Delta.scheme c).
   destruct H1. auto*.
-  (* typing_gc *)
-  pick_freshes (length Ks) Xs. forward~ (H1 Xs) as [G _].
-  pick_freshes (length Ks) Xs. forward~ (H1 Xs) as [_ [G _]].
-  pick_freshes (length Ks) Xs. forward~ (H1 Xs) as [_ [_ [G _]]].
-  pick_freshes (length Ks) Xs. forward~ (H1 Xs) as [_ [_ [_ G]]].
 Qed.
 
 (** The value predicate only holds on locally-closed terms. *)
