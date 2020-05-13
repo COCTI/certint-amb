@@ -1094,8 +1094,8 @@ Proof.
   (* typing_cst *)
   puts (Delta.scheme c).
   destruct H1. auto*.
-  pick_freshes (length Ks) Xs. forward~ (H1 Xs) as [G _].
   (* typing_gc *)
+  pick_freshes (length Ks) Xs. forward~ (H1 Xs) as [G _].
   pick_freshes (length Ks) Xs. forward~ (H1 Xs) as [_ [G _]].
   pick_freshes (length Ks) Xs. forward~ (H1 Xs) as [_ [_ [G _]]].
   pick_freshes (length Ks) Xs. forward~ (H1 Xs) as [_ [_ [_ G]]].
