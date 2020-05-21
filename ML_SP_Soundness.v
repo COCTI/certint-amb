@@ -76,13 +76,14 @@ Proof.
   introv Typ. gen_eq (K & K'') as H. gen K''.
   induction Typ; introv EQ Ok; subst.
   apply* typing_var. apply* proper_instance_weaken.
-  apply_fresh* (@typing_abs gc) as y. admit. admit.
+  inversions H.
+  eapply (@typing_abs gc); try apply* binds_weaken; eauto.
   apply_fresh* (@typing_let gc M (L1 \u dom(K&K'&K''))) as y.
     intros. clear H1 H2.
     rewrite concat_assoc.
     apply* H0; clear H0. rewrite* concat_assoc.
     forward~ (H Xs) as Typ.
-  apply* typing_app. admit.
+  eapply (typing_app gc); try apply* binds_weaken; eauto.
   apply* typing_cst. apply* proper_instance_weaken.
   apply_fresh* (@typing_gc gc Ks) as y.
   intros.
@@ -90,7 +91,7 @@ Proof.
   apply* (H1 Xs); clear H1.
     rewrite* concat_assoc.
   forward~ (H0 Xs) as Typ; clear H0.
-(* Qed. *) Admitted.
+Qed.
 
 Lemma typing_weaken_kinds' : forall gc K K' E t T,
   kenv_ok (K & K') ->
