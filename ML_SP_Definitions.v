@@ -35,6 +35,7 @@ Module Type CstrIntf.
   Parameter valid_arrow : valid arrow.
   Parameter unique_dom : unique arrow arrow_dom = true.
   Parameter unique_cod : unique arrow arrow_cod = true.
+  Parameter entails_arrow : forall c, entails c arrow -> c = arrow.
 End CstrIntf.
 
 Module Type CstIntf.
@@ -386,11 +387,12 @@ Inductive typing(gc:gc_info) : kenv -> env -> trm -> typ -> Prop :=
       binds x M E -> 
       proper_instance K (sch_kinds M) Us ->
       K ; E | gc |= (trm_fvar x) ~: (M ^^ Us)
-  | typing_abs : forall L (K : kenv) E U T t1 V l pf1 pf2,
+  | typing_abs : forall L (K : kenv) E U T t1 V k,
       type U ->
-      get V K = Some (Some (@Kind Cstr.arrow pf1 l pf2)) ->
-      In (Cstr.arrow_dom, U) l ->
-      In (Cstr.arrow_cod, T) l ->
+      binds V (Some k) K ->
+      kind_cstr k = Cstr.arrow ->
+      In (Cstr.arrow_dom, U) (kind_rel k) ->
+      In (Cstr.arrow_cod, T) (kind_rel k) ->
       (forall x, x \notin L -> 
         K ; (E & x ~ Sch U nil) | gc_raise gc |= (t1 ^ x) ~: T) ->
       K ; E | gc |= (trm_abs t1) ~: typ_fvar V
@@ -401,10 +403,11 @@ Inductive typing(gc:gc_info) : kenv -> env -> trm -> typ -> Prop :=
       (forall x, x \notin L2 ->
          K ; (E & x ~ M) | gc_raise gc |= (t2 ^ x) ~: T2) -> 
       K ; E | gc |= (trm_let t1 t2) ~: T2
-  | typing_app : forall K E V l pf1 pf2 S T t1 t2,
-      get V K = Some (Some (@Kind Cstr.arrow pf1 l pf2)) ->
-      In (Cstr.arrow_dom, S) l ->
-      In (Cstr.arrow_cod, T) l ->
+  | typing_app : forall K E V k S T t1 t2,
+      binds V (Some k) K ->
+      kind_cstr k = Cstr.arrow ->
+      In (Cstr.arrow_dom, S) (kind_rel k) ->
+      In (Cstr.arrow_cod, T) (kind_rel k) ->
       K ; E | gc_lower gc |= t1 ~: typ_fvar V ->
       K ; E | gc_lower gc |= t2 ~: S ->   
       K ; E | gc |= (trm_app t1 t2) ~: T

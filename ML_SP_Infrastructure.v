@@ -1071,9 +1071,9 @@ Proof.
   assert (scheme M) by apply* env_prop_binds.
   pick_fresh y. destruct* H2.
   (* typing_abs *)
-  pick_fresh y. apply* (H4 y).
-  pick_fresh y. destruct* (H4 y).
-  apply (@term_abs L); intros y Hy. destruct* (H4 y) as [_ [_ [HT _]]].
+  pick_fresh y. apply* (H5 y).
+  pick_fresh y. destruct* (H5 y).
+  apply (@term_abs L); intros y Hy. destruct* (H5 y) as [_ [_ [HT _]]].
   (* typing_let *)
   pick_fresh y. apply* (H2 y).
   pick_fresh y. destruct* (H2 y).
@@ -1088,7 +1088,7 @@ Proof.
   unfold All_kind_types; simpl.
   intros HL.
   apply (list_forall_out HL T).
-  apply* (in_map snd l _ H1).
+  apply* (in_map snd (kind_rel k) _ H2).
   (* typing_cst *)
   puts (Delta.scheme c).
   destruct H1. auto*.

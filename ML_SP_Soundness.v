@@ -50,8 +50,8 @@ Proof.
   apply* typing_var. apply* binds_weaken.
   inversions H.
   apply_fresh* (@typing_abs gc) as y.
-  apply_ih_bind* H4.
-  forward~ (H3 y) as Q.
+  apply_ih_bind* H5.
+  forward~ (H4 y) as Q.
   apply_fresh* (@typing_let gc M L1) as y. apply_ih_bind* H2.
     forward~ (H1 y) as Q.
   auto*.
@@ -170,8 +170,28 @@ Hint Resolve kenv_ok_subst env_ok_subst : core.
 (* ********************************************************************** *)
 (** Type substitution preserves typing *)
 
+Lemma kind_rel_map f k : kind_rel (ckind_map f k) = map_snd f (kind_rel k).
+Proof. now destruct k. Qed.
+
+Lemma typ_subst_fvar S V :
+  env_prop type S -> exists X, typ_subst S (typ_fvar V) = typ_fvar X.
+Proof.
+  intros; set (R := typ_subst S (typ_fvar V)).
+  assert (HR : type R) by apply* typ_subst_type.
+  inversions HR; now esplit.
+Qed.
+
+Lemma well_subst_binds K K' S V k X :
+  well_subst K K' S -> binds V (Some k) K ->
+  typ_subst S (typ_fvar V) = typ_fvar X ->
+  exists k', binds X (Some k') K' /\ entails k' (ckind_map (typ_subst S) k).
+Proof.
+  intros WS HB HX; poses WK (WS _ _ HB).
+  rewrite HX in WK; inversions WK; exists* k'.
+Qed.
+
 Lemma typing_typ_subst : forall gc F K'' S K K' E t T,
-  disjoint (dom S) (env_fv E \u fv_in kind_fv K) ->
+  disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) ->
   env_prop type S ->
   well_subst (K & K' & K'') (K & map (kind_subst S) K'') S ->
   K & K' & K''; E & F |gc|= t ~: T -> 
@@ -180,7 +200,7 @@ Lemma typing_typ_subst : forall gc F K'' S K K' E t T,
 Proof.
   introv. intros Dis TS WS Typ.
   gen_eq (K & K' & K'') as GK; gen_eq (E & F) as G; gen K''; gen F.
-  induction Typ; introv WS EQ EQ'; subst; simpls typ_subst.
+  induction Typ; introv WS EQ EQ'; subst.
   (* Var *)
   rewrite~ sch_subst_open. apply* typing_var.
     binds_cases H1.
@@ -191,9 +211,21 @@ Proof.
     destruct M as [T Ks]. simpl.
     apply* proper_instance_subst.
   (* Abs *)
-  apply_fresh* (@typing_abs gc L K E) as y.
-   replace (Sch (typ_subst S U) nil) with (sch_subst S (Sch U nil)) by auto.
-   apply_ih_map_bind* H1.
+  destruct (typ_subst_fvar V TS) as [X HX].
+  destruct (well_subst_binds WS H0 HX) as [k' [HB [HE HR]]].
+  rewrite HX.
+  eapply (@typing_abs gc L).
+    now apply (typ_subst_type TS H).
+    exact HB.
+    destruct k; simpl in *; subst.
+    now apply Cstr.entails_arrow.
+    apply HR; rewrite kind_rel_map.
+    now apply in_map_snd.
+    apply HR; rewrite kind_rel_map.
+    now apply (in_map_snd (typ_subst S) _ T).
+    intros.
+    replace (Sch (typ_subst S U) nil) with (sch_subst S (Sch U nil)) by auto.
+    now apply_ih_map_bind H5.
   (* Let *)
   apply_fresh* (@typing_let gc (sch_subst S M)
                             (L1 \u dom S \u dom K \u dom K'')) as y.
@@ -208,7 +240,16 @@ Proof.
    rewrite* concat_assoc.
    apply_ih_map_bind* H2.
   (* App *)
-  auto*.
+  destruct (typ_subst_fvar V TS) as [X HX].
+  destruct (well_subst_binds WS H HX) as [k' [HB [HE HR]]].
+  rewrite HX in IHTyp1.
+  apply* (@typing_app gc).
+    destruct k; simpl in *; subst.
+    now apply Cstr.entails_arrow.
+    apply HR; rewrite kind_rel_map.
+    now apply in_map_snd.
+    apply HR; rewrite kind_rel_map.
+    now apply (in_map_snd (typ_subst S) _ T).
   (* Cst *)
   rewrite* sch_subst_open.
   assert (disjoint (dom S) (sch_fv (Delta.type c))).
