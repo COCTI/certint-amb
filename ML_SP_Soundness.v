@@ -48,20 +48,16 @@ Proof.
   introv Typ. gen_eq (E & G) as H. gen G.
   induction Typ; introv EQ Ok; subst.
   apply* typing_var. apply* binds_weaken.
+  inversions H.
   apply_fresh* (@typing_abs gc) as y.
-  admit.
   apply_ih_bind* H4.
   forward~ (H3 y) as Q.
-  admit.
-  admit.
   apply_fresh* (@typing_let gc M L1) as y. apply_ih_bind* H2.
     forward~ (H1 y) as Q.
   auto*.
   auto.
   apply_fresh* (@typing_gc gc Ks) as y.
-  Unshelve.
-  apply V.
-(* Qed. *) Admitted.
+Qed.
 
 Lemma proper_instance_weaken : forall K K' K'' Ks Us,
   ok (K & K' & K'') ->
