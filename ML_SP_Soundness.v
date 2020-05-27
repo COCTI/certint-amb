@@ -6,7 +6,7 @@
 ***************************************************************************)
 
 Set Implicit Arguments.
-Require Import Arith List Metatheory 
+Require Import Arith List Metatheory
   ML_SP_Definitions ML_SP_Infrastructure.
 Require Omega.
 
@@ -41,7 +41,7 @@ Hint Resolve ok_kinds_open_vars : core.
 (** Typing is preserved by weakening *)
 
 Lemma typing_weaken : forall gc G E F K t T,
-   K ; (E & G) |gc|= t ~: T -> 
+   K ; (E & G) |gc|= t ~: T ->
    env_ok (E & F & G) ->
    K ; (E & F & G) |gc|= t ~: T.
 Proof.
@@ -194,7 +194,7 @@ Lemma typing_typ_subst : forall gc F K'' S K K' E t T,
   disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) ->
   env_prop type S ->
   well_subst (K & K' & K'') (K & map (kind_subst S) K'') S ->
-  K & K' & K''; E & F |gc|= t ~: T -> 
+  K & K' & K''; E & F |gc|= t ~: T ->
   K & map (kind_subst S) K''; E & (map (sch_subst S) F) |gc|=
     t ~: (typ_subst S T).
 Proof.
@@ -230,7 +230,7 @@ Proof.
   apply_fresh* (@typing_let gc (sch_subst S M)
                             (L1 \u dom S \u dom K \u dom K'')) as y.
    clear H H1 H2. clear L2 T2 t2 Dis.
-   simpl. intros Ys Fr. 
+   simpl. intros Ys Fr.
    rewrite* <- sch_subst_open_vars.
    rewrite* <- kinds_subst_open_vars.
    rewrite concat_assoc. rewrite <- map_concat.
@@ -271,10 +271,10 @@ Proof.
 Qed.
 
 Lemma typing_typ_substs : forall gc K' S K E t T,
-  disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) -> 
+  disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) ->
   env_prop type S ->
   well_subst (K & K') K S ->
-  K & K'; E |gc|= t ~: T -> 
+  K & K'; E |gc|= t ~: T ->
   K ; E |gc|= t ~: (typ_subst S T).
 Proof.
   intros.
@@ -282,7 +282,7 @@ Proof.
   simpl in TTS.
   apply* TTS.
 Qed.
-  
+
 (* ********************************************************************** *)
 (** Typing schemes for expressions *)
 
@@ -363,13 +363,13 @@ Qed.
 (* ********************************************************************** *)
 (** Typing is preserved by term substitution *)
 
-Lemma typing_trm_subst : forall gc F M K E t T z u, 
+Lemma typing_trm_subst : forall gc F M K E t T z u,
   K ; E & z ~ M & F |(gc,GcAny)|= t ~: T ->
-  (exists L:vars, has_scheme_vars (gc,GcAny) L K E u M) -> 
+  (exists L:vars, has_scheme_vars (gc,GcAny) L K E u M) ->
   term u ->
   K ; E & F |(gc,GcAny)|= (trm_subst z u t) ~: T.
 Proof.
-  introv Typt. intros Typu Wu. 
+  introv Typt. intros Typu Wu.
   gen_eq (E & z ~ M & F) as G. gen_eq (gc, GcAny) as gc0. gen F.
   induction Typt; introv EQ1 EQ2; subst; simpl trm_subst;
     destruct Typu as [Lu Typu].
@@ -379,9 +379,9 @@ Proof.
       binds_cases H1; apply* typing_var.
       inversions H.
   apply_fresh* (@typing_abs (gc,GcAny)) as y.
-   rewrite* trm_subst_open_var. 
-   apply_ih_bind* H5. 
-  apply_fresh* (@typing_let (gc,GcAny) M0 L1) as y. 
+   rewrite* trm_subst_open_var.
+   apply_ih_bind* H5.
+  apply_fresh* (@typing_let (gc,GcAny) M0 L1) as y.
    intros; apply* H0.
      exists (Lu \u mkset Xs); intros Ys TypM.
      forward~ (Typu Ys) as Typu'; clear Typu.
@@ -421,7 +421,7 @@ Proof.
 Qed.
 
 Definition typing_gc_let K E t T := K; E |(true,GcLet)|= t ~: T.
-  
+
 Lemma typing_gc_ind : forall (P: kenv -> env -> trm -> typ -> Prop),
   (forall K E t T, K; E |(false,GcLet)|= t ~: T -> P K E t T) ->
   (forall Ks L K E t T,
@@ -442,44 +442,42 @@ Lemma typing_canonize : forall gc K E t T,
 Proof.
   induction 1; auto*.
   (* App *)
-  clear H H0.
-  gen IHtyping1.
+  clear H3 H4.
+  gen H IHtyping1.
   fold (typing_gc_let K E t2 S) in IHtyping2.
   apply (proj2 (A:=kenv_ok K)).
   induction IHtyping2 using typing_gc_ind.
     split2*; intros; subst.
-    gen H. gen_eq (typ_fvar V) as S.
+    gen H H3. gen_eq (typ_fvar V) as S.
     fold (typing_gc_let K E t1 S) in IHtyping1.
     apply (proj2 (A:=kenv_ok K)).
     induction IHtyping1 using typing_gc_ind.
       split2*; intros; subst.
       apply* typing_app.
-      (* 
-      split.
+    split.
       destruct (var_freshes L (length Ks)) as [Xs HXs].
       destruct* (H Xs HXs).
     intros; subst.
     apply* (@typing_gc (true,GcLet) Ks L).
       simpl; auto.
     intros.
-    destruct (H Xs H0); clear H.
-    apply* H3; clear H3.
+    destruct* (H Xs H3); clear H.
+    apply* H7.
     apply* typing_weaken_kinds'.
   split.
     destruct (var_freshes L (length Ks)) as [Xs HXs].
-    destruct* (H Xs HXs).
-
+    destruct* (H Xs).
   intros.
-  apply* (@typing_gc (true,GcLet) Ks L).
+  apply* (@typing_gc (true,GcLet) Ks (L \u dom K)).
     simpl; auto.
   intros.
-  destruct (H Xs H0); clear H.
-  apply* H2; clear H2.
+  destruct* (H Xs).
+  apply* H6; clear H6.
   apply* typing_weaken_kinds'.
   (* GC *)
   apply* typing_gc.
   simpl; auto.
-Qed. *) Admitted.
+Qed.
 
 (* End of canonical derivations *)
 
@@ -502,9 +500,7 @@ Lemma typ_open_vars_nil : forall T,
   type T -> typ_open_vars T nil = T.
 Proof.
   induction T; unfold typ_open_vars; simpl; intros; auto*.
-    inversion H.
-  unfold typ_open_vars in *; simpls.
-  rewrite IHT1. rewrite* IHT2. inversion* H. inversion* H.
+  inversion H.
 Qed.
 
 Lemma typing_abs_inv : forall gc K E t1 t2 T1 T2,
@@ -518,8 +514,8 @@ Proof.
   gen_eq (typ_arrow T1 T2) as T.
   induction Typ1; intros; subst; try discriminate.
     inversions H2; inversions H3; clear H2 H3.
-    pick_fresh x. 
-    rewrite* (@trm_subst_intro x). 
+    pick_fresh x.
+    rewrite* (@trm_subst_intro x).
     apply_empty* (@typing_trm_subst gc).
     exists {}. intro. unfold kinds_open_vars, sch_open_vars; simpl.
     destruct Xs; simpl*. rewrite* typ_open_vars_nil.
@@ -623,7 +619,7 @@ Proof.
       exists* (t2 ^^ t1).
       exists* (trm_let t1' t2).
   destruct~ IHTyp2 as [Val2 | [t2' Red2]].
-    destruct~ IHTyp1 as [Val1 | [t1' Red1]]. 
+    destruct~ IHTyp1 as [Val1 | [t1' Red1]].
       use (typing_canonize Typ').
       remember (empty(A:=sch)) as E.
       remember (trm_app t1 t2) as t.
