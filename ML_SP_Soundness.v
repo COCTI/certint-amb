@@ -376,10 +376,11 @@ Proof.
   case_var.
     binds_get H1. apply_empty* (@typing_weaken (gc,GcAny)).
       destruct H2; apply* (has_scheme_from_vars Typu).
-    binds_cases H1; apply* typing_var.
-  apply_fresh* (@typing_abs (gc,GcAny)) as y. 
+      binds_cases H1; apply* typing_var.
+      inversions H.
+  apply_fresh* (@typing_abs (gc,GcAny)) as y.
    rewrite* trm_subst_open_var. 
-   apply_ih_bind* H1. 
+   apply_ih_bind* H5. 
   apply_fresh* (@typing_let (gc,GcAny) M0 L1) as y. 
    intros; apply* H0.
      exists (Lu \u mkset Xs); intros Ys TypM.
@@ -447,13 +448,14 @@ Proof.
   apply (proj2 (A:=kenv_ok K)).
   induction IHtyping2 using typing_gc_ind.
     split2*; intros; subst.
-    gen H. gen_eq (typ_arrow T0 T) as S.
+    gen H. gen_eq (typ_fvar V) as S.
     fold (typing_gc_let K E t1 S) in IHtyping1.
     apply (proj2 (A:=kenv_ok K)).
     induction IHtyping1 using typing_gc_ind.
       split2*; intros; subst.
       apply* typing_app.
-    split.
+      (* 
+      split.
       destruct (var_freshes L (length Ks)) as [Xs HXs].
       destruct* (H Xs HXs).
     intros; subst.
@@ -477,7 +479,7 @@ Proof.
   (* GC *)
   apply* typing_gc.
   simpl; auto.
-Qed.
+Qed. *) Admitted.
 
 (* End of canonical derivations *)
 
