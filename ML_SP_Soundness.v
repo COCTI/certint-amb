@@ -503,28 +503,33 @@ Proof.
   inversion H.
 Qed.
 
-Lemma typing_abs_inv : forall gc K E t1 t2 T1 T2,
-  K ; E |(gc,GcAny)|= trm_abs t1 ~: typ_arrow T1 T2 ->
+Lemma typing_abs_inv : forall gc K E V k t1 t2 T1 T2,
+  binds V (Some k) K ->
+  kind_cstr k = Cstr.arrow ->
+  In (Cstr.arrow_dom, T1) (kind_rel k) ->
+  In (Cstr.arrow_cod, T2) (kind_rel k) ->
+  K ; E |(gc,GcAny)|= trm_abs t1 ~: typ_fvar V ->
   K ; E |(gc,GcAny)|= t2 ~: T1 ->
   K ; E |(gc,GcAny)|= t1 ^^ t2 ~: T2.
 Proof.
   introv Typ1 Typ2.
   gen_eq (gc,GcAny) as gcs.
   gen_eq (trm_abs t1) as t.
-  gen_eq (typ_arrow T1 T2) as T.
+  gen_eq (typ_fvar V) as T.
   induction Typ1; intros; subst; try discriminate.
-    inversions H2; inversions H3; clear H2 H3.
-    pick_fresh x.
-    rewrite* (@trm_subst_intro x).
-    apply_empty* (@typing_trm_subst gc).
+    inversions H4; inversions H5; clear H4 H5.
+    pick_fresh x'.
+    rewrite* (@trm_subst_intro x').
+    apply_empty* (@typing_trm_subst gc). admit.
     exists {}. intro. unfold kinds_open_vars, sch_open_vars; simpl.
-    destruct Xs; simpl*. rewrite* typ_open_vars_nil.
+    destruct Xs; simpl*. rewrite* typ_open_vars_nil. (*
   apply* (@typing_gc (gc,GcAny) Ks L).
   intros.
   puts (H0 Xs H2); clear H0.
   apply* H1.
   apply* typing_weaken_kinds'.
-Qed.
+Qed.*)
+Admitted.
 
 Lemma preservation_result : preservation.
 Proof.
@@ -544,12 +549,12 @@ Proof.
   apply* typing_abs_inv.
   (* Delta *)
   assert (K;E |(true,GcAny)|= trm_app t1 t2 ~: T) by auto*.
-  use (typing_canonize H).
-  fold (typing_gc_let K E (trm_app t1 t2) T) in H1.
-  rewrite <- H0 in *.
-  clear -H1.
+  use (typing_canonize H3).
+  fold (typing_gc_let K E (trm_app t1 t2) T) in H5.
+  rewrite <- H4 in *.
+  clear -H5.
   gen_eq (const_app c tl) as t1.
-  induction H1 using typing_gc_ind; intros; subst.
+  induction H5 using typing_gc_ind; intros; subst.
     apply* typing_gc_any.
     apply* delta_typed.
   apply* typing_gc. simpl*.
@@ -626,7 +631,7 @@ Proof.
       clear Typ1 Typ2 Typ'.
       fold (typing_gc_let K E t T) in H.
       apply (proj2 (A:=kenv_ok K)).
-      induction H using typing_gc_ind.
+      induction H3 using typing_gc_ind.
         split2*; intros; subst.
         destruct Val1 as [n Val1]; inversions Val1.
         right*; exists* (t0 ^^ t2).
