@@ -629,24 +629,24 @@ Proof.
       remember (empty(A:=sch)) as E.
       remember (trm_app t1 t2) as t.
       clear Typ1 Typ2 Typ'.
-      fold (typing_gc_let K E t T) in H.
+      fold (typing_gc_let K E t T) in H3.
       apply (proj2 (A:=kenv_ok K)).
       induction H3 using typing_gc_ind.
         split2*; intros; subst.
         destruct Val1 as [n Val1]; inversions Val1.
         right*; exists* (t0 ^^ t2).
         case_eq (Const.arity c); intros.
-          right*. rewrite H0 in Val1.
+          right*. rewrite H4 in Val1.
           assert (list_for_n value 1 (t2 :: nil)) by split2*.
-          rewrite <- H0 in H1.
-          exists (Delta.reduce H1).
-          apply (red_delta H1).
-        left*. exists n. rewrite H0 in Val1. destruct* Val2.
+          rewrite <- H4 in H5.
+          exists (Delta.reduce H5).
+          apply (red_delta H5).
+        left*. exists n. rewrite H4 in Val1. destruct* Val2.
         destruct n.
           right*; apply* progress_delta.
         left*. destruct Val2. exists* n.
       destruct (var_freshes L (length Ks)) as [Xs HXs].
-      destruct* (H Xs); clear H.
+      destruct* (H3 Xs); clear H3.
       right*; exists* (trm_app t1' t2).
     right*; exists* (trm_app t1 t2').
   left*; exists* (Const.arity c).
