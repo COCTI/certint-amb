@@ -55,9 +55,9 @@ Proof.
   binds_cases H1; auto.
   (* Abs *)
   clear H0.
-  apply* (@typing_abs gc (L \u {{y}} \u {{x}})).
+  apply* (@typing_abs gc (L \u {{y}} \u {{x}})). admit. admit.
   intros.
-  forward~ (H1 x0) as Typ; clear H1.
+  forward~ (H4 x0) as Typ; clear H4.
   rewrite concat_assoc in Typ.
   forward~ (Typ _ (refl_equal _)) as Typ'; clear Typ.
     simpl in *; disjoint_solve.
