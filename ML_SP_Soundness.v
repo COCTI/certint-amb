@@ -654,18 +654,14 @@ Proof.
         destruct n.
           right*; apply* progress_delta.
         left*. destruct Val2. exists* n.
-      destruct (var_freshes L (length Ks)) as [Xs HXs].
-      destruct* (H3 Xs); clear H3.
-      apply binds_concat_ok.
-      auto.
-      apply ok_kinds_open_vars.
-      admit. admit.
+      destruct (var_freshes (L \u dom K) (length Ks)) as [Xs HXs].
+      destruct* (H3 Xs).
       right*; exists* (trm_app t1' t2).
     right*; exists* (trm_app t1 t2').
   left*; exists* (Const.arity c).
   destruct (var_freshes L (length Ks)) as [Xs HXs].
   apply* (H1 Xs).
-  (* Qed. *) Admitted.
+Qed.
 
 Lemma value_irreducible : forall t t',
   value t -> ~(t --> t').
