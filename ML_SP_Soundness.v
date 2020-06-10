@@ -512,24 +512,33 @@ Lemma typing_abs_inv : forall gc K E V k t1 t2 T1 T2,
   K ; E |(gc,GcAny)|= t2 ~: T1 ->
   K ; E |(gc,GcAny)|= t1 ^^ t2 ~: T2.
 Proof.
-  introv Typ1 Typ2.
+  introv HB Hk Hdom Hcod. intros Typ1 Typ2.
   gen_eq (gc,GcAny) as gcs.
   gen_eq (trm_abs t1) as t.
   gen_eq (typ_fvar V) as T.
   induction Typ1; intros; subst; try discriminate.
-    inversions H4; inversions H5; clear H4 H5.
+    inversions H6; inversions H7; clear H6 H7.
+    puts (binds_inj H0 HB).
+    inversions H6.
+    assert (U = T1).
+      apply* (kind_coherent k (x:=Cstr.arrow_dom)).
+      rewrite H1. apply Cstr.unique_dom.
+    assert (T = T2).
+      apply* (kind_coherent k (x:=Cstr.arrow_cod)).
+      rewrite H1. apply Cstr.unique_cod.
+    subst U T.
+    clear H0 H1 H2 H3 H6.
     pick_fresh x'.
     rewrite* (@trm_subst_intro x').
-    apply_empty* (@typing_trm_subst gc). admit.
+    apply_empty* (@typing_trm_subst gc).
     exists {}. intro. unfold kinds_open_vars, sch_open_vars; simpl.
-    destruct Xs; simpl*. rewrite* typ_open_vars_nil. (*
+    destruct Xs; simpl*. rewrite* typ_open_vars_nil.
   apply* (@typing_gc (gc,GcAny) Ks L).
   intros.
   puts (H0 Xs H2); clear H0.
   apply* H1.
   apply* typing_weaken_kinds'.
-Qed.*)
-Admitted.
+Qed.
 
 Lemma preservation_result : preservation.
 Proof.
