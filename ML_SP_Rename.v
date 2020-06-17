@@ -55,8 +55,8 @@ Proof.
   binds_cases H1; auto.
   (* Abs *)
   clear H4.
+  inversions H.
   apply* (@typing_abs gc (L \u {{y}} \u {{x}})).
-  admit.
   intros.
   forward~ (H5 x0) as Typ; clear H5.
   rewrite concat_assoc in Typ.
@@ -68,8 +68,8 @@ Proof.
   rewrite trm_subst_open in Typ' by auto.
   simpl trm_subst in Typ'.
   destruct* (x0 == x).
-  subst. (* elim H7; auto. *) admit.
-  admit.
+  subst.
+  elimtype False; auto*.
   (* Let *)
   clear H H1.
   simpl in H4.
@@ -93,10 +93,7 @@ Proof.
   apply* typing_cst.
   (* GC *)
   apply* typing_gc.
-  Unshelve.
-  admit.
-Admitted.
-(* Qed. *)
+Qed.
 
 Lemma typing_abs_rename : forall x1 gc K E x2 M t T,
   x1 \notin trm_fv t ->
@@ -933,18 +930,18 @@ Proof.
     intro; intros. simpl. split2*. unfold typ_open_vars.
     clear -H; induction H; simpl*.
   exists K'; split2*.
+  inversions H.
   apply* (@typing_abs (false,GcAny) (L \u dom F \u trm_fv t1 \u {{x}})).
-  admit.
   intros.
-  replace (F & x0 ~ Sch U nil) with (F & x0 ~ Sch U nil & empty)
+  replace (F & x0 ~ Sch (typ_fvar X) nil)
+    with (F & x0 ~ Sch (typ_fvar X) nil & empty)
     by (simpl; auto).
   rewrite* (@trm_subst_intro x t1 (trm_fvar x0)).
-  admit. (*
   apply* typing_rename.
   assert (x0 \notin trm_fv (t1 ^ x)).
     apply* (notin_subset (trm_fv_open (trm_fvar x) t1 0)).
     simpl; auto.
-  simpl; auto. *)
+  simpl; auto.
   (* Let *)
   destruct (var_freshes (L1 \u env_fv F \u sch_fv M \u dom K \u
       fv_in kind_fv K) (sch_arity M)) as [Xs HXs].
@@ -980,8 +977,7 @@ Proof.
   rewrite dom_concat.
   rewrite* dom_kinds_open_vars.
   rewrite* <- concat_assoc.
-  (* Qed. *)
-Admitted.
+Qed.
 
 (* End of removing GC *)
 
