@@ -69,7 +69,7 @@ Proof.
   simpl trm_subst in Typ'.
   destruct* (x0 == x).
   subst.
-  elimtype False; auto*.
+  elim H4; auto.
   (* Let *)
   clear H H1.
   simpl in H4.
@@ -963,7 +963,7 @@ Proof.
   assert (kenv_ok (K & K1 & K2)) by auto.
   split2*.
   rewrite <- concat_assoc.
-  eapply typing_app; eauto.
+  apply* typing_app.
     apply* typing_weaken_kinds'.
   simpl. apply* typing_weaken_kinds.
   (* Cst *)
