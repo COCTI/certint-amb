@@ -6,7 +6,7 @@
 Set Implicit Arguments.
 
 Require Import List Arith Metatheory ML_SP_Domain.
-Require Omega.
+Require Lia.
 Import Infer2.
 Import MyEval2.
 Import Sound3.
@@ -52,7 +52,7 @@ Hint Constructors type_n : core.
 Definition type_n_dec : forall n , decidable (type_n n).
   introv T; induction* T.
     destruct* (le_lt_dec n n0).
-    right*; intro. inversions H. Omega.omega.
+    right*; intro. inversions H. Lia.lia.
   destruct IHT1.
     destruct* IHT2.
     right*; intro. inversions* H.

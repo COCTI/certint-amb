@@ -6,7 +6,7 @@
 Set Implicit Arguments.
 Require Import Lib_FinSet Lib_FinSetImpl Metatheory List ListSet Arith.
 Require Import ML_SP_Definitions ML_SP_Soundness.
-Require Import Omega.
+Require Import Lia.
 
 Module Cstr <: CstrIntf.
   Definition attr := nat.

@@ -6,7 +6,7 @@
 Set Implicit Arguments.
 Require Import Lib_FinSet Lib_FinSetImpl Metatheory List ListSet Arith.
 Require Import ML_SP_Soundness.
-Require Import Omega.
+Require Import Lia.
 
 Section ListSet.
   Variable A : Type.
@@ -386,7 +386,7 @@ Module Delta.
       apply value_term.
       apply* (list_forall_out l).
       apply* nth_In.
-      unfold Cstr.attr in *; omega.
+      unfold Cstr.attr in *; lia.
     assert (term (nth (length l0) tl trm_def)).
       apply value_term.
       apply* (list_forall_out l).
@@ -449,13 +449,13 @@ Module Delta.
   Lemma type_nth_typ_vars : forall n Xs,
     n < length Xs -> Defs.type (nth n (typ_fvars Xs) typ_def).
   Proof.
-    induction n; destruct Xs; simpl; intros; try (elimtype False; omega).
+    induction n; destruct Xs; simpl; intros; try (elimtype False; lia).
       auto.
-    apply IHn; omega.
+    apply IHn; lia.
   Qed.
 
   Hint Extern 1 (Defs.type (nth _ (typ_fvars _) typ_def)) =>
-    solve [apply type_nth_typ_vars; omega] : core.
+    solve [apply type_nth_typ_vars; lia] : core.
 
   Lemma scheme : forall c, scheme (Delta.type c).
   Proof.
@@ -481,30 +481,30 @@ Module Delta.
       constructor.
         unfold typ_fvars.
         rewrite map_app.
-        rewrite app_nth2 by (rewrite map_length; omega).
+        rewrite app_nth2 by (rewrite map_length; lia).
         rewrite map_length.
-        replace (length Xs1 - length Xs1) with 0 by omega.
+        replace (length Xs1 - length Xs1) with 0 by lia.
         simpl*.
       replace (v1 :: Xs) with ((v1 :: nil) ++ Xs) by simpl*.
       rewrite <- app_ass.
       simpl in IHn.
       replace (S (length Xs1)) with (length (Xs1 ++ v1 :: nil))
-        by (rewrite app_length; simpl; omega).
+        by (rewrite app_length; simpl; lia).
       apply* IHn.
     unfold All_kind_types.
     repeat (constructor; auto).
       induction (seq 1 (length l)); simpl; try constructor; simpl*.
     simpl.
-    assert (length Xs >= 2 + length l) by omega.
+    assert (length Xs >= 2 + length l) by lia.
     clear H; revert H0.
     generalize 2; induction n; simpl; intros. auto.
-    constructor. apply* IHn. omega.
+    constructor. apply* IHn. lia.
     simpl*.
     (* record *)
     rewrite map_length, seq_length in H.
-    assert (1 + length l = length Xs) by omega. clear H.
+    assert (1 + length l = length Xs) by lia. clear H.
     split.
-      assert (0 < 1) by omega.
+      assert (0 < 1) by lia.
       revert H0 H.
       generalize 1 Xs. clear.
       induction (length l); simpl; intros. auto.
@@ -522,7 +522,7 @@ Module Delta.
     (* sub *)
     split. simpl*.
     repeat (constructor; auto).
-    apply type_nth_typ_vars; omega.
+    apply type_nth_typ_vars; lia.
     unfold All_kind_types. simpl.
     repeat (constructor; simpl*).
   Qed.
@@ -621,7 +621,7 @@ Module SndHyp.
     subst.
     right*; exists c; exists (vl ++ t2 :: nil).
     rewrite const_app_app. split2*.
-    split. omega.
+    split. lia.
     destruct HV. split2*.
     assert (value t2) by exists* n2.
     apply* list_forall_app.
@@ -672,7 +672,7 @@ Module SndHyp.
     assert (length TL <= length (map Delta.matches_arg (seq 2 (length l)))).
       rewrite map_length, seq_length.
       rewrite <- (list_forall2_length TypA). rewrite <- (proj1 Hvl).
-      omega.
+      lia.
     destruct (cut_ok _ H R1). clear H. rewrite H5 in H0.
     rewrite fold_right_app in H0.
     destruct* (fold_arrow_eq _ _ _ _ _ H0).
@@ -682,7 +682,7 @@ Module SndHyp.
     assert (length TL <= length (map typ_bvar (seq 1 (length l)))).
       rewrite map_length, seq_length.
       rewrite <- (list_forall2_length TypA). rewrite <- (proj1 Hvl).
-      omega.
+      lia.
     destruct (cut_ok _ H R1). clear H. rewrite H5 in H0.
     rewrite fold_right_app in H0.
     destruct* (fold_arrow_eq _ _ _ _ _ H0).
@@ -695,7 +695,7 @@ Module SndHyp.
     (* Kprod *)
     rewrite <- app_nil_end in H5.
     exists l. exists n. exists vl.
-    split2*. subst. length_hyps. rewrite seq_length in *. omega.
+    split2*. subst. length_hyps. rewrite seq_length in *. lia.
     (* sub *)
     destruct Hvl.
     inversions TypA; try discriminate.
@@ -727,14 +727,14 @@ Module SndHyp.
     generalize 0 at 1. intro d.
     replace (length TL) with (0 + length TL) by auto.
     gen i; generalize 0; induction l; intros.
-    simpl in H; elimtype False; omega.
+    simpl in H; elimtype False; lia.
     destruct i; simpl.
       replace m with n; auto. rewrite app_nth2.
-      replace (n + length TL - length TL) with n by omega.
-      auto.  omega. omega.
+      replace (n + length TL - length TL) with n by lia.
+      auto.  lia. lia.
     right*.
-    apply (IHl (S n) i). simpl in H. omega.
-    omega.
+    apply (IHl (S n) i). simpl in H. lia.
+    lia.
   Qed.
 
   Lemma delta_typed_matches : forall l n, delta_typed_cst (@Const.matches l n).
@@ -750,7 +750,7 @@ Module SndHyp.
     forward~ (list_forall2_nth trm_def typ_def TypA (n:=length l)) as Typn.
       rewrite* <- Hlen.
     forward~ (list_forall2_nth typ_def typ_def HA (n:=length l)) as Eqn.
-      autorewrite with list. simpl. omega.
+      autorewrite with list. simpl. lia.
     rewrite app_nth2 in Eqn by (rewrite map_length, seq_length; auto).
     autorewrite with list in Eqn.
     rewrite <- minus_n_n in Eqn.
@@ -769,7 +769,7 @@ Module SndHyp.
       destruct* kind_valid0.
     rewrite H1 in H; clear H1.
     destruct H as [v [t2 Hv]].
-      apply* (list_forall_out (proj2 vl)). apply* nth_In. omega.
+      apply* (list_forall_out (proj2 vl)). apply* nth_In. lia.
     simpl.
     rewrite Hv in *; clear Hv.
     inversions Typn; clear Typn; try discriminate.
@@ -795,11 +795,11 @@ Module SndHyp.
     destruct (index_ok _ 0 _ _ R2).
     unfold Cstr.attr in *.
     forward~ (list_forall2_nth trm_def typ_def TypA (n:=n0)) as Typv.
-      omega.
+      lia.
     forward~ (list_forall2_nth typ_def typ_def HA (n:=n0)) as Eqv.
       rewrite (list_forall2_length HA).
       rewrite <- (list_forall2_length TypA).
-      omega.
+      lia.
     rewrite <- Eqv in Typv; clear HA TypA Eqv.
     rewrite app_nth1 in Typv by (rewrite map_length, seq_length; auto).
     rewrite (map_nth _ 0) in Typv by rewrite* seq_length.
@@ -826,7 +826,7 @@ Module SndHyp.
     puts (fold_arrow_eq _ _ _ _ _ H0).
     rewrite map_length, seq_length in H2.
     puts (list_forall2_length TypA). rewrite app_length in H3; simpl in H3.
-    destruct H2. omega.
+    destruct H2. lia.
     destruct H5.
     simpl in H7. inversions H7; clear H7.
     inversions H10; clear H10. discriminate.

@@ -590,7 +590,7 @@ Qed.
 Hint Resolve typ_subst_extend : core.
 
 Lemma typ_size_1 : forall T, 1 <= typ_size T.
-  destruct T; simpl; omega.
+  destruct T; simpl; lia.
 Qed.
 
 Lemma pairs_size_decr : forall S t t0 pairs,
@@ -600,7 +600,7 @@ Proof.
   unfold pairs_size; simpl.
   puts (typ_size_1 (typ_subst S t)).
   puts (typ_size_1 (typ_subst S t0)).
-  omega.
+  lia.
 Qed.
 
 Lemma unify0_unify : forall h0 h K S K' S' pairs,
@@ -611,20 +611,20 @@ Proof.
   intros.
   simpl.
   set (h1 := pairs_size S pairs + 1).
-  assert (pairs_size S pairs < h1) by (unfold h1; omega).
+  assert (pairs_size S pairs < h1) by (unfold h1; lia).
   clearbody h1.
   gen pairs h1; induction h0; simpl; intros. discriminate.
-  destruct h1. elimtype False; omega.
+  destruct h1. elimtype False; lia.
   simpl.
   destruct pairs. auto.
   destruct p.
   puts (pairs_size_decr S t t0 pairs).
   case_rewrite R1 (typ_subst S t); case_rewrite R2 (typ_subst S t0); auto.
       destruct (n === n0). subst.
-        apply* IHh0. omega.
+        apply* IHh0. lia.
       auto.
     destruct (v == v0). subst.
-      apply* IHh0. omega.
+      apply* IHh0. lia.
     auto.
   apply* IHh0.
   clear IHh0 H H2; unfold pairs_size in *; simpl in *.
@@ -635,7 +635,7 @@ Proof.
   puts (typ_size_1 (typ_subst S t2)).
   puts (typ_size_1 (typ_subst S t3)).
   puts (typ_size_1 (typ_subst S t4)).
-  omega.
+  lia.
 Qed.
 
 Theorem unify_types : forall h pairs K S,
@@ -1386,7 +1386,7 @@ Proof.
     apply* size_pairs_decr.
   replace (size_pairs S0 K0 ((typ_fvar v, typ_subst S0 t0) :: pairs))
     with (size_pairs S0 K0 ((t, t0) :: pairs)).
-    omega.
+    lia.
   unfold size_pairs, really_all_fv, all_fv; simpl.
   rewrite* get_notin_dom.
   rewrite H3.
@@ -1528,7 +1528,7 @@ Lemma typ_subst_no_cycle : forall v S T,
   typ_size (typ_subst S (typ_fvar v)) < typ_size (typ_subst S T).
 Proof.
   induction T; intros. elim (in_empty H).
-    simpl in H0. omega.
+    simpl in H0. lia.
   simpl in H.
   clear H0.
   assert (forall T, v \in typ_fv T -> T = T1 \/ T = T2 ->
@@ -1538,12 +1538,12 @@ Proof.
     case_eq (typ_size T); intros. destruct T; discriminate.
     destruct n. destruct T. elim (in_empty H0).
         rewrite (S.singleton_1 H0) in H1.
-        destruct H1; subst; simpl; omega.
-      destruct T3; simpl in H2; omega.
+        destruct H1; subst; simpl; lia.
+      destruct T3; simpl in H2; lia.
     assert (typ_size (typ_subst S (typ_fvar v)) < typ_size (typ_subst S T)).
-      assert (1 < typ_size T) by omega.
+      assert (1 < typ_size T) by lia.
       destruct H1; subst*.
-    destruct H1; subst; simpl in *; omega.
+    destruct H1; subst; simpl in *; lia.
   destruct (S.union_1 H); apply* (H0 _ H1).
 Qed.
 
@@ -1584,9 +1584,9 @@ Proof.
     destruct T. elim (in_empty H1).
       elim (HT v); rewrite* (S.singleton_1 H1).
     assert (1 < typ_size (typ_arrow T1 T2)).
-      destruct T1; simpl; omega.
+      destruct T1; simpl; lia.
     use (typ_subst_no_cycle S _ H1 H).
-    rewrite H0 in H2; omega.
+    rewrite H0 in H2; lia.
   intro.
   case_rewrite R3 (get_kind v K0).
     poses Wk (WS _ _ (get_kind_binds _ _ R3)).
@@ -1718,14 +1718,14 @@ Lemma unify_complete0 : forall h pairs K0 S0,
   complete_spec S0 K0 pairs h.
 Proof.
   induction h.
-    intros; intro; intros; elimtype False; omega.
+    intros; intro; intros; elimtype False; lia.
   intros; intros HS0 HK0 Hext Heq WS Hsz.
   simpl.
   set (h0 := pairs_size S0 pairs + 1).
-  assert (Hsz0: pairs_size S0 pairs < h0) by (unfold h0; omega).
+  assert (Hsz0: pairs_size S0 pairs < h0) by (unfold h0; lia).
   clearbody h0.
   gen pairs; induction h0; intros.
-    elimtype False; omega.
+    elimtype False; lia.
   destruct pairs.
     intro; discriminate.
   destruct p.
@@ -1735,8 +1735,8 @@ Proof.
           destruct (n === n0).
            subst.
            apply* (IHh0 pairs).
-             puts (size_pairs_tl S0 K0 t t0 pairs). omega.
-           puts (pairs_size_decr S0 t t0 pairs). omega.
+             puts (size_pairs_tl S0 K0 t t0 pairs). lia.
+           puts (pairs_size_decr S0 t t0 pairs). lia.
           assert (In (t,t0) ((t,t0)::pairs)) by simpl*.
           poses Ht (Heq _ _ H).
           rewrite <- Hext in Ht; rewrite R1 in Ht.
@@ -1758,8 +1758,8 @@ Proof.
       destruct (v == v0).
        subst.
        apply* (IHh0 pairs).
-         puts (size_pairs_tl S0 K0 t t0 pairs). omega.
-       puts (pairs_size_decr S0 t t0 pairs). omega.
+         puts (size_pairs_tl S0 K0 t t0 pairs). lia.
+       puts (pairs_size_decr S0 t t0 pairs). lia.
       apply* unify_complete_vars.
      apply* unify_complete_nv.
      intro; discriminate.
@@ -1794,13 +1794,13 @@ Proof.
    rewrite (union_assoc (typ_fv (typ_subst S0 t3))).
    rewrite (union_comm (typ_fv (typ_subst S0 t3))).
    repeat rewrite union_assoc. 
-   omega.
+   lia.
   eapply lt_le_trans; [|apply lt_n_Sm_le; apply Hsz0].
   unfold pairs_size; simpl.
   rewrite <- (typ_subst_idem t HS0).
   rewrite <- (typ_subst_idem t0 HS0).
   rewrite R1; rewrite R2; simpl.
-  omega.
+  lia.
 Qed.
 
 Theorem unify_complete : forall T1 T2 K0,

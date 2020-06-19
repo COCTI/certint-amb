@@ -5,8 +5,8 @@
 
 Require Import Arith List Metatheory Cardinal.
 Require Import ML_SP_Definitions ML_SP_Eval.
-Require Omega.
-Ltac omega := Omega.omega.
+Require Lia.
+Ltac omega := Lia.lia.
 
 Set Implicit Arguments.
 

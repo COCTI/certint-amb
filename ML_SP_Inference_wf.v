@@ -1797,7 +1797,7 @@ Proof.
   destruct s as [[[k' S'] L'] [[HK' [HS' D']] HL']].
   simpl in Ht.
   assert (Ht': trm_depth t1 < h).
-    puts (Max.le_max_l (trm_depth t1) (trm_depth t2)). omega.
+    puts (Max.le_max_l (trm_depth t1) (trm_depth t2)). lia.
   destruct* (IH _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ht' R1); clear R1.
   destruct H0 as [HTs [Hk' [WS' [HL0' Typ']]]].
   revert HI.
@@ -1818,7 +1818,7 @@ Proof.
   clear HeqTG.
   intros.
   clear Ht'; assert (Ht': trm_depth t2 < h).
-    puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). omega.
+    puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). lia.
   rewrite <- (trm_depth_open x0) in Ht'.
   set (TI:=typinf0 (t2 ^ x0) T HS' HKA DKA HLA).
   simpl proj1_sig in TI. fold TI in HI.
@@ -1869,10 +1869,10 @@ Proof.
   simpl proj1_sig in HI.
   simpl in Ht.
   assert (Ht': trm_depth t1 < h).
-    puts (Max.le_max_l (trm_depth t1) (trm_depth t2)). omega.
+    puts (Max.le_max_l (trm_depth t1) (trm_depth t2)). lia.
   destruct* (IH _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ht' R1); clear R1.
   clear Ht'; assert (Ht': trm_depth t2 < h).
-    puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). omega.
+    puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). lia.
   case_rewrite R2 (typinf0 t2 (typ_fvar x) HS' HK' D' (subset_app2 HL')).
   destruct s as [[[K'' S''] L''] [[HK'' [HS'' D'']] HL'']].
   inversions HI; clear HI.
@@ -2495,7 +2495,7 @@ Proof.
       unfold fvs in HL.
       apply* Hsub.
     simpl in Hh.
-    rewrite trm_depth_open. omega.
+    rewrite trm_depth_open. lia.
   intros [K2 [S2 [L' [[[HK2 [HS2 D2]] HL']
              [TI [S3 [HS3 [TS3 [Hext3 WS3]]]]]]]]].
   instantiate (1:=subset_abs T HL HS1) in TI.
@@ -3121,7 +3121,7 @@ Proof.
     unfold fvs in HL; intro; intros; apply* Hsub.
    simpl in Hh.
    eapply Lt.le_lt_trans. apply (Max.le_max_l (trm_depth t1) (trm_depth t2)).
-   omega.
+   lia.
   instantiate (1:=subset_let1 HL).
   intros [K' [S' [L' [[[HK1 [HS' D']] HL'] [HI [S'' H'']]]]]].
   rewrite HI.
@@ -3245,7 +3245,7 @@ Proof.
    simpl in Hh.
    rewrite trm_depth_open.
    clear -Hh.
-   puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). omega.
+   puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). lia.
   intros [K'' [S1' [L'' [[[HK2 [HS1' D'']] HL''] [HI' [S''' H''']]]]]].
   rewrite (ProofIrrelevance.proof_irrelevance _ HKG (proj41 Ok04)).
   unfold typinf0 in HI' |- *.
@@ -3292,7 +3292,7 @@ Proof.
     rewrite (@env_subst_ext_fv _ S). auto.
     clear -HL Hsub; unfold fvs in HL; intro; intros; apply* Hsub.
    clear -Hh. simpl in *.
-   puts (Max.le_max_l (trm_depth t1) (trm_depth t2)). omega.
+   puts (Max.le_max_l (trm_depth t1) (trm_depth t2)). lia.
   instantiate (1:=subset_app1 HL).
   intros [K' [S' [L' [[[HK1 [HS' D']] HL'] [HI [S'' H'']]]]]].
   rewrite HI.
@@ -3310,7 +3310,7 @@ Proof.
      rewrite Hsub' by auto. simpl. destruct* (x1 == x1).
     intro; intros. rewrite Hsub' by auto. apply* Hsub.
    clear -Hh; simpl in *.
-   puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). omega.
+   puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). lia.
   instantiate (1 := subset_app2 HL').
   intros [K'' [S1' [L'' [[[HK2 [HS1' D'']] HL''] [HI' [S''' H''']]]]]].
   rewrite (ProofIrrelevance.proof_irrelevance _ HK1 (proj1 HK')).
@@ -3403,7 +3403,7 @@ Lemma typinf_principal : forall h L S0 K0 E0 HS0 HK0 D0 S K t T HL,
   @principality S0 K0 E0 HS0 HK0 D0 S K t T L HL h.
 Proof.
   induction h; intros; intros HTS0 HE0 HTS HSL Hext WS Typ Hh;
-    try (elimtype False; omega).
+    try (elimtype False; lia).
   inversions Typ.
   apply* principal_var.
   apply* principal_abs.

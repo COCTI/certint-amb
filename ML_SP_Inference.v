@@ -1515,7 +1515,7 @@ Proof.
   case_rewrite R2 (typinf_generalize K' E' (vars_subst s (kdom K0)) T1).
   simpl in Ht.
   assert (Ht': trm_depth t1 < h).
-    puts (Max.le_max_l (trm_depth t1) (trm_depth t2)). omega.
+    puts (Max.le_max_l (trm_depth t1) (trm_depth t2)). lia.
   destruct* (IHh _ _ _ _ _ _ _ _ _ Ht' R1); clear R1.
     simpl*.
   destruct H0 as [HTs [Hs [Hk [Disk [WS' [HL0' Typ']]]]]].
@@ -1523,7 +1523,7 @@ Proof.
     as [HKA [Inc2 [Inc1 [HM [Hfv [L' Typ2]]]]]].
   rewrite normalize_typinf in HI.
   clear Ht'; assert (Ht': trm_depth t2 < h).
-    puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). omega.
+    puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). lia.
   rewrite <- (trm_depth_open x0) in Ht'.
   destruct* (IHh _ _ _ _ _ _ _ _ _ Ht' HI); clear IHh HI.
         use (incl_subset_dom Inc2).
@@ -1571,12 +1571,12 @@ Proof.
   destruct o; try discriminate. destruct p as [K' S'].
   simpl in Ht.
   assert (Ht': trm_depth t1 < h).
-    puts (Max.le_max_l (trm_depth t1) (trm_depth t2)). omega.
+    puts (Max.le_max_l (trm_depth t1) (trm_depth t2)). lia.
   destruct* (IHh _ _ _ _ _ _ _ _ _ Ht' R1); clear R1.
     simpl*.
   rewrite normalize_typinf in HI.
   clear Ht'; assert (Ht': trm_depth t2 < h).
-    puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). omega.
+    puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). lia.
   destruct* (IHh _ _ _ _ _ _ _ _ _ Ht' HI); clear IHh HI.
     clear -H0; simpl. remember {{x}} as L. auto*.
   intuition.
@@ -2072,7 +2072,7 @@ Proof.
   elimtype False.
   refine (unify_complete0 (K:=K) HS0 Ok Hext' HU _ _ H).
     subst; apply* well_subst_concat_abs. auto.
-  omega.
+  lia.
 Qed.
 
 Lemma typ_subst_type' : forall S T,
@@ -2188,7 +2188,7 @@ Proof.
       unfold fvs in HL.
       apply* Hsub.
      simpl in Hh.
-     rewrite trm_depth_open. omega.
+     rewrite trm_depth_open. lia.
     destruct H9 as [S2 [L' [TI [S3 [HS3 [TS3 [Hext3 WS3]]]]]]].
     unfold typinf0.
     esplit; esplit; esplit; split2*.
@@ -2209,7 +2209,7 @@ Proof.
   elimtype False.
   refine (unify_complete0 (K:=K) HS0 (proj1 HK0) Hext' HU _ _ H).
     apply* well_subst_concat. instantiate (1:=E0); auto.
-  omega.
+  lia.
 Qed.
 
 Lemma sch_open_vars_type : forall M Xs,
@@ -2823,7 +2823,7 @@ Proof.
     unfold fvs in HL; intro; intros; apply* Hsub.
    simpl in Hh.
    eapply Lt.le_lt_trans. apply (Max.le_max_l (trm_depth t1) (trm_depth t2)).
-   omega.
+   lia.
   rewrite normalize_typinf; unfold typinf0.
   rewrite HI.
   set (K1 := map (kind_subst S') K') in *.
@@ -2969,7 +2969,7 @@ Proof.
    simpl in Hh.
    rewrite trm_depth_open.
    clear -Hh.
-   puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). omega.
+   puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). lia.
   env_fix. esplit; esplit; esplit; split2*.
   destruct* (typinf_sound _ (lt_n_Sn _) HI').
   exists (x1~MXs & S'' & S1'').
@@ -3009,7 +3009,7 @@ Proof.
      simpl. destruct* (x1 == x1). env_fix. rewrite~ Hsub.
     intro; intros. unfold fvs in HL; apply* Hsub.
    clear -Hh.
-   puts (Max.le_max_l (trm_depth t1) (trm_depth t2)). omega.
+   puts (Max.le_max_l (trm_depth t1) (trm_depth t2)). lia.
   intuition.
   unfold typinf0; rewrite HI.
   destruct* (typinf_sound _ (lt_n_Sn _) HI). use (typ_subst_type' S T).
@@ -3025,7 +3025,7 @@ Proof.
     intro; intros. unfold fvs in HL.
     rewrite Hsub' by auto. apply* Hsub.
    clear -Hh.
-   puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). omega.
+   puts (Max.le_max_r (trm_depth t1) (trm_depth t2)). lia.
   intuition.
   unfold typinf0.
   esplit; esplit; esplit; split2*.
@@ -3107,7 +3107,7 @@ Proof.
     apply* list_forall_env_prop. apply (proj2 TUs).
   elimtype False.
   refine (unify_complete0 (K:=K) HS0 Ok Hext' HU _ _ H). auto.
-  omega.
+  lia.
 Qed.
 
 Theorem typinf_principal : forall h L S0 K0 E0 S K t T,
@@ -3115,7 +3115,7 @@ Theorem typinf_principal : forall h L S0 K0 E0 S K t T,
 Proof.
   induction h; intros until T;
     intros HS0 HTS0 HK0 Dis HE0 HTS HL Hext WS Typ Hh;
-    try (elimtype False; omega).
+    try (elimtype False; lia).
   inversions Typ.
   apply* principal_var.
   apply* principal_abs.
