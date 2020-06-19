@@ -5,8 +5,8 @@
 
 Require Import Arith List Metatheory.
 Require Import ML_SP_Definitions Cardinal ML_SP_Eval.
-Require Omega.
-Ltac omega := Omega.omega.
+Require Lia.
+Ltac omega := Lia.lia.
 
 Set Implicit Arguments.
 
@@ -65,7 +65,6 @@ Section Moregen.
         rewrite* typ_subst_fresh.
       simpl.
       rewrite* H0.
-    simpl; congruence.
   Qed.
 
   (* For substitutions in normal form, moregeneral implies extends *)
@@ -200,10 +199,6 @@ Fixpoint unify0 unify (h:nat) (pairs:list(typ*typ)) (K:kenv) (S:subs) {struct h}
         unify_nv (unify pairs') K S x T 
       | T, typ_fvar x =>
         unify_nv (unify pairs') K S x T 
-       | typ_arrow T11 T12, typ_arrow T21 T22 =>
-        unify0 unify h' ((T11,T21)::(T12,T22)::pairs') K S
-      | _, _ =>
-        None
       end
     end
   end.
@@ -238,11 +233,8 @@ Fixpoint all_types S (pairs:list(typ*typ)) {struct pairs} : list typ :=
       typ_subst S (fst p) :: typ_subst S (snd p) :: all_types S rem
   end.
 
-Fixpoint typ_size (T : typ) : nat :=
-  match T with
-  | typ_arrow T1 T2 => S (typ_size T1 + typ_size T2)
-  | _ => 1
-  end.
+(* Calculating size of type no longer useful *)
+Fixpoint typ_size (T : typ) : nat := 1.
 
 Definition pairs_size S pairs := accum typ_size plus 0 (all_types S pairs).
 
@@ -267,8 +259,6 @@ Proof.
       destruct H2. rewrite H3 in H0. discriminate.
     destruct (binds_map_inv _ _ H2).
     rewrite (proj2 H3) in H; discriminate.
-  rewrite* IHT1.
-  rewrite* IHT2.
 Qed.
 
 Lemma binds_typ_subst : forall x T S,
@@ -284,9 +274,6 @@ Lemma disjoint_subst : forall x T L T',
 Proof.
   induction T'; simpl; intros; auto.
     destruct* (v == x).
-    simpl*.
-  forward~ IHT'1 as HT1.
-  forward~ IHT'2 as HT2.
 Qed.
 
 Lemma add_binding_is_subst : forall S x T,
