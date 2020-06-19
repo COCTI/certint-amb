@@ -3,7 +3,7 @@
 * Jacques Garrigue, July 2008                                              *
 ***************************************************************************)
 
-Require Import List SetoidList Arith Omega Metatheory.
+Require Import List SetoidList Arith Lia Metatheory.
 Set Implicit Arguments.
 
 Lemma elements_empty : forall L,
@@ -336,7 +336,7 @@ Proof.
   repeat rewrite S.cardinal_1.
   remember (S.elements L1) as elts1.
   gen L1; induction elts1; simpl; intros.
-    omega.
+    lia.
   use (elements_tl (sym_eq Heqelts1)).
   use (IHelts1 _ (sym_eq H0) (S.remove a L2)).
   use (H1 (remove_subset H)).
@@ -346,7 +346,7 @@ Proof.
     rewrite* <- Heqelts1.
     auto with ordered_type.
   rewrite <- (cardinal_remove H3).
-  omega.
+  lia.
 Qed.
 
 Lemma cardinal_empty : S.cardinal {} = 0.

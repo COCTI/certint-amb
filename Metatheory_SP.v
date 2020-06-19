@@ -5,7 +5,7 @@
 
 Set Implicit Arguments.
 Require Import List Arith Lib_Tactic Lib_FinSet.
-Require Omega.
+Require Lia.
 Require Import Metatheory_Var.
 Require Import Metatheory_Fresh.
 Require Import Metatheory_Env.
@@ -70,14 +70,14 @@ Section Index.
     destruct* (eq_dec x a). discriminate.
   Qed.
 
-  Import Omega.
+  Import Lia.
 
   Lemma index_ok : forall def a l n,
     index 0 a l = Some n ->
     n < length l /\ nth n l def = a.
   Proof.
     intros.
-    replace n with (n-0) by omega.
+    replace n with (n-0) by lia.
     apply (proj2 (A:= 0 <= n)).
     gen n; generalize 0.
     induction l; simpl; intros. discriminate.
@@ -85,13 +85,13 @@ Section Index.
       subst.
       inversions H.
       split2*.
-      replace (n0 - n0) with 0 by omega.
+      replace (n0 - n0) with 0 by lia.
       auto with arith.
     destruct (IHl _ _ H).
-    split. omega.
+    split. lia.
     case_eq (n0 - n); intros.
-      elimtype False; omega.
-    replace n2 with (n0 - S n) by omega.
+      elimtype False; lia.
+    replace n2 with (n0 - S n) by lia.
     destruct H1.
     auto with arith.
   Qed.
@@ -471,12 +471,12 @@ Section Cut.
     n <= length l -> cut n l = (l1, l2) ->
     length l1 = n /\ l = l1 ++ l2.
   Proof.
-    Import Omega.
+    Import Lia.
     induction n; simpl; intros.
       inversions* H0.
     destruct l; simpl in *.
-      elimtype False; omega.
-    assert (n <= length l) by omega.
+      elimtype False; lia.
+    assert (n <= length l) by lia.
     case_rewrite R (cut n l).
     inversions* H0.
     destruct* (IHn l l0 l2).

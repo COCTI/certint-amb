@@ -8,7 +8,7 @@
 Set Implicit Arguments.
 Require Import Arith List Metatheory
   ML_SP_Definitions ML_SP_Infrastructure.
-Require Omega.
+Require Lia.
 
 Module MkSound(Cstr:CstrIntf)(Const:CstIntf).
 
@@ -676,7 +676,7 @@ Proof.
      rewrite He in H0; clear He.
      destruct (const_app_eq _ _ _ _ H0). subst.
      clear -vl Hl; destruct vl.
-     Omega.omega.
+     Lia.lia.
     elim (IHt1 t1'). exists* (S k). auto.
    elim (IHt2 t2'). exists* n2. auto.
   clear -vl H0.

@@ -4,7 +4,7 @@
 ***************************************************************************)
 
 Set Implicit Arguments.
-Require Import List Max Omega OrderedType OrderedTypeEx.
+Require Import List Max ZArith Lia OrderedType OrderedTypeEx.
 Require Import Lib_Tactic Lib_ListFacts Lib_FinSet Lib_FinSetImpl.
 Require Export Lib_ListFactsMore.
 
@@ -55,7 +55,7 @@ Local Open Scope Z_scope.
 
 Definition var := Z.
 
-Definition var_default : var := 0.
+Definition var_default : var := 0%Z.
 
 Definition var_of_Z x : var := x.
 Definition Z_of_var x : Z := x.
@@ -95,7 +95,7 @@ Proof.
   case (finite_nat_list_max l); intros x H.
   exists (x+1).
   intros J.
-  assert (K := H _ J); omega.
+  assert (K := H _ J); lia.
 Qed.
 
 Definition var_generate (L : vars) : var :=

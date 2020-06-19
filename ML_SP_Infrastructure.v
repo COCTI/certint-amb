@@ -6,7 +6,7 @@
 ***************************************************************************)
 
 Set Implicit Arguments.
-Require Import List Omega Metatheory ML_SP_Definitions.
+Require Import List Lia Metatheory ML_SP_Definitions.
 Require Import ProofIrrelevance.
 
 (* ====================================================================== *)
@@ -32,8 +32,8 @@ Ltac length_hyps :=
     (simpl in *; unfold typ_fvars, kinds_open_vars, kinds_open in *;
       try rewrite map_length in *; try rewrite app_length in *).
 
-Hint Extern 1 (_ = length _) => length_hyps; omega : core.
-Hint Extern 1 (length _ = _) => length_hyps; omega : core.
+Hint Extern 1 (_ = length _) => length_hyps; lia : core.
+Hint Extern 1 (length _ = _) => length_hyps; lia : core.
 
 Lemma dom_kinds_open_vars : forall Xs Ks,
   length Ks = length Xs ->
@@ -70,8 +70,8 @@ Ltac disjoint_solve :=
     (simpl dom in *; simpl fv_in in *; simpl typ_fv in *;
      try rewrite dom_concat in *; try rewrite fv_in_concat in *;
      try rewrite dom_map in *;
-     try (rewrite dom_combine in * by (length_hyps; omega));
-     try (rewrite dom_kinds_open_vars in * by (length_hyps; omega)));
+     try (rewrite dom_combine in * by (length_hyps; lia));
+     try (rewrite dom_kinds_open_vars in * by (length_hyps; lia)));
   sets_solve.
 
 Hint Extern 1 (_ \in _) => solve [disjoint_solve] : core.
