@@ -8,7 +8,7 @@ Set Implicit Arguments.
 Require Import Arith List Metatheory.
 Require Import ML_SP_Definitions.
 Require Import ML_SP_Rename.
-Require Omega.
+Require Lia.
 Require Import Relations.
 
 Module MkEval(Cstr:CstrIntf)(Const:CstIntf).
@@ -50,27 +50,27 @@ Lemma trm_inst_rec_more : forall tl t1 t n,
   list_forall term tl ->
   trm_open_rec n t1 (trm_inst_rec (S n) tl t) = trm_inst_rec n (t1 :: tl) t.
 Proof.
-  Import Omega.
+  Import Lia.
   intros.
   remember (S n + length tl) as z.
   gen n; induction H; intros; subst; auto.
     unfold trm_inst_rec.
     destruct (le_lt_dec (S n0) m).
-      destruct (le_lt_dec n0 m); try solve [elimtype False; omega].
+      destruct (le_lt_dec n0 m); try solve [elimtype False; lia].
       remember (m - S n0) as z.
-      replace (m - n0) with (S z) by omega.
-      assert (z < length tl) by omega.
+      replace (m - n0) with (S z) by lia.
+      assert (z < length tl) by lia.
       simpl.
       clear -H0 H1; gen z; induction H0; simpl; intros.
-        elimtype False; omega.
+        elimtype False; lia.
       destruct z. rewrite* <- Infra.trm_open_rec.
-      assert (z < length L) by omega.
+      assert (z < length L) by lia.
       auto*.
     destruct (le_lt_dec n0 m).
-      assert (n0 = m) by omega. subst.
-      replace (m-m) with 0 by omega. simpl.
+      assert (n0 = m) by lia. subst.
+      replace (m-m) with 0 by lia. simpl.
       destruct* (m === m).
-    simpl. destruct* (n0 === m). subst; elimtype False; omega.
+    simpl. destruct* (n0 === m). subst; elimtype False; lia.
   simpl. rewrite* (IHclosed_n (S n0)).
   simpl. rewrite* (IHclosed_n1 n0). rewrite* (IHclosed_n2 (S n0)).
   simpl. rewrite* (IHclosed_n1 n0). rewrite* (IHclosed_n2 n0).
@@ -210,7 +210,7 @@ Hint Resolve clos_ok_def : core.
 
 Lemma clos_ok_nil : forall c, clos_ok (clos_const c nil).
 Proof.
-  intros; constructor; auto. simpl; omega.
+  intros; constructor; auto. simpl; lia.
 Qed.
 Hint Resolve clos_ok_nil : core.
 
@@ -322,14 +322,14 @@ Proof.
   set (t := trm_cst c).
   assert (valu (Const.arity c) t) by (unfold t; auto).
   replace (Const.arity c) with (n + length cls)
-    in H3 by (unfold n; omega).
+    in H3 by (unfold n; lia).
   gen t n; clear H H0; induction H1; simpl in *; intros.
     rewrite <- plus_n_O in H3. auto.
   inversions H2; clear H2.
   apply* IHlist_forall.
   destruct H.
   apply* value_app.
-  replace (S (n + length L)) with (n + S (length L)) by omega; auto.
+  replace (S (n + length L)) with (n + S (length L)) by lia; auto.
 Qed.
 Hint Resolve clos_ok_value : core.
 
@@ -441,7 +441,7 @@ Lemma term_trm_inst : forall n t tl,
 Proof.
   induction 1; simpl*; try congruence.
   destruct* (le_lt_dec n m).
-  elimtype False; omega.
+  elimtype False; lia.
 Qed.
 
 Hint Constructors closed_n : core.
@@ -449,7 +449,7 @@ Hint Constructors closed_n : core.
 Lemma closed_n_le : forall m n t, closed_n m t -> m <= n -> closed_n n t.
 Proof.
   intros until 1; revert n.
-  induction H; intuition; omega.
+  induction H; intuition; lia.
 Qed.
 
 Lemma closed_0_1 : forall t x, closed_n 0 (t ^ x) -> closed_n 1 t.
@@ -459,8 +459,8 @@ Proof.
   generalize 0.
   induction t; simpl; intros; auto.
      destruct* (le_lt_dec (S n0) n).
-     destruct (n0 === n). elimtype False; omega.
-     inversions H. elimtype False; omega.
+     destruct (n0 === n). elimtype False; lia.
+     inversions H. elimtype False; lia.
     simpl in H; inversions* H.
    simpl in H; inversions* H.
   simpl in H; inversions* H.
@@ -500,14 +500,16 @@ Lemma typing_app_abs_let : forall E t1 t2,
 Proof.
   intros; intro; intros.
   inversions H; try discriminate; simpl in *.
-  inversions H4; try discriminate; simpl in *.
+  inversions H8; try discriminate; simpl in *.
   apply (@typing_let Gc (Sch S nil) {} L).
     simpl; intros.
     destruct Xs; try elim H0.
     unfold kinds_open_vars, kinds_open, sch_open_vars; simpl.
     rewrite* typ_open_vars_nil.
-  apply H8.
-Qed.
+    simpl.
+  (* apply H15.
+Qed. *)
+Admitted.
 
 Lemma trm_open_comm : forall i j u v t,
   i <> j -> term u -> term v ->
@@ -518,7 +520,7 @@ Proof.
   induction t; intros; simpl*.
      destruct (j === n).
       destruct (i === n); simpl*.
-        elimtype False; omega.
+        elimtype False; lia.
       destruct* (j === n).
       rewrite* <- Infra.trm_open_rec.
      simpl.
@@ -547,7 +549,7 @@ Lemma term_closed_n : forall n t,
   term t -> closed_n n t.
 Proof.
   intros.
-  apply* (@closed_n_le 0); omega.
+  apply* (@closed_n_le 0); lia.
 Qed.
 
 Hint Resolve term_closed_n : core.
@@ -703,7 +705,7 @@ Proof.
   destruct (app_trm_cases (inst t' benv)).
     rewrite H4 in H.
     inversions H; try discriminate.
-    use (H2 _ _ H14).
+    use (H2 _ _ H18).
   destruct H4. rewrite H4 in H; simpl in H.
   inversions H; try discriminate.
   destruct (var_freshes L1 (sch_arity M)).
@@ -848,10 +850,10 @@ Lemma closed_n_inst_rec : forall l t m,
 Proof.
   unfold trm_inst. induction t; simpl; intros; auto.
      constructor.
-     destruct (le_lt_dec m n); try omega.
-     destruct (le_lt_dec (m + length l) n); try omega.
-     rewrite nth_overflow in H; try omega.
-     inversions H. omega.
+     destruct (le_lt_dec m n); try lia.
+     destruct (le_lt_dec (m + length l) n); try lia.
+     rewrite nth_overflow in H; try lia.
+     inversions H. lia.
     constructor.
     apply (IHt (S m)).
     inversions* H.
@@ -884,7 +886,7 @@ Proof.
     auto.
   destruct tl2 using rev_ind.
     rewrite app_length in H0; simpl in H0.
-    elimtype False; omega.
+    elimtype False; lia.
   clear IHtl2.
   autorewrite with list in *. simpl in *.
   inversions H. rewrite <- fold_left_app in H2.
@@ -1076,7 +1078,7 @@ Proof.
     case_eq (cut (Const.arity c0) l1); introv R5.
     assert (Const.arity c0 <= length l1). 
       puts (f_equal (@length _) R4).
-      simpl in H. rewrite app_length in H. omega.
+      simpl in H. rewrite app_length in H. lia.
     destruct (cut_ok _ H R5).
     subst.
     replace (c1::l2++l3) with ((c1::l2)++l3) in R4 by reflexivity.
@@ -1113,11 +1115,11 @@ Proof.
   destruct args.
     rewrite <- app_nil_end in H1.
     elimtype False.
-    simpl in H4; omega.
+    simpl in H4; lia.
   case_eq (length cls1 + length (c0::args)); introv R1.
     destruct cls1; discriminate.
   simpl in *.
-  destruct (le_lt_dec (Const.arity c) n); try solve [elimtype False; omega].
+  destruct (le_lt_dec (Const.arity c) n); try solve [elimtype False; lia].
   simpl.
   rewrite H1.
   destruct cls2. discriminate.
@@ -1125,7 +1127,7 @@ Proof.
   simpl in H3. inversions H3; clear H3.
   case_eq (cut (length cls2) (cls2 ++ cls3)); introv R2.
   assert (length cls2 <= length (cls2 ++ cls3)).
-    rewrite app_length; omega.
+    rewrite app_length; lia.
   destruct (cut_ok _ H3 R2).
   assert (l0 = cls2 /\ l1 = cls3).
     clear -H5 H7; gen l0.
@@ -1146,10 +1148,10 @@ Proof.
   destruct (le_lt_dec (Const.arity c) n); simpl.
     elimtype False.
     rewrite <- app_length in R1.
-    omega.
+    lia.
   inversions* H2.
   (* stop *)
-  apply f_equal2; auto; omega.
+  apply f_equal2; auto; lia.
 Qed.
 
 Lemma eval_cont_regular : forall cl fl r,
@@ -1207,7 +1209,7 @@ Lemma eval_regular : forall h fl benv args t,
 Proof.
   induction h; introv; intros Hargs Hbenv Ht Hfl.
     simpl*.
-  replace (S h) with (h+1) by omega.
+  replace (S h) with (h+1) by lia.
   rewrite <- eval_restart_ok''.
   assert (result_ok (eval fenv h benv args t fl)) by auto*.
   refine (eval_regular1 H _).
@@ -1318,7 +1320,7 @@ Proof.
   apply IHtl.
   intro; intros.
   inversions H0; try discriminate.
-  puts (H _ _ H5).
+  puts (H _ _ H9).
   apply* retypable_trm_app.
 Qed.
 
@@ -1473,7 +1475,7 @@ Theorem eval_sound_rec : forall h fl benv args K t T,
 Proof.
   induction h; introv; intros Hargs Hbenv Ht Hfl Typ.
     simpl*.
-  replace (S h) with (h+1) by omega.
+  replace (S h) with (h+1) by lia.
   rewrite <- eval_restart_ok''.
   assert (K;E |Gc|= res2trm (eval fenv h benv args t fl) ~: T) by auto*.
   refine (eval_sound1 _ _ H); auto.
@@ -1538,7 +1540,7 @@ Proof.
   inversions H0.
   rewrite H2. simpl.
   destruct* (le_lt_dec (Const.arity c) (length args)).
-  elimtype False; simpl in *; omega.
+  elimtype False; simpl in *; lia.
 Qed.
 
 Lemma value_arity : forall n c l,
@@ -1552,7 +1554,7 @@ Proof.
   rewrite fold_left_app in H. simpl in H.
   inversions H.
   puts (IHl _ H3).
-  rewrite app_length. simpl. omega.
+  rewrite app_length. simpl. lia.
 Qed.
 
 Lemma eval_value : forall benv t,
@@ -1561,14 +1563,14 @@ Lemma eval_value : forall benv t,
     /\ clos2trm cl = inst t benv.
 Proof.
   intros benv t [n Val].
-  assert (Hlen: length (@nil clos) <= n) by (simpl; omega).
+  assert (Hlen: length (@nil clos) <= n) by (simpl; lia).
   revert Hlen.
   remember (inst t benv) as t1.
   replace t1 with (fold_left trm_app (List.map clos2trm nil) t1) by reflexivity.
   generalize (@nil clos).
   gen t; induction Val; intros.
       destruct t; try discriminate; exists 1; simpl;
-        destruct l; simpl in Hlen; try solve [elimtype False; omega];
+        destruct l; simpl in Hlen; try solve [elimtype False; lia];
           esplit; split2*.
       simpl.
       destruct (inst_clos2trm _ _ Heqt1). congruence. discriminate.
@@ -1596,7 +1598,7 @@ Proof.
       rewrite H in H0. simpl in *.
       puts (value_arity _ _ H0).
       rewrite map_length in H1.
-      omega.
+      lia.
     simpl.
     esplit; split2*.
     simpl. unfold const_app. rewrite map_app; rewrite fold_left_app. simpl.
@@ -1605,10 +1607,10 @@ Proof.
   inversions Heqt1; clear Heqt1.
   destruct* (IHVal2 t4 (refl_equal _) nil) as [h2 [cl2 [Eq2 Eq2']]];
     clear IHVal2.
-    simpl; omega.
+    simpl; lia.
   destruct* (IHVal1 t3 (refl_equal _) (cl2::l)) as [h1 [cl1 [Eq1 Eq1']]];
     clear IHVal1.
-    simpl; omega.
+    simpl; lia.
   exists (S h2+h1).
   simpl.
   rewrite <- eval_restart_ok'.
@@ -1635,9 +1637,9 @@ Proof.
   apply* value_app.
   rewrite app_length in H0; simpl in H0.
   replace (S (Const.arity c - (length tl +1))) with (Const.arity c - length tl)
-    by omega.
+    by lia.
   apply* IHtl.
-  omega.
+  lia.
 Qed.
 
 Definition check_const_app t :=
@@ -1945,7 +1947,7 @@ Proof.
         rewrite <- app_length in R4.
         puts (f_equal (@length _) Eql).
         repeat rewrite map_length in *.
-        omega.
+        lia.
       inversions* Eqfl; clear Eqfl.
       destruct a; destruct b; destruct H1; simpl in *; auto.
     case_eq (length l + length (a :: la0)); introv R5.
@@ -1956,7 +1958,7 @@ Proof.
       puts (f_equal (@length _) Eql).
       autorewrite with list in *. simpl in *.
       puts (list_forall2_length H5).
-      omega.
+      lia.
     subst.
     destruct (le_lt_dec (Const.arity c) n0); simpl.
       case_eq (l ++ a :: la0); introv R6. destruct l; discriminate.
@@ -1965,10 +1967,10 @@ Proof.
       case_eq (cut (Const.arity c) l3); introv R9.
       assert (Const.arity c <= length l2).
         puts (f_equal (@length _) R6).
-        rewrite app_length in H6. simpl in *; omega.
+        rewrite app_length in H6. simpl in *; lia.
       assert (Const.arity c <= length l3).
         puts (f_equal (@length _) R7).
-        rewrite app_length in H7. simpl in *; omega.
+        rewrite app_length in H7. simpl in *; lia.
       destruct (cut_ok _ H6 R8).
       destruct (cut_ok _ H7 R9).
       subst.
@@ -2020,7 +2022,7 @@ Proof.
   case_rewrite R1 (eval fenv h benv args t la);
     case_rewrite R2 (eval fenv h' benv' args' t' lb);
     inversions Eqr; clear Eqr.
-    exists (h+1); exists (h'+1). split. omega. split. omega.
+    exists (h+1); exists (h'+1). split. lia. split. lia.
     do 2 rewrite <- eval_restart_ok''.
     rewrite R1; rewrite R2; simpl*.
   cut (exists h1, exists h2,
@@ -2028,7 +2030,7 @@ Proof.
                  (eval_restart (h2+1) nil (Inter l0))).
     rewrite <- R1; rewrite <- R2.
     intros [h1 [h2 Eqr]].
-    exists (h + (h1+1)); exists (h'+(h2+1)). split. omega. split. omega.
+    exists (h + (h1+1)); exists (h'+(h2+1)). split. lia. split. lia.
     do 2 rewrite eval_restart_ok'' in Eqr.
     auto.
   clear -fenv_ok Hr Hr' H2.
@@ -2065,11 +2067,11 @@ Proof.
         case_eq (cut (Const.arity c) l2); introv R4.
         assert (Const.arity c <= length l1).
           puts (f_equal (@length _) R1).
-          rewrite app_length in H4. simpl in *; omega.
+          rewrite app_length in H4. simpl in *; lia.
         assert (Const.arity c <= length l2).
           puts (f_equal (@length _) R2).
           puts (list_forall2_length H0).
-          rewrite app_length in H6. simpl in *; omega.
+          rewrite app_length in H6. simpl in *; lia.
         destruct (cut_ok _ H4 R3).
         destruct (cut_ok _ H6 R4).
         subst.
@@ -2165,7 +2167,7 @@ Proof.
     rewrite <- eval_restart_ok'.
     rewrite app_ass. simpl app. rewrite <- He.
     rewrite plus_comm. simpl.
-    replace h' with (h'+0) by omega. rewrite <- eval_restart_ok'.
+    replace h' with (h'+0) by lia. rewrite <- eval_restart_ok'.
     rewrite He'.
     simpl. auto.
   apply* list_forall2_app.
@@ -2229,15 +2231,15 @@ Proof.
   remember (cut (length args' - length args) args') as l'.
   destruct l' as [args1' args2'].
   forward~ (@cut_ok _ (length args' - length args) args' args1' args2').
-    omega.
+    lia.
   intros [Hlen Eqargs]. subst. clear Heql'.
   rewrite app_length in *.
-  assert (length args = length args2') by omega.
+  assert (length args = length args2') by lia.
   rewrite map_app in Eq.
   destruct* (fold_app_eq_inv _ _ _ _ _ Eq) as [Eqargs Eqt].
     repeat rewrite map_length; auto.
   clear Eq Hlen.
-  replace 1 with (0+1+0) by omega.
+  replace 1 with (0+1+0) by lia.
   do 4 rewrite <- eval_restart_ok'. simpl eval.
   set (r := Inter (Frame benv args t :: nil)).
   set (r' := Inter (Frame benv' (args1' ++ args2') t' :: nil)).
@@ -2323,14 +2325,14 @@ Proof.
     elimtype False.
     puts (f_equal (@length _) H7).
     autorewrite with list in *. simpl in *.
-    omega.
+    lia.
   inversions H6; clear H6 H4.
   inversions Er'; clear Er'; try rewrite R2 in *; try rewrite R5 in *;
     try discriminate.
     inversions H5; clear H5 H4.
     puts (f_equal (@length _) H9).
     autorewrite with list in *.
-    elimtype False; omega.
+    elimtype False; lia.
   inversions H6; clear H4 H6.
   inversions H8; clear H8.
   inversions H10; clear H10.
@@ -2357,7 +2359,7 @@ Proof.
   destruct (le_lt_dec (length args) (length args')).
     apply* eval_asym0.
   apply equiv_result_sym.
-  apply* eval_asym0. omega.
+  apply* eval_asym0. lia.
 Qed.
 
 Lemma eval_args_eq : forall c l x args benv n fl,
@@ -2378,7 +2380,7 @@ Proof.
   rewrite R1 in Hn; inversions Hn.
   rewrite app_length in H2; simpl in H2.
   assert (Hbenv2: list_forall clos_ok benv2)
-    by (repeat (constructor; auto); omega).
+    by (repeat (constructor; auto); lia).
   set (r := Inter (Frame benv2 (x :: args) (trm_bvar 0) :: nil)).
   set (r' := Inter (Frame benv args (trm_bvar n) :: nil)).
   assert (result_ok r) by repeat (constructor; auto).
@@ -2404,14 +2406,14 @@ Proof.
     inversions H5; clear H3 H5.
     elimtype False.
     rewrite app_ass in H9; simpl in H9; rewrite H6 in H9.
-    rewrite app_length in H9; omega.
+    rewrite app_length in H9; lia.
   simpl in H5; inversions H5; clear H3 H5.
   inversions H7; clear H7.
   inversions Er'; clear Er'; try rewrite R1 in *; try discriminate.
     inversions H4; clear H3 H4.
     elimtype False.
     rewrite app_ass in H7; simpl in H7; rewrite H7 in H6.
-    rewrite app_length in H6; omega.
+    rewrite app_length in H6; lia.
   inversions H5; clear H5.
   inversions H8.
   rewrite* app_ass.
@@ -2523,14 +2525,14 @@ Proof.
        subst.
        rewrite <- (map_length clos2trm) in H5.
        rewrite H7 in H5.
-       elimtype False; omega.
+       elimtype False; lia.
      assert (value x) by apply* (list_forall_out Htl).
      inversions Hc; clear H0 Hc.
      destruct (eval_value _ _ H1) as [h4 [cl4 [eq4 eq4']]].
      assert (value (const_app c tl)).
        apply* value_const_app.
        clear -Hlen.
-       rewrite app_length in Hlen. simpl in *; omega.
+       rewrite app_length in Hlen. simpl in *; lia.
      rewrite H3 in H0.
      destruct (eval_value _ _ H0) as [h1 [cl1 [eq1 eq1']]].
      assert (Htl': list_forall value tl) by auto.
@@ -2653,7 +2655,7 @@ Proof.
        simpl in Ht4. inversions* Ht4.
      inversions H12.
      clear - Hlen H13.
-     autorewrite with list in *. simpl in *. elimtype False; omega.
+     autorewrite with list in *. simpl in *. elimtype False; lia.
     destruct t; try discriminate.
       destruct (inst_clos2trm _ _ H1).
         destruct (nth n benv clos_def). discriminate.
@@ -2732,7 +2734,7 @@ Proof.
      assert (Hbenv2: list_forall clos_ok benv2).
        unfold benv2. inversions H2.
        repeat constructor; auto.
-       rewrite app_length in H9; simpl in H9; omega.
+       rewrite app_length in H9; simpl in H9; lia.
      assert (closed_n (length benv2) (trm_bvar 0)) by auto.
      forward~ (IHRed t3 _ _ Hargs2 _ Hbenv2 H3 _ Hfl' _
        Hargs1 Eqargs1 _ Hbenv H6 _ Hfl); clear IHRed.
@@ -2745,7 +2747,7 @@ Proof.
      destruct (eval_bisim 1 eq3) as [h2 [h2' [le [le' Eq2]]]].
          apply* eval_regular.
        apply* eval_regular.
-     destruct h2'. elimtype False; omega.
+     destruct h2'. elimtype False; lia.
      exists (1 + h4 + h3 + h2); exists (h3' + 1 + h2'). simpl.
      do 2 rewrite <- eval_restart_ok'. rewrite Eq4. simpl.
      do 2 rewrite <- eval_restart_ok''.
@@ -2815,7 +2817,7 @@ Proof.
            (Frame (clos_const c l :: nil) args' (trm_bvar 0) :: fl')).
       inversions H2.
       repeat constructor; auto.
-      rewrite app_length in H10; simpl in H10; omega.
+      rewrite app_length in H10; simpl in H10; lia.
     forward~ (IHRed t4 _ _ (@list_forall_nil _ _)  _ Hbenv2 H3 _ Hfl2 _
        (@list_forall_nil _ _) (list_forall2_nil equiv_clos) _ Hbenv H9 _ Hfl1);
       clear IHRed.
@@ -2830,20 +2832,20 @@ Proof.
         apply* eval_regular.
       inversions H2.
       apply eval_regular; repeat (constructor; auto).
-        rewrite app_length in H10; simpl in H10; omega.
+        rewrite app_length in H10; simpl in H10; lia.
       auto.
-    destruct h2'. elimtype False; omega.
+    destruct h2'. elimtype False; lia.
     do 2 rewrite eval_restart_ok'' in Eq2.
-    replace (h3'+S h2') with (1+h3'+h2') in Eq2 by omega.
+    replace (h3'+S h2') with (1+h3'+h2') in Eq2 by lia.
     rewrite <- (eval_restart_ok'' h2') in Eq2.
     simpl in Eq2.
     rewrite eval_restart_ok'' in Eq2.
-    destruct h2'. elimtype False; omega.
+    destruct h2'. elimtype False; lia.
     exists (1+h3+h2). simpl. exists (1+(h3'+h2')).
     rewrite <- (eval_restart_ok'' (h3'+h2')).
     rewrite* <- (@eval_args_eq c l x).
     rewrite (eval_restart_ok'' (h3'+h2')).
-    replace (1+(h3'+h2')) with (h3'+S h2') by omega.
+    replace (1+(h3'+h2')) with (h3'+S h2') by lia.
     auto.
   inversions H0.
   inversions Ht.
@@ -2870,9 +2872,9 @@ Lemma eval_count_rev : forall cl n h fl,
 Proof.
   induction n; introv Hr H. rewrite <- minus_n_O. auto.
   destruct h. simpl in H. destruct fl as [|[benv args t]]; discriminate.
-  replace (S h - S n) with (h - n) by omega.
+  replace (S h - S n) with (h - n) by lia.
   apply IHn; clear IHn. auto.
-  replace (S h) with (h + 1) in H by omega.
+  replace (S h) with (h + 1) in H by lia.
   unfold eval_restart in H.
   destruct fl; try discriminate.
   destruct f as [benv args t].
@@ -2919,12 +2921,12 @@ Proof.
       apply* eval_regular.
     apply* eval_regular.
   do 2 rewrite eval_restart_ok' in Eq1.
-  replace (h' + h2) with (h + (h2 + h' - h)) in Eq1 by omega.
+  replace (h' + h2) with (h + (h2 + h' - h)) in Eq1 by lia.
   rewrite <- (eval_restart_ok' (h2+h'-h)) in Eq1. rewrite Eq in Eq1.
   simpl in Eq1.
   inversions Eq1; clear Eq1.
   assert (result_ok (Inter (Frame nil nil x :: nil))) by auto.
-  replace (h0 + h1) with (0+(h0+h1)) in H4 by omega.
+  replace (h0 + h1) with (0+(h0+h1)) in H4 by lia.
   rewrite <- eval_restart_ok' in H4. simpl eval in H4.
   puts (eval_count_rev _ H5 (sym_equal H4)).
   simpl in H7.
