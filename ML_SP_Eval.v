@@ -507,9 +507,17 @@ Proof.
     unfold kinds_open_vars, kinds_open, sch_open_vars; simpl.
     rewrite* typ_open_vars_nil.
     simpl.
-  (* apply H15.
-Qed. *)
-Admitted.
+  puts (binds_inj H7 H2).
+  inversions H0.
+  assert (S = U).
+    apply* (kind_coherent k (x:=Cstr.arrow_dom)).
+    rewrite H9. apply Cstr.unique_dom.
+  assert (T0 = T).
+    apply* (kind_coherent k (x:=Cstr.arrow_cod)).
+    rewrite H9. apply Cstr.unique_cod.
+  subst U T0.
+  apply H15.
+Qed.
 
 Lemma trm_open_comm : forall i j u v t,
   i <> j -> term u -> term v ->
