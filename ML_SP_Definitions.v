@@ -54,9 +54,12 @@ Module MkDefs(Cstr:CstrIntf)(Const:CstIntf).
 
 (** Grammar of types. *)
 
+Inductive rigidity : Set := Ri | Fl.
+  
 Inductive typ : Set :=
   | typ_bvar  : nat -> typ
-  | typ_fvar  : var -> typ.
+  | typ_fvar  : rigidity -> var -> typ
+  | typ_eq    : typ -> typ -> typ.
   (* | typ_arrow : typ -> typ -> typ. *)
 
 (** Types are inhabited, giving us a default value. *)
@@ -94,14 +97,14 @@ Notation "'sch_arity' M" :=
 Fixpoint typ_open (T : typ) (Vs : list typ) {struct T} : typ :=
   match T with
   | typ_bvar i      => nth i Vs typ_def
-  | typ_fvar x      => typ_fvar x 
-  (* | typ_arrow T1 T2 => typ_arrow (typ_open T1 Vs) (typ_open T2 Vs) *)
+  | typ_fvar rg x   => typ_fvar rg x
+  | typ_eq T1 T2  => typ_eq (typ_open T1 Vs) (typ_open T2 Vs)
   end.
 
 (** Opening body of type schemes with variables *)
 
 Definition typ_fvars := 
-  List.map typ_fvar.
+  List.map (typ_fvar Fl).
 
 Definition typ_open_vars T Xs := 
   typ_open T (typ_fvars Xs).
@@ -125,12 +128,10 @@ Open Scope typ_scope.
 (** Locally closed types *)
 
 Inductive type : typ -> Prop :=
-  | type_fvar : forall X, 
-      type (typ_fvar X).
-  (* | type_arrow : forall T1 T2,
-      type T1 -> 
-      type T2 -> 
-      type (typ_arrow T1 T2). *)
+  | type_fvar : forall rg X, 
+      type (typ_fvar rg X)
+  | type_eq   : forall T,
+      type (typ_eq T T).
 
 (** List of n locally closed types *)
 
@@ -197,23 +198,31 @@ Definition scheme M :=
 (** Grammar of terms. *)
 
 Inductive trm : Set :=
-  | trm_bvar : nat -> trm
-  | trm_fvar : var -> trm
-  | trm_abs  : trm -> trm
-  | trm_let  : trm -> trm -> trm
-  | trm_app  : trm -> trm -> trm
-  | trm_cst  : Const.const -> trm.
+  | trm_eq   : trm
+  | trm_bvar  : nat -> trm
+  | trm_fvar  : var -> trm
+  | trm_abs   : trm -> trm
+  | trm_let   : trm -> trm -> trm
+  | trm_app   : trm -> trm -> trm
+  | trm_cst   : Const.const -> trm
+  | trm_use   : trm -> typ -> trm -> trm
+  | trm_rigid : var -> trm -> trm
+  | trm_ann   : typ -> trm.
 
 (** Opening term binders. *)
 
 Fixpoint trm_open_rec (k : nat) (u : trm) (t : trm) {struct t} : trm :=
   match t with
+  | trm_eq        => trm_eq
   | trm_bvar i    => if k === i then u else (trm_bvar i)
   | trm_fvar x    => trm_fvar x 
   | trm_abs t1    => trm_abs (trm_open_rec (S k) u t1) 
   | trm_let t1 t2 => trm_let (trm_open_rec k u t1) (trm_open_rec (S k) u t2) 
   | trm_app t1 t2 => trm_app (trm_open_rec k u t1) (trm_open_rec k u t2)
   | trm_cst c     => trm_cst c
+  | trm_use t1 T t2 => trm_use (trm_open_rec k u t1) T (trm_open_rec k u t2)
+  | trm_rigid x t => trm_rigid x (trm_open_rec k u t)
+  | trm_ann T     => trm_ann T
   end.
 
 Definition trm_open t u := trm_open_rec 0 u t.
