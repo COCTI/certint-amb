@@ -99,8 +99,8 @@ Notation "'sch_arity' M" :=
 
 Fixpoint typ_open (T : typ) (Vs : list typ) {struct T} : typ :=
   match T with
-  | typ_bvar i      => nth i Vs typ_def
-  | typ_fvar x   => typ_fvar x
+  | typ_bvar i => nth i Vs typ_def
+  | typ_fvar x => typ_fvar x
   end.
 
 (* Opening kind with rigid variables. *)
@@ -204,15 +204,17 @@ Definition typ_body T Ks :=
 (** Definition of a well-formed scheme *)
 
 Definition scheme M :=
-   typ_body (sch_type M) (sch_kinds M).
+   typ_body (sch_type M) (sch_kinds M) /\ list_forall (fun _ => True) (sch_kinds M).
 
 (* ********************************************************************** *)
 (** ** Description of terms *)
 
 (** Grammar of terms. *)
 
+Inductive trm_sort := sort_typ | sort_rvar | sort_trm.
+
 Inductive trm : Set :=
-  | trm_eq   : trm
+  | trm_eq    : trm
   | trm_bvar  : nat -> trm
   | trm_fvar  : var -> trm
   | trm_abs   : trm -> trm
@@ -262,7 +264,7 @@ Fixpoint trm_rigid_rec (k : nat) (u : rvar) (t : trm) {struct t} : trm :=
   | trm_ann T   => trm_ann (sch_open_rigid k u T)
   end.
 
-Definition trm_open t u := trm_open_rec 0 u t.
+Definition trm_open_rigid t u := trm_rigid_rec 0 u t.
 
 
 (** Locally closed termessions *)
@@ -282,7 +284,14 @@ Inductive term : trm -> Prop :=
       term t2 -> 
       term (trm_app t1 t2)
   | term_cst : forall c,
-      term (trm_cst c).
+      term (trm_cst c)
+  | term_rigid : forall L t1,
+      (forall x, x \notin L -> term (trm_open_rigid t1 (rvar_f x))) -> 
+      term (trm_rigid t1)
+  | term_ann : forall T,
+      scheme T ->
+      term (trm_ann T).
+
 
 (** Definition of the body of an abstraction *)
 
