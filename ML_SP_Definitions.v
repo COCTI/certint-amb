@@ -75,7 +75,11 @@ Record ckind : Set := Kind {
   kind_rel  : list (Cstr.attr*typ);
   kind_coherent : coherent kind_cstr kind_rel }.
 
-Definition kind : Set := option ckind * list var.
+Inductive rvar :=
+  | rvar_b : nat -> rvar
+  | rvar_f : var -> rvar.
+
+Definition kind : Set := option ckind * list rvar.
  (* (main constructor, rigid variables) *)
 
 Definition entails K K' :=
@@ -98,6 +102,20 @@ Fixpoint typ_open (T : typ) (Vs : list typ) {struct T} : typ :=
   | typ_bvar i      => nth i Vs typ_def
   | typ_fvar x   => typ_fvar x
   end.
+
+(* Opening kind with rigid variables. *)
+
+Definition rvar_open (k : nat) (u : rvar) (t : rvar) :=
+  match t with
+  | rvar_b i => if k === i then u else rvar_b i
+  | rvar_f v => rvar_f v
+  end.
+
+Definition kind_open_rigid (k : nat) (u : rvar) (t : kind) : kind :=
+  (fst t, map (rvar_open k u) (snd t)).
+
+Definition sch_open_rigid (k : nat) (u : rvar) (T : sch) : sch :=
+  Sch (sch_type T) (map (kind_open_rigid k u) (sch_kinds T)).
 
 (** Opening body of type schemes with variables *)
 
@@ -202,7 +220,7 @@ Inductive trm : Set :=
   | trm_app   : trm -> trm -> trm
   | trm_cst   : Const.const -> trm
   | trm_use   : trm -> sch -> sch -> trm -> trm
-  | trm_rigid : var -> trm -> trm
+  | trm_rigid : trm -> trm
   | trm_ann   : sch -> trm.
 
 (** Opening term binders. *)
@@ -216,8 +234,8 @@ Fixpoint trm_open_rec (k : nat) (u : trm) (t : trm) {struct t} : trm :=
   | trm_let t1 t2 => trm_let (trm_open_rec k u t1) (trm_open_rec (S k) u t2) 
   | trm_app t1 t2 => trm_app (trm_open_rec k u t1) (trm_open_rec k u t2)
   | trm_cst c     => trm_cst c
-  | trm_use t1 T t2 => trm_use (trm_open_rec k u t1) T (trm_open_rec k u t2)
-  | trm_rigid x t => trm_rigid x (trm_open_rec k u t)
+  | trm_use t1 T U t2 => trm_use (trm_open_rec k u t1) T U (trm_open_rec k u t2)
+  | trm_rigid t => trm_rigid (trm_open_rec k u t)
   | trm_ann T     => trm_ann T
   end.
 
@@ -226,6 +244,26 @@ Definition trm_open t u := trm_open_rec 0 u t.
 (* Notation "{ k ~> u } t" := (trm_open_rec k u t) (at level 67). *)
 Notation "t ^^ u" := (trm_open t u) (at level 67).
 Notation "t ^ x" := (trm_open t (trm_fvar x)).
+
+
+Fixpoint trm_rigid_rec (k : nat) (u : rvar) (t : trm) {struct t} : trm :=
+  match t with
+  | trm_eq        => trm_eq
+  | trm_bvar i    => trm_bvar i
+  | trm_fvar x    => trm_fvar x 
+  | trm_abs t1    => trm_abs (trm_rigid_rec k u t1) 
+  | trm_let t1 t2 => trm_let (trm_rigid_rec k u t1) (trm_rigid_rec (S k) u t2) 
+  | trm_app t1 t2 => trm_app (trm_rigid_rec k u t1) (trm_rigid_rec k u t2)
+  | trm_cst c     => trm_cst c
+  | trm_use t1 T U t2 =>
+    trm_use (trm_rigid_rec k u t1) (sch_open_rigid k u T)
+            (sch_open_rigid k u U) (trm_rigid_rec k u t2)
+  | trm_rigid t => trm_rigid (trm_rigid_rec (S k) u t)
+  | trm_ann T   => trm_ann (sch_open_rigid k u T)
+  end.
+
+Definition trm_open t u := trm_open_rec 0 u t.
+
 
 (** Locally closed termessions *)
 
