@@ -36,6 +36,7 @@ Module Type CstrIntf.
   Parameter unique_dom : unique arrow arrow_dom = true.
   Parameter unique_cod : unique arrow arrow_cod = true.
   Parameter entails_arrow : forall c, entails c arrow -> c = arrow.
+  (* also eq *)
 End CstrIntf.
 
 Module Type CstIntf.
@@ -54,12 +55,9 @@ Module MkDefs(Cstr:CstrIntf)(Const:CstIntf).
 
 (** Grammar of types. *)
 
-Inductive rigidity : Set := Ri | Fl.
-  
 Inductive typ : Set :=
   | typ_bvar  : nat -> typ
-  | typ_fvar  : rigidity -> var -> typ
-  | typ_eq    : typ -> typ -> typ.
+  | typ_fvar  : var -> typ.
   (* | typ_arrow : typ -> typ -> typ. *)
 
 (** Types are inhabited, giving us a default value. *)
@@ -77,7 +75,8 @@ Record ckind : Set := Kind {
   kind_rel  : list (Cstr.attr*typ);
   kind_coherent : coherent kind_cstr kind_rel }.
 
-Definition kind := option ckind.
+Definition kind : Set := option ckind * list var.
+ (* (main constructor, rigid variables) *)
 
 Definition entails K K' :=
   Cstr.entails (kind_cstr K) (kind_cstr K') /\
@@ -97,14 +96,13 @@ Notation "'sch_arity' M" :=
 Fixpoint typ_open (T : typ) (Vs : list typ) {struct T} : typ :=
   match T with
   | typ_bvar i      => nth i Vs typ_def
-  | typ_fvar rg x   => typ_fvar rg x
-  | typ_eq T1 T2  => typ_eq (typ_open T1 Vs) (typ_open T2 Vs)
+  | typ_fvar x   => typ_fvar x
   end.
 
 (** Opening body of type schemes with variables *)
 
 Definition typ_fvars := 
-  List.map (typ_fvar Fl).
+  List.map typ_fvar.
 
 Definition typ_open_vars T Xs := 
   typ_open T (typ_fvars Xs).
@@ -128,10 +126,8 @@ Open Scope typ_scope.
 (** Locally closed types *)
 
 Inductive type : typ -> Prop :=
-  | type_fvar : forall rg X, 
-      type (typ_fvar rg X)
-  | type_eq   : forall T,
-      type (typ_eq T T).
+  | type_fvar : forall X, 
+      type (typ_fvar X).
 
 (** List of n locally closed types *)
 
@@ -140,7 +136,7 @@ Definition types := list_for_n type.
 (** Iterating and opening kinds *)
 
 Definition kind_types (K:kind) :=
-  match K with
+  match fst K with
   | None => nil
   | Some k => list_snd (kind_rel k)
   end.
@@ -173,10 +169,10 @@ Defined.
 Definition ckind_map f k := proj1_sig (ckind_map_spec f k).
 
 Definition kind_map f (K:kind) : kind :=
-  match K with
-  | None => None
-  | Some k => Some (ckind_map f k)
-  end.
+  (match fst K with
+   | None => None
+   | Some k => Some (ckind_map f k)
+   end, snd K).
 
 Definition kind_open K Vs := kind_map (fun T => typ_open T Vs) K.
 
@@ -205,9 +201,9 @@ Inductive trm : Set :=
   | trm_let   : trm -> trm -> trm
   | trm_app   : trm -> trm -> trm
   | trm_cst   : Const.const -> trm
-  | trm_use   : trm -> typ -> trm -> trm
+  | trm_use   : trm -> sch -> sch -> trm -> trm
   | trm_rigid : var -> trm -> trm
-  | trm_ann   : typ -> trm.
+  | trm_ann   : sch -> trm.
 
 (** Opening term binders. *)
 
