@@ -29,6 +29,7 @@ Module Type CstrIntf.
   Parameter entails_valid : forall c1 c2,
     entails c1 c2 -> valid c1 -> valid c2.
 
+  (* 'a -> 'b *)
   Parameter arrow : cstr.
   Parameter arrow_dom : attr.
   Parameter arrow_cod : attr.
@@ -36,7 +37,15 @@ Module Type CstrIntf.
   Parameter unique_dom : unique arrow arrow_dom = true.
   Parameter unique_cod : unique arrow arrow_cod = true.
   Parameter entails_arrow : forall c, entails c arrow -> c = arrow.
-  (* also eq *)
+
+  (* 'a = 'b, or ('a, 'b) eq *)
+  Parameter eq : cstr.
+  Parameter eq_fst : attr.
+  Parameter eq_snd : attr.
+  Parameter valid_eq : valid eq.
+  Parameter unique_fst : unique eq eq_fst = true.
+  Parameter unique_snd : unique eq eq_snd = true.
+  Parameter entails_eq : forall c, entails c eq -> c = eq.
 End CstrIntf.
 
 Module Type CstIntf.
@@ -304,12 +313,17 @@ Definition trm_def := trm_bvar 0.
 
 Fixpoint trm_inst_rec (k : nat) (tl : list trm) (t : trm) {struct t} : trm :=
   match t with
+  | trm_eq        => trm_eq
   | trm_bvar i    => if le_lt_dec k i then nth (i-k) tl t else trm_bvar i
   | trm_fvar x    => trm_fvar x 
   | trm_abs t1    => trm_abs (trm_inst_rec (S k) tl t1) 
   | trm_let t1 t2 => trm_let (trm_inst_rec k tl t1) (trm_inst_rec (S k) tl t2) 
   | trm_app t1 t2 => trm_app (trm_inst_rec k tl t1) (trm_inst_rec k tl t2)
   | trm_cst c     => trm_cst c
+  | trm_use t1 T U t2 =>
+    trm_use (trm_inst_rec k tl t1) T U (trm_inst_rec k tl t2)
+  | trm_rigid t   => trm_rigid (trm_inst_rec k tl t)
+  | trm_ann T     => trm_ann T
   end.
 
 Definition trm_inst t tl := trm_inst_rec 0 tl t.
@@ -332,7 +346,7 @@ Definition kenv_ok K :=
 
 Inductive well_kinded : kenv -> kind -> typ -> Prop :=
   | wk_any : forall K T,
-      well_kinded K None T
+      well_kinded K (None, nil) T
   | wk_kind : forall k' K k x,
       binds x (Some k') K ->
       entails k' k ->
