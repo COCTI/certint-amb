@@ -28,16 +28,16 @@ Module Type CstrIntf.
     entails c1 c2 -> unique c2 v = true -> unique c1 v = true.
   Parameter entails_valid : forall c1 c2,
     entails c1 c2 -> valid c1 -> valid c2.
-  Parameter static : cstr -> Prop.
+  Parameter static : cstr -> bool.
   Parameter static_entails :
-    forall c c', static c -> valid c' -> entails c' c -> entails c c'.
+    forall c c', static c = true -> valid c' -> entails c' c -> entails c c'.
 
   (* 'a -> 'b *)
   Parameter arrow : cstr.
   Parameter arrow_dom : attr.
   Parameter arrow_cod : attr.
   Parameter valid_arrow : valid arrow.
-  Parameter static_arrow : static arrow.
+  Parameter static_arrow : static arrow = true.
   Parameter unique_dom : unique arrow arrow_dom = true.
   Parameter unique_cod : unique arrow arrow_cod = true.
   Parameter entails_arrow : forall c, entails c arrow -> c = arrow.
@@ -47,7 +47,7 @@ Module Type CstrIntf.
   Parameter eq_fst : attr.
   Parameter eq_snd : attr.
   Parameter valid_eq : valid eq.
-  Parameter static_eq : static eq.
+  Parameter static_eq : static eq = true.
   Parameter unique_fst : unique eq eq_fst = true.
   Parameter unique_snd : unique eq eq_snd = true.
   Parameter entails_eq : forall c, entails c eq -> c = eq.
@@ -80,17 +80,20 @@ Definition typ_def := typ_bvar 0.
 
 (** Constraint domain *)
 
-Definition coherent kc (kr:list(Cstr.attr*typ)) := forall x T U,
+Section Node.
+Variable node : Set.
+
+Definition coherent kc (kr:list(Cstr.attr*node)) := forall x T U,
   Cstr.unique kc x = true -> In (x,T) kr -> In (x,U) kr -> T = U.
 
 Record ckind : Set := Kind {
   kind_cstr : Cstr.cstr;
   kind_valid : Cstr.valid kind_cstr;
-  kind_rel  : list (Cstr.attr*typ);
+  kind_rel  : list (Cstr.attr*node);
   kind_coherent : coherent kind_cstr kind_rel }.
 
 Definition static_ckind kc :=
-  Cstr.static (kind_cstr kc) /\
+  Cstr.static (kind_cstr kc) = true /\
   (forall x,
       Cstr.unique (kind_cstr kc) x = true -> In x (list_fst (kind_rel kc))).
 
@@ -103,7 +106,7 @@ Definition kind : Set := option ckind * list rvar.
 
 Definition entails_ckind K K' :=
   Cstr.entails (kind_cstr K) (kind_cstr K') /\
-  forall T:Cstr.attr*typ, In T (kind_rel K') -> In T (kind_rel K).
+  forall T:Cstr.attr*node, In T (kind_rel K') -> In T (kind_rel K).
 
 Definition entails (k k' : kind) :=
   match fst k, fst k' with
@@ -116,11 +119,62 @@ Definition entails (k k' : kind) :=
 (** Type schemes. *)
 
 Record sch : Set := Sch { 
-  sch_type  : typ ;
+  sch_type  : node ;
   sch_kinds : list kind }.
 
 Notation "'sch_arity' M" :=
   (length (sch_kinds M)) (at level 20, no associativity).
+
+End Node.
+
+(* Tree types *)
+
+Inductive tree : Set :=
+  | tr_bvar : nat -> tree
+  | tr_arrow : tree -> tree -> tree
+  | tr_eq : tree -> tree -> tree
+  | tr_rvar : rvar -> tree.
+
+(* Annotation: \( t -> t )/ *)
+
+Definition tree_type := sch tree.
+
+Parameter arrow_kind : nat -> nat -> ckind typ.
+Parameter eq_kind : nat -> nat -> ckind typ.
+
+Fixpoint graph_of_tree V ofs (tr : tree) : nat * list (kind typ) :=
+  match tr with
+  | tr_bvar n => (V n, nil)
+  | tr_arrow t1 t2 =>
+    let '(n1, g1) := graph_of_tree V (ofs + 1) t1 in
+    let '(n2, g2) := graph_of_tree V (ofs + length g1 + 1) t2 in
+    (ofs, (Some (arrow_kind n1 n2), nil) :: g1 ++ g2)
+  | tr_eq t1 t2 =>
+    let '(n1, g1) := graph_of_tree V (ofs + 1) t1 in
+    let '(n2, g2) := graph_of_tree V (ofs + length g1 + 1) t2 in
+    (ofs, (Some (eq_kind n1 n2), nil) :: g1 ++ g2)
+  | tr_rvar rv =>
+    (ofs, (None, rv :: nil) :: nil)
+  end.
+
+(*
+Definition graph_of_ann (ann : tree_type) : sch typ.
+
+\/ 'a::int, 'b. eq('a, 'b)
+Sch (tr_eq (tr_bvar 0) (tr_bvar 1)) [({sch_cstr:=int;...},nil); (None,nil)]
+
+[({sch_cstr:=int;...},nil); (None,nil); ({sch_cstr:=int;...},nil)]
+Vl : 0 => 0, 1 => 1
+Vr : 0 => 2, 1 => 1
+
+graph_of_tree Vl 3 s = (3, [(eq,{fst=>typ_bvar 0; snd=>typ_bar 2},nil)]) 
+graph_of_tree Vr 4 s = (4, [(eq,{fst=>typ_bvar 1; snd=>typ_bar 2},nil)])
+(typ_bvar 5,
+[({sch_cstr:=int;...},nil); (None,nil); ({sch_cstr:=int;...},nil);
+ (eq,{fst=>typ_bvar 0; snd=>typ_bvar 1},nil);
+ (eq,{fst=>typ_bvar 2; snd=>typ_bvar 1},nil);
+ (arrow,{left=>typ_bvar 3; right=> typ_bvar 4}, nil)]
+*)
 
 (** Opening body of type schemes. *)
 
