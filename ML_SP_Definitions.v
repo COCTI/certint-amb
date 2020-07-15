@@ -91,9 +91,17 @@ Inductive rvar :=
 Definition kind : Set := option ckind * list rvar.
  (* (main constructor, rigid variables) *)
 
-Definition entails K K' :=
+Definition entails_ckind K K' :=
   Cstr.entails (kind_cstr K) (kind_cstr K') /\
   forall T:Cstr.attr*typ, In T (kind_rel K') -> In T (kind_rel K).
+
+Definition entails (k k' : kind) :=
+  incl (snd k') (snd k) /\
+  match fst k, fst k' with
+  | Some K, Some K' => entails_ckind K K'
+  | _, None => True
+  | None, Some _ => False
+  end.
 
 (** Type schemes. *)
 
@@ -348,9 +356,9 @@ Inductive well_kinded : kenv -> kind -> typ -> Prop :=
   | wk_any : forall K T,
       well_kinded K (None, nil) T
   | wk_kind : forall k' K k x,
-      binds x (Some k') K ->
+      binds x k' K ->
       entails k' k ->
-      well_kinded K (Some k) (typ_fvar x).
+      well_kinded K k (typ_fvar x).
 
 Hint Constructors well_kinded : core.
 
@@ -453,9 +461,9 @@ Inductive typing(gc:gc_info) : kenv -> env -> trm -> typ -> Prop :=
       binds x M E -> 
       proper_instance K (sch_kinds M) Us ->
       K ; E | gc |= (trm_fvar x) ~: (M ^^ Us)
-  | typing_abs : forall L (K : kenv) E U T t1 V k,
+  | typing_abs : forall L (K : kenv) E U T t1 V k rvs,
       type U ->
-      binds V (Some k) K ->
+      binds V (Some k, rvs) K ->
       kind_cstr k = Cstr.arrow ->
       In (Cstr.arrow_dom, U) (kind_rel k) ->
       In (Cstr.arrow_cod, T) (kind_rel k) ->
@@ -469,8 +477,8 @@ Inductive typing(gc:gc_info) : kenv -> env -> trm -> typ -> Prop :=
       (forall x, x \notin L2 ->
          K ; (E & x ~ M) | gc_raise gc |= (t2 ^ x) ~: T2) -> 
       K ; E | gc |= (trm_let t1 t2) ~: T2
-  | typing_app : forall K E V k S T t1 t2,
-      binds V (Some k) K ->
+  | typing_app : forall K E V k rvs S T t1 t2,
+      binds V (Some k, rvs) K ->
       kind_cstr k = Cstr.arrow ->
       In (Cstr.arrow_dom, S) (kind_rel k) ->
       In (Cstr.arrow_cod, T) (kind_rel k) ->
@@ -537,7 +545,7 @@ Definition progress := forall K t T,
   K ; empty | (true,GcAny) |= t ~: T ->
      value t
   \/ exists t', t --> t'.
-
+
 End MkJudge.
 
 End MkDefs.
