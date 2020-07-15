@@ -28,12 +28,16 @@ Module Type CstrIntf.
     entails c1 c2 -> unique c2 v = true -> unique c1 v = true.
   Parameter entails_valid : forall c1 c2,
     entails c1 c2 -> valid c1 -> valid c2.
+  Parameter static : cstr -> Prop.
+  Parameter static_entails :
+    forall c c', static c -> valid c' -> entails c' c -> entails c c'.
 
   (* 'a -> 'b *)
   Parameter arrow : cstr.
   Parameter arrow_dom : attr.
   Parameter arrow_cod : attr.
   Parameter valid_arrow : valid arrow.
+  Parameter static_arrow : static arrow.
   Parameter unique_dom : unique arrow arrow_dom = true.
   Parameter unique_cod : unique arrow arrow_cod = true.
   Parameter entails_arrow : forall c, entails c arrow -> c = arrow.
@@ -43,6 +47,7 @@ Module Type CstrIntf.
   Parameter eq_fst : attr.
   Parameter eq_snd : attr.
   Parameter valid_eq : valid eq.
+  Parameter static_eq : static eq.
   Parameter unique_fst : unique eq eq_fst = true.
   Parameter unique_snd : unique eq eq_snd = true.
   Parameter entails_eq : forall c, entails c eq -> c = eq.
@@ -83,6 +88,11 @@ Record ckind : Set := Kind {
   kind_valid : Cstr.valid kind_cstr;
   kind_rel  : list (Cstr.attr*typ);
   kind_coherent : coherent kind_cstr kind_rel }.
+
+Definition static_ckind kc :=
+  Cstr.static (kind_cstr kc) /\
+  (forall x,
+      Cstr.unique (kind_cstr kc) x = true -> In x (list_fst (kind_rel kc))).
 
 Inductive rvar :=
   | rvar_b : nat -> rvar
