@@ -96,12 +96,12 @@ Definition entails_ckind K K' :=
   forall T:Cstr.attr*typ, In T (kind_rel K') -> In T (kind_rel K).
 
 Definition entails (k k' : kind) :=
-  incl (snd k') (snd k) /\
   match fst k, fst k' with
   | Some K, Some K' => entails_ckind K K'
   | _, None => True
   | None, Some _ => False
-  end.
+  end /\
+  forall r, In r (snd k') -> In r (snd k).
 
 (** Type schemes. *)
 
