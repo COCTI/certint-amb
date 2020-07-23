@@ -141,12 +141,9 @@ Definition tree_type : Set :=
 Parameter arrow_kind : nat -> nat -> ckind.
 Parameter eq_kind : nat -> nat -> ckind.
 
-Section graph_of_tree.
-Variable V : nat -> nat.
-
 Fixpoint graph_of_tree ofs (tr : tree) : nat * list kind :=
   match tr with
-  | tr_bvar n => (V n, nil)
+  | tr_bvar n => (n, nil)
   | tr_arrow t1 t2 =>
     let '(n1, g1) := graph_of_tree (ofs + 1) t1 in
     let '(n2, g2) := graph_of_tree (ofs + length g1 + 1) t2 in
@@ -183,11 +180,8 @@ Definition graph_of_tree_type (S : tree_type) : nat * list kind :=
   let '(n,K'') := graph_of_tree (length K + length K') T in
   (n, K ++ K' ++ K'').
 
-End graph_of_tree.
-
 Eval compute in
-  graph_of_tree_type id
-                     (tr_arrow (tr_rvar (rvar_b 0)) (tr_rvar (rvar_b 1)), nil).
+  graph_of_tree_type (tr_arrow (tr_rvar (rvar_b 0)) (tr_rvar (rvar_b 1)), nil).
 
 Definition static_tree_kind (k : tree_kind) :=
   match k with
