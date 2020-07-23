@@ -141,16 +141,19 @@ Definition tree_type : Set :=
 Parameter arrow_kind : nat -> nat -> ckind.
 Parameter eq_kind : nat -> nat -> ckind.
 
-Fixpoint graph_of_tree V ofs (tr : tree) : nat * list kind :=
+Section graph_of_tree.
+Variable V : nat -> nat.
+
+Fixpoint graph_of_tree ofs (tr : tree) : nat * list kind :=
   match tr with
   | tr_bvar n => (V n, nil)
   | tr_arrow t1 t2 =>
-    let '(n1, g1) := graph_of_tree V (ofs + 1) t1 in
-    let '(n2, g2) := graph_of_tree V (ofs + length g1 + 1) t2 in
+    let '(n1, g1) := graph_of_tree (ofs + 1) t1 in
+    let '(n2, g2) := graph_of_tree (ofs + length g1 + 1) t2 in
     (ofs, (Some (arrow_kind n1 n2), nil) :: g1 ++ g2)
   | tr_eq t1 t2 =>
-    let '(n1, g1) := graph_of_tree V (ofs + 1) t1 in
-    let '(n2, g2) := graph_of_tree V (ofs + length g1 + 1) t2 in
+    let '(n1, g1) := graph_of_tree (ofs + 1) t1 in
+    let '(n2, g2) := graph_of_tree (ofs + length g1 + 1) t2 in
     (ofs, (Some (eq_kind n1 n2), nil) :: g1 ++ g2)
   | tr_rvar rv =>
     (ofs, (None, rv :: nil) :: nil)
@@ -166,7 +169,7 @@ Fixpoint graph_of_kinds ofs (Ks : list tree_kind) : list kind * list kind :=
     let K' := fold_left
                 (fun K' atr =>
                    let '(_, K'') :=
-                       graph_of_tree id (ofs + length K') (snd atr) in
+                       graph_of_tree (ofs + length K') (snd atr) in
                    K' ++ K'')
                 kr nil
     in
@@ -177,11 +180,44 @@ Fixpoint graph_of_kinds ofs (Ks : list tree_kind) : list kind * list kind :=
 Definition graph_of_tree_type (S : tree_type) : nat * list kind :=
   let '(T,Ks) := S in
   let '(K,K') := graph_of_kinds (length Ks) Ks in
-  let '(n,K'') := graph_of_tree id (length K + length K') T in
+  let '(n,K'') := graph_of_tree (length K + length K') T in
   (n, K ++ K' ++ K'').
 
+End graph_of_tree.
+
 Eval compute in
-  graph_of_tree_type (tr_arrow (tr_rvar (rvar_b 0)) (tr_rvar (rvar_b 1)), nil).
+  graph_of_tree_type id
+                     (tr_arrow (tr_rvar (rvar_b 0)) (tr_rvar (rvar_b 1)), nil).
+
+Definition static_tree_kind (k : tree_kind) :=
+  match k with
+  | (None,nil) => false
+  | (None,_) => true
+  | (Some (kc,kr),_) => Cstr.static kc
+  end.
+
+Fixpoint build_right_map pos ofs (Ks : list tree_kind) n :=
+  match Ks with
+  | nil => n
+  | k :: rem =>
+    if static_tree_kind k then
+      if n === pos then ofs else build_right_map (S pos) (S ofs) rem n
+    else build_right_map (S pos) ofs rem n
+  end.
+
+Section right_tree.
+Variable V : nat -> nat.
+Definition subst_tree (T : tree) := fst (T, V).
+Definition subst_tree_kind (k : tree_kind) := fst (k, V).
+
+Definition right_tree_kinds :=
+  map (fun k => if static_tree_kind k then subst_tree_kind k else k).
+End right_tree.
+
+Definition annotation_tree (S : tree_type) :=
+  let '(T,K) := S in
+  let V := build_right_map 0 (length K) K in
+  (tr_arrow T (subst_tree V T), K ++ right_tree_kinds V K).
 
 
 (*
