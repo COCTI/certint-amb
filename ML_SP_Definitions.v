@@ -213,6 +213,14 @@ Definition annotation_tree (S : tree_type) :=
   let V := build_right_map 0 (length K) K in
   (tr_arrow T (subst_tree V T), K ++ right_tree_kinds V K).
 
+Eval compute in
+  annotation_tree (tr_arrow (tr_rvar (rvar_b 0)) (tr_bvar 0),
+                   (None, rvar_b 1 :: nil) :: nil).
+
+Eval compute in
+  graph_of_tree_type (
+  annotation_tree (tr_arrow (tr_rvar (rvar_b 0)) (tr_rvar (rvar_b 1)), nil)).
+
 
 (*
 \/ 'a::int, 'b. eq('a, 'b)
