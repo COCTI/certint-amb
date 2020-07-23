@@ -132,8 +132,11 @@ Inductive tree : Set :=
 
 (* Annotation: \( t -> t )/ *)
 
-Definition tree_type :=
-  (tree, list (option (Cstr.cstr * list (Cstr.attr*tree)) * list rvar)).
+Definition tree_kind : Set :=
+  option (Cstr.cstr * list (Cstr.attr*tree)) * list rvar.
+
+Definition tree_type : Set :=
+  tree * list tree_kind.
 
 Parameter arrow_kind : nat -> nat -> ckind.
 Parameter eq_kind : nat -> nat -> ckind.
@@ -153,9 +156,35 @@ Fixpoint graph_of_tree V ofs (tr : tree) : nat * list kind :=
     (ofs, (None, rv :: nil) :: nil)
   end.
 
-(*
-Definition graph_of_ann (ann : tree_type) : sch.
+Fixpoint graph_of_kinds ofs (Ks : list tree_kind) : list kind * list kind :=
+  match Ks with
+  | nil => (nil, nil)
+  | (None,rvs) :: rem =>
+    let '(K, K') := graph_of_kinds ofs rem in
+    ((None,rvs) :: K, K')
+  | (Some(kc,kr),rvs) :: rem =>
+    let K' := fold_left
+                (fun K' atr =>
+                   let '(_, K'') :=
+                       graph_of_tree id (ofs + length K') (snd atr) in
+                   K' ++ K'')
+                kr nil
+    in
+    let '(K, K'') := graph_of_kinds (ofs + length K') rem in
+    (K, K' ++ K'')
+  end.
+  
+Definition graph_of_tree_type (S : tree_type) : nat * list kind :=
+  let '(T,Ks) := S in
+  let '(K,K') := graph_of_kinds (length Ks) Ks in
+  let '(n,K'') := graph_of_tree id (length K + length K') T in
+  (n, K ++ K' ++ K'').
 
+Eval compute in
+  graph_of_tree_type (tr_arrow (tr_rvar (rvar_b 0)) (tr_rvar (rvar_b 1)), nil).
+
+
+(*
 \/ 'a::int, 'b. eq('a, 'b)
 Sch (tr_eq (tr_bvar 0) (tr_bvar 1)) [({sch_cstr:=int;...},nil); (None,nil)]
 
