@@ -80,16 +80,13 @@ Definition typ_def := typ_bvar 0.
 
 (** Constraint domain *)
 
-Section Node.
-Variable node : Set.
-
-Definition coherent kc (kr:list(Cstr.attr*node)) := forall x T U,
+Definition coherent kc (kr:list(Cstr.attr*typ)) := forall x T U,
   Cstr.unique kc x = true -> In (x,T) kr -> In (x,U) kr -> T = U.
 
 Record ckind : Set := Kind {
   kind_cstr : Cstr.cstr;
   kind_valid : Cstr.valid kind_cstr;
-  kind_rel  : list (Cstr.attr*node);
+  kind_rel  : list (Cstr.attr*typ);
   kind_coherent : coherent kind_cstr kind_rel }.
 
 Definition static_ckind kc :=
@@ -106,7 +103,7 @@ Definition kind : Set := option ckind * list rvar.
 
 Definition entails_ckind K K' :=
   Cstr.entails (kind_cstr K) (kind_cstr K') /\
-  forall T:Cstr.attr*node, In T (kind_rel K') -> In T (kind_rel K).
+  forall T:Cstr.attr*typ, In T (kind_rel K') -> In T (kind_rel K).
 
 Definition entails (k k' : kind) :=
   match fst k, fst k' with
@@ -119,13 +116,11 @@ Definition entails (k k' : kind) :=
 (** Type schemes. *)
 
 Record sch : Set := Sch { 
-  sch_type  : node ;
+  sch_type  : typ ;
   sch_kinds : list kind }.
 
 Notation "'sch_arity' M" :=
   (length (sch_kinds M)) (at level 20, no associativity).
-
-End Node.
 
 (* Tree types *)
 
@@ -137,12 +132,13 @@ Inductive tree : Set :=
 
 (* Annotation: \( t -> t )/ *)
 
-Definition tree_type := sch tree.
+Definition tree_type :=
+  (tree, list (option (Cstr.cstr * list (Cstr.attr*tree)) * list rvar)).
 
-Parameter arrow_kind : nat -> nat -> ckind typ.
-Parameter eq_kind : nat -> nat -> ckind typ.
+Parameter arrow_kind : nat -> nat -> ckind.
+Parameter eq_kind : nat -> nat -> ckind.
 
-Fixpoint graph_of_tree V ofs (tr : tree) : nat * list (kind typ) :=
+Fixpoint graph_of_tree V ofs (tr : tree) : nat * list kind :=
   match tr with
   | tr_bvar n => (V n, nil)
   | tr_arrow t1 t2 =>
@@ -158,7 +154,7 @@ Fixpoint graph_of_tree V ofs (tr : tree) : nat * list (kind typ) :=
   end.
 
 (*
-Definition graph_of_ann (ann : tree_type) : sch typ.
+Definition graph_of_ann (ann : tree_type) : sch.
 
 \/ 'a::int, 'b. eq('a, 'b)
 Sch (tr_eq (tr_bvar 0) (tr_bvar 1)) [({sch_cstr:=int;...},nil); (None,nil)]
