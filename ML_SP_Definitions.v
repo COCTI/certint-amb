@@ -201,8 +201,20 @@ Fixpoint build_right_map pos ofs (Ks : list tree_kind) n :=
 
 Section right_tree.
 Variable V : nat -> nat.
-Definition subst_tree (T : tree) := fst (T, V).
-Definition subst_tree_kind (k : tree_kind) := fst (k, V).
+Fixpoint subst_tree (T : tree) :=
+  match T with
+  | tr_bvar x => tr_bvar (V x)
+  | tr_arrow T U => tr_arrow (subst_tree T) (subst_tree U)
+  | tr_eq T U => tr_eq (subst_tree T) (subst_tree U)
+  | tr_rvar r => T
+  end.
+
+Definition subst_tree_kind (k : tree_kind) :=
+  match k with
+  | (Some (c, trees), rvars) =>
+    (Some (c, List.map (fun p => (fst p, subst_tree (snd p))) trees), rvars)
+  | (None, rvars) => k
+  end.
 
 Definition right_tree_kinds :=
   map (fun k => if static_tree_kind k then subst_tree_kind k else k).
@@ -225,7 +237,6 @@ Eval compute in
   graph_of_tree_type (
   annotation_tree (tr_arrow (tr_rvar (rvar_b 0)) (tr_bvar 0),
                    (None, rvar_b 1 :: nil) :: nil)).
-
 
 (*
 \/ 'a::int, 'b. eq('a, 'b)
@@ -372,7 +383,7 @@ Inductive trm : Set :=
   | trm_cst   : Const.const -> trm
   | trm_use   : trm -> sch -> sch -> trm -> trm
   | trm_rigid : trm -> trm
-  | trm_ann   : sch -> trm.
+  | trm_ann   : tree_type -> trm.
 
 (** Opening term binders. *)
 
@@ -410,7 +421,7 @@ Fixpoint trm_rigid_rec (k : nat) (u : rvar) (t : trm) {struct t} : trm :=
     trm_use (trm_rigid_rec k u t1) (sch_open_rigid k u T)
             (sch_open_rigid k u U) (trm_rigid_rec k u t2)
   | trm_rigid t => trm_rigid (trm_rigid_rec (S k) u t)
-  | trm_ann T   => trm_ann (sch_open_rigid k u T)
+  | trm_ann T   => trm_ann T (* TODO: tree_rigid_rec *)
   end.
 
 Definition trm_open_rigid t u := trm_rigid_rec 0 u t.
@@ -438,7 +449,7 @@ Inductive term : trm -> Prop :=
       (forall x, x \notin L -> term (trm_open_rigid t1 (rvar_f x))) -> 
       term (trm_rigid t1)
   | term_ann : forall T,
-      scheme T ->
+      (* tree T -> *)
       term (trm_ann T).
 
 
@@ -550,7 +561,8 @@ Inductive valu : nat -> trm -> Prop :=
   | value_app : forall n t1 n2 t2,
       valu (S n) t1 ->
       valu n2 t2 ->
-      valu n (trm_app t1 t2).
+      valu n (trm_app t1 t2)
+  | value_eq  : valu 0 trm_eq.
 
 Definition value t := exists n, valu n t.
 
@@ -658,8 +670,32 @@ Inductive red : trm -> trm -> Prop :=
   | red_app_2 : forall t1 t2 t2', 
       term t1 ->
       red t2 t2' ->
-      red (trm_app t1 t2) (trm_app t1 t2').
-                  
+      red (trm_app t1 t2) (trm_app t1 t2')
+  | red_use_1 : forall t1 t1' T T' t2,
+      term t1 ->
+      term t2 ->
+      red t1 t1' ->
+      red (trm_use t1 T T' t2) (trm_use t1' T T' t2)
+  | red_use_2 : forall t1 T T' t2 t2',
+      term t1 ->
+      term t2 ->
+      red t2 t2' ->
+      red (trm_use t1 T T' t2) (trm_use t1 T T' t2')
+  | red_rigid : forall t t',
+      term t ->
+      red t t' ->
+      red (trm_rigid t) (trm_rigid t')
+  | red_drop_ann  : forall rv t t',
+      term t ->
+      term t' ->
+      red (trm_app (trm_app (trm_ann (tr_rvar rv, nil)) t) t')
+          (trm_app t t')
+  | red_apply_ann : forall T U t ks,
+      term t ->
+      red (trm_app (trm_ann (tr_arrow T U, ks)) (trm_abs t))
+          (trm_let (trm_app (trm_ann (T, ks)) (trm_bvar 0))
+                   (trm_app (trm_ann (U, ks)) t)).
+
 Notation "t --> t'" := (red t t') (at level 68).
 
 
@@ -677,7 +713,7 @@ Definition progress := forall K t T,
   K ; empty | (true,GcAny) |= t ~: T ->
      value t
   \/ exists t', t --> t'.
-
+
 End MkJudge.
 
 End MkDefs.
