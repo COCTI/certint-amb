@@ -96,10 +96,11 @@ Definition static_ckind kc :=
 
 Inductive rvar :=
   | rvar_b : nat -> rvar
-  | rvar_f : var -> rvar.
+  | rvar_f : var -> rvar
+  | rvar_attr : rvar -> Cstr.attr -> rvar.
 
 Definition kind : Set := option ckind * list rvar.
- (* (main constructor, rigid variables) *)
+(* (main constructor, rigid variables) *)
 
 Definition entails_ckind K K' :=
   Cstr.entails (kind_cstr K) (kind_cstr K') /\
@@ -265,10 +266,11 @@ Fixpoint typ_open (T : typ) (Vs : list typ) {struct T} : typ :=
 
 (* Opening kind with rigid variables. *)
 
-Definition rvar_open (k : nat) (u : rvar) (t : rvar) :=
+Fixpoint rvar_open (k : nat) (u : rvar) (t : rvar) :=
   match t with
   | rvar_b i => if k === i then u else rvar_b i
   | rvar_f v => rvar_f v
+  | rvar_attr r att => rvar_attr (rvar_open k u r) att
   end.
 
 Definition kind_open_rigid (k : nat) (u : rvar) (t : kind) : kind :=
@@ -493,12 +495,28 @@ Definition kenv := env kind.
 Definition kenv_ok K :=
   ok K /\ env_prop (All_kind_types type) K.
 
-(** Proper instanciation *)
+(** Proper instantiation *)
+
+Inductive is_prefix : rvar -> rvar -> Prop :=
+| prefix_eq : forall r, is_prefix r r
+| prefix_attr : forall r s attr, is_prefix r s ->
+                            is_prefix r (rvar_attr s attr).
+
+Inductive wf_kind : kenv -> kind -> Prop :=
+| wf_empty : forall K r, wf_kind K (None, r)
+| wf_attrs : forall K (ck : ckind) (l : Cstr.attr) (a : var) (r : list rvar),
+    Cstr.unique (kind_cstr ck) l = true ->
+    In (l, typ_fvar a) (kind_rel ck) ->
+    (exists k rvs, binds a (k, rvs) K /\
+              (forall rv, In rv r ->
+                     (exists rv', In rv' rvs /\ is_prefix rv' (rvar_attr rv l)))) ->
+    wf_kind K (Some ck, r).
 
 Inductive well_kinded : kenv -> kind -> typ -> Prop :=
   | wk_any : forall K T,
       well_kinded K (None, nil) T
   | wk_kind : forall k' K k x,
+      wf_kind K k ->
       binds x k' K ->
       entails k' k ->
       well_kinded K k (typ_fvar x).
@@ -523,7 +541,7 @@ Definition env_ok (E:env) := ok E /\ env_prop scheme E.
 
 (** Computing free variables of a type. *)
 
-Fixpoint typ_fv (T : typ) {struct T} : vars :=
+Definition typ_fv (T : typ) : vars :=
   match T with
   | typ_bvar i      => {}
   | typ_fvar x      => {{x}}
