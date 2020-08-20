@@ -504,12 +504,13 @@ Inductive is_prefix : rvar -> rvar -> Prop :=
 
 Inductive wf_kind : kenv -> kind -> Prop :=
 | wf_empty : forall K r, wf_kind K (None, r)
-| wf_attrs : forall K (ck : ckind) (l : Cstr.attr) (a : var) (r : list rvar),
-    Cstr.unique (kind_cstr ck) l = true ->
-    In (l, typ_fvar a) (kind_rel ck) ->
-    (exists k rvs, binds a (k, rvs) K /\
-              (forall rv, In rv r ->
-                     (exists rv', In rv' rvs /\ is_prefix rv' (rvar_attr rv l)))) ->
+| wf_attrs : forall K (ck : ckind) (r : list rvar),
+    (forall l a,
+        Cstr.unique (kind_cstr ck) l = true ->
+        In (l, typ_fvar a) (kind_rel ck) ->
+        (exists k rvs, binds a (k, rvs) K /\
+          (forall rv, In rv r ->
+            (exists rv', In rv' rvs /\ is_prefix rv' (rvar_attr rv l))))) ->
     wf_kind K (Some ck, r).
 
 Inductive well_kinded : kenv -> kind -> typ -> Prop :=
