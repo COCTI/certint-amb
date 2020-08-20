@@ -494,10 +494,13 @@ Definition const_app c vl := fold_left trm_app vl (trm_cst c).
 
 (** Definition of kinding environments *)
 
+Definition qenv := list (tree * tree).
+
 Definition kenv := env kind.
 
-Definition kenv_ok K :=
+Definition kenv_ok (Q : qenv) K :=
   ok K /\ env_prop (All_kind_types type) K.
+  (* and the kinds are coherent with the equations *)
 
 (** Proper instantiation *)
 
@@ -605,7 +608,7 @@ Module MkJudge(Delta:DeltaIntf).
 
 (** The typing judgment *)
 
-Reserved Notation "K ; E | gc |= t ~: T" (at level 69).
+Reserved Notation "K ; E ; Q | gc |= t ~: T" (at level 69).
 
 Inductive gc_kind : Set := GcAny | GcLet.
 Definition gc_info : Set := (bool * gc_kind)%type.
@@ -621,13 +624,13 @@ Fixpoint gc_lower (gc:gc_info) : gc_info :=
   | _ => gc
   end.
 
-Inductive typing(gc:gc_info) : kenv -> env -> trm -> typ -> Prop :=
-  | typing_var : forall K E x M Us,
-      kenv_ok K ->
+Inductive typing(gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
+  | typing_var : forall Q K E x M Us,
+      kenv_ok Q K ->
       env_ok E -> 
       binds x M E -> 
       proper_instance K (sch_kinds M) Us ->
-      K ; E | gc |= (trm_fvar x) ~: (M ^^ Us)
+      Q; K ; E | gc |= (trm_fvar x) ~: (M ^^ Us)
   | typing_abs : forall L (K : kenv) E U T t1 V k rvs,
       type U ->
       binds V (Some k, rvs) K ->
