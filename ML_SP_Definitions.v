@@ -226,6 +226,10 @@ Definition annotation_tree (S : tree_type) :=
   let V := build_right_map 0 (length K) K in
   (tr_arrow T (subst_tree V T), K ++ right_tree_kinds V K).
 
+(* Need also to define substitution of rigid variables *)
+Parameter tree_open_rigid : nat -> rvar -> tree -> tree.
+Parameter tree_type_open_rigid : nat -> rvar -> tree_type -> tree_type.
+
 Eval compute in
   graph_of_tree_type (
   annotation_tree (tr_arrow (tr_rvar (rvar_b 0)) (tr_rvar (rvar_b 1)), nil)).
@@ -383,7 +387,7 @@ Inductive trm : Set :=
   | trm_let   : trm -> trm -> trm
   | trm_app   : trm -> trm -> trm
   | trm_cst   : Const.const -> trm
-  | trm_use   : trm -> sch -> sch -> trm -> trm
+  | trm_use   : trm -> tree -> tree -> trm -> trm
   | trm_rigid : trm -> trm
   | trm_ann   : tree_type -> trm.
 
@@ -420,10 +424,10 @@ Fixpoint trm_rigid_rec (k : nat) (u : rvar) (t : trm) {struct t} : trm :=
   | trm_app t1 t2 => trm_app (trm_rigid_rec k u t1) (trm_rigid_rec k u t2)
   | trm_cst c     => trm_cst c
   | trm_use t1 T U t2 =>
-    trm_use (trm_rigid_rec k u t1) (sch_open_rigid k u T)
-            (sch_open_rigid k u U) (trm_rigid_rec k u t2)
+    trm_use (trm_rigid_rec k u t1) (tree_open_rigid k u T)
+            (tree_open_rigid k u U) (trm_rigid_rec k u t2)
   | trm_rigid t => trm_rigid (trm_rigid_rec (S k) u t)
-  | trm_ann T   => trm_ann T (* TODO: tree_rigid_rec *)
+  | trm_ann T   => trm_ann (tree_type_open_rigid k u T)
   end.
 
 Definition trm_open_rigid t u := trm_rigid_rec 0 u t.
@@ -476,7 +480,7 @@ Fixpoint trm_inst_rec (k : nat) (tl : list trm) (t : trm) {struct t} : trm :=
   | trm_use t1 T U t2 =>
     trm_use (trm_inst_rec k tl t1) T U (trm_inst_rec k tl t2)
   | trm_rigid t   => trm_rigid (trm_inst_rec k tl t)
-  | trm_ann T     => trm_ann T
+  | trm_ann T     => trm_ann T (* need to substitute *)
   end.
 
 Definition trm_inst t tl := trm_inst_rec 0 tl t.
@@ -517,9 +521,9 @@ Inductive well_kinded : kenv -> kind -> typ -> Prop :=
   | wk_any : forall K T,
       well_kinded K (None, nil) T
   | wk_kind : forall k' K k x,
-      wf_kind K k ->
       binds x k' K ->
       entails k' k ->
+      wf_kind K k' ->
       well_kinded K k (typ_fvar x).
 
 Hint Constructors well_kinded : core.
@@ -658,6 +662,24 @@ Inductive typing(gc:gc_info) : kenv -> env -> trm -> typ -> Prop :=
       (forall Xs, fresh L (length Ks) Xs ->
         K & kinds_open_vars Ks Xs; E | gc |= t ~: T) ->
       K ; E | gc |= t ~: T
+  | typing_ann : forall (TT : tree_type) n Ks K E Us,
+      graph_of_tree_type (annotation_tree TT) = (n, Ks) ->
+      proper_instance K Ks Us ->
+      K; E | gc |= (trm_ann TT) ~: nth n Us typ_def
+  | typing_rigid : forall L K E t T,
+      (forall R, R \notin L ->
+        K; E | gc |= trm_open_rigid t (rvar_f R) ~: T) ->
+      K; E | gc |= trm_rigid t ~: T
+  | typing_use : forall n Ks Us K E w T1 T2 t T,
+      graph_of_tree_type (tr_eq T1 T2, nil) = (n, Ks) ->
+      proper_instance K Ks Us ->
+      K; E | gc |= w ~: nth n Us typ_def ->
+      K; E | gc |= t ~: T
+  | typing_eq : forall K E x k rs T,
+      binds x (Some k, rs) K ->
+      In (Cstr.eq_fst, T) (kind_rel k) ->
+      In (Cstr.eq_snd, T) (kind_rel k) ->
+      K; E | gc |= trm_eq ~: typ_fvar x      
 
 where "K ; E | gc |= t ~: T" := (typing gc K E t T).
 
