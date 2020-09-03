@@ -494,7 +494,11 @@ Definition const_app c vl := fold_left trm_app vl (trm_cst c).
 
 (** Definition of kinding environments *)
 
-Definition qenv := list (tree * tree).
+Inductive qitem :=
+  | qvar : rvar -> qitem
+  | qeq : tree -> tree -> qitem.
+
+Definition qenv := list qitem.
 
 Definition kenv := env kind.
 
@@ -608,7 +612,8 @@ Module MkJudge(Delta:DeltaIntf).
 
 (** The typing judgment *)
 
-Reserved Notation "K ; E ; Q | gc |= t ~: T" (at level 69).
+Reserved Notation "K ; E | gc |= t ~: T" (at level 69).
+(*Reserved Notation "K ; E ; Q | gc |= t ~: T" (at level 69).*)
 
 Inductive gc_kind : Set := GcAny | GcLet.
 Definition gc_info : Set := (bool * gc_kind)%type.
@@ -624,13 +629,13 @@ Fixpoint gc_lower (gc:gc_info) : gc_info :=
   | _ => gc
   end.
 
-Inductive typing(gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
+Inductive typing(gc:gc_info) : (* qenv ->*) kenv -> env -> trm -> typ -> Prop :=
   | typing_var : forall Q K E x M Us,
       kenv_ok Q K ->
       env_ok E -> 
       binds x M E -> 
       proper_instance K (sch_kinds M) Us ->
-      Q; K ; E | gc |= (trm_fvar x) ~: (M ^^ Us)
+      (*Q;*) K ; E | gc |= (trm_fvar x) ~: (M ^^ Us)
   | typing_abs : forall L (K : kenv) E U T t1 V k rvs,
       type U ->
       binds V (Some k, rvs) K ->
@@ -655,8 +660,8 @@ Inductive typing(gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
       K ; E | gc_lower gc |= t1 ~: typ_fvar V ->
       K ; E | gc_lower gc |= t2 ~: S ->   
       K ; E | gc |= (trm_app t1 t2) ~: T
-  | typing_cst : forall K E Us c,
-      kenv_ok K ->
+  | typing_cst : forall Q K E Us c,
+      kenv_ok Q K ->
       env_ok E ->
       proper_instance K (sch_kinds (Delta.type c)) Us ->
       K ; E | gc |= (trm_cst c) ~: (Delta.type c ^^ Us)
@@ -669,10 +674,11 @@ Inductive typing(gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
       graph_of_tree_type (annotation_tree TT) = (n, Ks) ->
       proper_instance K Ks Us ->
       K; E | gc |= (trm_ann TT) ~: nth n Us typ_def
-  | typing_rigid : forall L K E t T,
+  | typing_rigid : forall L K X k E t T,
       (forall R, R \notin L ->
-        K; E | gc_raise gc |= trm_open_rigid t (rvar_f R) ~: T) ->
-      K; E | gc |= trm_rigid t ~: T
+        K & X ~ (None, rvar_f R :: nil) ; E | gc_raise gc |=
+           trm_open_rigid t (rvar_f R) ~: T) ->
+      K & X ~ k ; E | gc |= trm_rigid t ~: T
   | typing_use : forall n Ks Us K E w T1 T2 t T,
       graph_of_tree_type (tr_eq T1 T2, nil) = (n, Ks) ->
       proper_instance K Ks Us ->
