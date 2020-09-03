@@ -671,12 +671,12 @@ Inductive typing(gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
       K; E | gc |= (trm_ann TT) ~: nth n Us typ_def
   | typing_rigid : forall L K E t T,
       (forall R, R \notin L ->
-        K; E | gc |= trm_open_rigid t (rvar_f R) ~: T) ->
+        K; E | gc_raise gc |= trm_open_rigid t (rvar_f R) ~: T) ->
       K; E | gc |= trm_rigid t ~: T
   | typing_use : forall n Ks Us K E w T1 T2 t T,
       graph_of_tree_type (tr_eq T1 T2, nil) = (n, Ks) ->
       proper_instance K Ks Us ->
-      K; E | gc |= w ~: nth n Us typ_def ->
+      K; E | gc_raise gc |= w ~: nth n Us typ_def ->
       K; E | gc |= t ~: T
   | typing_eq : forall K E x k rs T,
       binds x (Some k, rs) K ->
