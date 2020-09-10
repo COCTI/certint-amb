@@ -389,7 +389,7 @@ Inductive trm : Set :=
   | trm_cst   : Const.const -> trm
   | trm_use   : trm -> tree -> tree -> trm -> trm
   | trm_rigid : trm -> trm
-  | trm_ann   : tree_type -> trm.
+  | trm_ann   : tree -> trm.
 
 (** Opening term binders. *)
 
@@ -427,7 +427,7 @@ Fixpoint trm_rigid_rec (k : nat) (u : rvar) (t : trm) {struct t} : trm :=
     trm_use (trm_rigid_rec k u t1) (tree_open_rigid k u T)
             (tree_open_rigid k u U) (trm_rigid_rec k u t2)
   | trm_rigid t => trm_rigid (trm_rigid_rec (S k) u t)
-  | trm_ann T   => trm_ann (tree_type_open_rigid k u T)
+  | trm_ann T   => trm_ann (tree_open_rigid k u T)
   end.
 
 Definition trm_open_rigid t u := trm_rigid_rec 0 u t.
@@ -670,10 +670,10 @@ Inductive typing(gc:gc_info) : (* qenv ->*) kenv -> env -> trm -> typ -> Prop :=
       (forall Xs, fresh L (length Ks) Xs ->
         K & kinds_open_vars Ks Xs; E | gc |= t ~: T) ->
       K ; E | gc |= t ~: T
-  | typing_ann : forall (TT : tree_type) n Ks K E Us,
-      graph_of_tree_type (annotation_tree TT) = (n, Ks) ->
+  | typing_ann : forall (T : tree) n Ks K E Us,
+      graph_of_tree_type (annotation_tree (T,nil)) = (n, Ks) ->
       proper_instance K Ks Us ->
-      K; E | gc |= (trm_ann TT) ~: nth n Us typ_def
+      K; E | gc |= (trm_ann T) ~: nth n Us typ_def
   | typing_rigid : forall L K X k E t T,
       (forall R, R \notin L ->
         K & X ~ (None, rvar_f R :: nil) ; E | gc_raise gc |=
@@ -740,18 +740,18 @@ Inductive red : trm -> trm -> Prop :=
       term t' ->
       red (trm_app (trm_app (trm_ann (tr_rvar rv, nil)) t) t')
           (trm_app t t') *)
-  | red_apply_ann_1 : forall T U t t' ks,
+  | red_apply_ann_1 : forall T U t t',
       term t ->
       term t' ->
-      red (trm_app (trm_app (trm_ann (tr_arrow T U, ks)) (trm_abs t)) t')
-          (trm_let (trm_app (trm_ann (T, ks)) t')
-                   (trm_app (trm_ann (U, ks)) t))
-  | red_apply_ann_2 : forall r t t' ks,
+      red (trm_app (trm_app (trm_ann (tr_arrow T U)) (trm_abs t)) t')
+          (trm_let (trm_app (trm_ann T) t')
+                   (trm_app (trm_ann U) t))
+  | red_apply_ann_2 : forall r t t',
       term t ->
       term t' ->
-      red (trm_app (trm_app (trm_ann (tr_rvar r, ks)) (trm_abs t)) t')
-          (trm_let (trm_app (trm_ann (tr_rvar (rvar_attr r Cstr.arrow_dom), ks)) t')
-                   (trm_app (trm_ann (tr_rvar (rvar_attr r Cstr.arrow_cod), ks)) t)).
+      red (trm_app (trm_app (trm_ann (tr_rvar r)) (trm_abs t)) t')
+          (trm_let (trm_app (trm_ann (tr_rvar (rvar_attr r Cstr.arrow_dom))) t')
+                   (trm_app (trm_ann (tr_rvar (rvar_attr r Cstr.arrow_cod))) t)).
                    
 
 Notation "t --> t'" := (red t t') (at level 68).
