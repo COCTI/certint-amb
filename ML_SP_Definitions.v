@@ -628,7 +628,7 @@ Fixpoint gc_lower (gc:gc_info) : gc_info :=
   | _ => gc
   end.
 
-Reserved Notation "|- Q ; K ; E | gc |= t ~: T" (at level 69).
+Reserved Notation "[ Q ; K ; E | gc |= t ~: T ]" (at level 69).
 
 Inductive typing(gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
   | typing_var : forall Q K E x M Us,
@@ -636,63 +636,62 @@ Inductive typing(gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
       env_ok E -> 
       binds x M E -> 
       proper_instance K (sch_kinds M) Us ->
-      |- Q ; K ; E | gc |= (trm_fvar x) ~: (M ^^ Us)
-where "|- Q ; K ; E | gc |= t ~: T" := (typing gc Q K E t T).
-  | typing_abs : forall L (K : kenv) E U T t1 V k rvs,
+      [ Q ; K ; E | gc |= (trm_fvar x) ~: (M ^^ Us) ]
+  | typing_abs : forall Q L (K : kenv) E U T t1 V k rvs,
       type U ->
       binds V (Some k, rvs) K ->
       kind_cstr k = Cstr.arrow ->
       In (Cstr.arrow_dom, U) (kind_rel k) ->
       In (Cstr.arrow_cod, T) (kind_rel k) ->
       (forall x, x \notin L -> 
-        K ; (E & x ~ Sch U nil) | gc_raise gc |= (t1 ^ x) ~: T) ->
-      K ; E | gc |= (trm_abs t1) ~: typ_fvar V
-  | typing_let : forall M L1 L2 K E T2 t1 t2,
+        [ Q ; K ; (E & x ~ Sch U nil) | gc_raise gc |= (t1 ^ x) ~: T ]) ->
+      [ Q ; K ; E | gc |= (trm_abs t1) ~: typ_fvar V ]
+  | typing_let : forall Q M L1 L2 K E T2 t1 t2,
       (forall Xs, fresh L1 (sch_arity M) Xs ->
-         (K & kinds_open_vars (sch_kinds M) Xs); E | gc_raise gc |=
-           t1 ~: (M ^ Xs)) ->
+         [ Q ; (K & kinds_open_vars (sch_kinds M) Xs); E | gc_raise gc |=
+           t1 ~: (M ^ Xs) ]) ->
       (forall x, x \notin L2 ->
-         K ; (E & x ~ M) | gc_raise gc |= (t2 ^ x) ~: T2) -> 
-      K ; E | gc |= (trm_let t1 t2) ~: T2
-  | typing_app : forall K E V k rvs S T t1 t2,
+         [ Q; K ; (E & x ~ M) | gc_raise gc |= (t2 ^ x) ~: T2]) -> 
+      [ Q ; K ; E | gc |= (trm_let t1 t2) ~: T2 ]
+  | typing_app : forall Q K E V k rvs S T t1 t2,
       binds V (Some k, rvs) K ->
       kind_cstr k = Cstr.arrow ->
       In (Cstr.arrow_dom, S) (kind_rel k) ->
       In (Cstr.arrow_cod, T) (kind_rel k) ->
-      K ; E | gc_lower gc |= t1 ~: typ_fvar V ->
-      K ; E | gc_lower gc |= t2 ~: S ->   
-      K ; E | gc |= (trm_app t1 t2) ~: T
+      [ Q ; K ; E | gc_lower gc |= t1 ~: typ_fvar V ] ->
+      [ Q ; K ; E | gc_lower gc |= t2 ~: S ] ->   
+      [ Q ; K ; E | gc |= (trm_app t1 t2) ~: T ]
   | typing_cst : forall Q K E Us c,
       kenv_ok Q K ->
       env_ok E ->
       proper_instance K (sch_kinds (Delta.type c)) Us ->
-      K ; E | gc |= (trm_cst c) ~: (Delta.type c ^^ Us)
-  | typing_gc : forall Ks L K E t T,
+      [Q ; K ; E | gc |= (trm_cst c) ~: (Delta.type c ^^ Us) ]
+  | typing_gc : forall Q Ks L K E t T,
       gc_ok gc ->
       (forall Xs, fresh L (length Ks) Xs ->
-        K & kinds_open_vars Ks Xs; E | gc |= t ~: T) ->
-      K ; E | gc |= t ~: T
-  | typing_ann : forall (T : tree) n Ks K E Us,
+        [ Q ; K & kinds_open_vars Ks Xs; E | gc |= t ~: T ]) ->
+      [ Q ; K ; E | gc |= t ~: T ]
+  | typing_ann : forall Q (T : tree) n Ks K E Us,
       graph_of_tree_type (annotation_tree (T,nil)) = (n, Ks) ->
       proper_instance K Ks Us ->
-      K; E | gc |= (trm_ann T) ~: nth n Us typ_def
-  | typing_rigid : forall L K X k E t T,
+      [ Q ; K; E | gc |= (trm_ann T) ~: nth n Us typ_def ]
+  | typing_rigid : forall Q L K X k E t T,
       (forall R, R \notin L ->
-        K & X ~ (None, rvar_f R :: nil) ; E | gc_raise gc |=
-           trm_open_rigid t (rvar_f R) ~: T) ->
-      K & X ~ k ; E | gc |= trm_rigid t ~: T
-  | typing_use : forall n Ks Us K E w T1 T2 t T,
+        [ Q; K & X ~ (None, rvar_f R :: nil) ; E | gc_raise gc |=
+           trm_open_rigid t (rvar_f R) ~: T ]) ->
+      [ Q; K & X ~ k ; E | gc |= trm_rigid t ~: T ]
+  | typing_use : forall n Ks Us Q K E w T1 T2 t T,
       graph_of_tree_type (tr_eq T1 T2, nil) = (n, Ks) ->
       proper_instance K Ks Us ->
-      K; E | gc_raise gc |= w ~: nth n Us typ_def ->
-      K; E | gc |= t ~: T
-  | typing_eq : forall K E x k rs T,
+      [ Q; K; E | gc_raise gc |= w ~: nth n Us typ_def ] -> 
+      [ Q; K; E | gc |= t ~: T ]
+  | typing_eq : forall Q K E x k rs T,
       binds x (Some k, rs) K ->
       In (Cstr.eq_fst, T) (kind_rel k) ->
       In (Cstr.eq_snd, T) (kind_rel k) ->
-      K; E | gc |= trm_eq ~: typ_fvar x      
+      [Q; K; E | gc |= trm_eq ~: typ_fvar x ]
 
-where "K ; E | gc |= t ~: T" := (typing gc K E t T).
+where "[ Q ; K ; E | gc |= t ~: T ]" := (typing gc Q K E t T).
 
 
 (* ********************************************************************** *)
