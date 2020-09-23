@@ -202,33 +202,81 @@ Fixpoint build_right_map pos ofs (Ks : list tree_kind) n :=
 
 Section right_tree.
 Variable V : nat -> nat.
-Fixpoint subst_tree (T : tree) :=
+Fixpoint bsubst_tree (T : tree) :=
   match T with
   | tr_bvar x => tr_bvar (V x)
-  | tr_arrow T U => tr_arrow (subst_tree T) (subst_tree U)
-  | tr_eq T U => tr_eq (subst_tree T) (subst_tree U)
+  | tr_arrow T U => tr_arrow (bsubst_tree T) (bsubst_tree U)
+  | tr_eq T U => tr_eq (bsubst_tree T) (bsubst_tree U)
   | tr_rvar r => T
   end.
 
-Definition subst_tree_kind (k : tree_kind) :=
+Definition bsubst_tree_kind (k : tree_kind) :=
   match k with
   | (Some (c, trees), rvars) =>
-    (Some (c, List.map (fun p => (fst p, subst_tree (snd p))) trees), rvars)
+    (Some (c, List.map (fun p => (fst p, bsubst_tree (snd p))) trees), rvars)
   | (None, rvars) => k
   end.
 
 Definition right_tree_kinds :=
-  map (fun k => if static_tree_kind k then subst_tree_kind k else k).
+  map (fun k => if static_tree_kind k then bsubst_tree_kind k else k).
 End right_tree.
 
 Definition annotation_tree (S : tree_type) :=
   let '(T,K) := S in
   let V := build_right_map 0 (length K) K in
-  (tr_arrow T (subst_tree V T), K ++ right_tree_kinds V K).
+  (tr_arrow T (bsubst_tree V T), K ++ right_tree_kinds V K).
 
 (* Need also to define substitution of rigid variables *)
 Parameter tree_open_rigid : nat -> rvar -> tree -> tree.
 Parameter tree_type_open_rigid : nat -> rvar -> tree_type -> tree_type.
+
+Section tree_subst.
+Variable S : env tree.
+
+Inductive lookup_rvar : rvar -> tree -> Prop :=
+  | lr_f : forall r T,
+      binds r T S ->
+      lookup_rvar (rvar_f r) T
+  | lr_attr_dom : forall rv T1 T2,
+      lookup_rvar rv (tr_arrow T1 T2) ->
+      lookup_rvar (rvar_attr rv Cstr.arrow_dom) T1
+  | lr_attr_cod : forall rv T1 T2,
+      lookup_rvar rv (tr_arrow T1 T2) ->
+      lookup_rvar (rvar_attr rv Cstr.arrow_cod) T2
+  | lr_attr_fst : forall rv T1 T2,
+      lookup_rvar rv (tr_eq T1 T2) ->
+      lookup_rvar (rvar_attr rv Cstr.eq_fst) T1
+  | lr_attr_snd : forall rv T1 T2,
+      lookup_rvar rv (tr_eq T1 T2) ->
+      lookup_rvar (rvar_attr rv Cstr.eq_snd) T2.
+
+Inductive tree_subst_eq : tree -> tree -> Prop :=
+  | tse_var1 : forall rv T1 T2,
+      lookup_rvar rv T1 ->
+      tree_subst_eq T1 T2 ->
+      tree_subst_eq (tr_rvar rv) T2
+  | tse_var2 : forall rv T1 T2,
+      lookup_rvar rv T2 ->
+      tree_subst_eq T1 T2 ->
+      tree_subst_eq T1 (tr_rvar rv)
+  | tse_arrow : forall T1 T2 T1' T2',
+      tree_subst_eq T1 T1' -> tree_subst_eq T2 T2' ->
+      tree_subst_eq (tr_arrow T1 T2) (tr_arrow T1' T2')
+  | tse_eq : forall T1 T2 T1' T2',
+      tree_subst_eq T1 T1' -> tree_subst_eq T2 T2' ->
+      tree_subst_eq (tr_eq T1 T2) (tr_eq T1' T2')
+  | tse_rvar : forall rv, tree_subst_eq (tr_rvar rv) (tr_rvar rv).
+
+(*
+Fixpoint tree_subst (T : tree) :=
+  match T with
+  | tr_bvar x => T
+  | tr_arrow T U => tr_arrow (tree_subst T) (tree_subst U)
+  | tr_eq T U => tr_eq (tree_subst T) (tree_subst U)
+  | tr_rvar r =>
+  end.
+*)
+End tree_subst.
 
 Eval compute in
   graph_of_tree_type (
@@ -500,11 +548,33 @@ Inductive qitem :=
 
 Definition qenv := list qitem.
 
+Inductive qsat_item (S : env tree) : qitem -> Prop :=
+  qsat_qeq : forall T1 T2, tree_subst_eq S T1 T2 -> qsat_item S (qeq T1 T2).
+
+Definition qsat Q S := list_forall (qsat_item S) Q.
+
+Inductive qcoherent (Q : qenv) : kind -> Prop :=
+  | qc_var : forall rvs,
+      (forall rv1 rv2 S, qsat Q S -> In rv1 rvs -> In rv2 rvs ->
+          tree_subst_eq S (tr_rvar rv1) (tr_rvar rv2)) ->
+      qcoherent Q (None, rvs)
+  | qc_arrow : forall k rvs,
+      kind_cstr k = Cstr.arrow ->
+      (forall S, qsat Q S ->
+         exists T1 T2, forall rv,
+             In rv rvs -> tree_subst_eq S (tr_rvar rv) (tr_arrow T1 T2)) ->
+      qcoherent Q (Some k, rvs)
+  | qc_eq : forall k rvs,
+      kind_cstr k = Cstr.eq ->
+      (forall S, qsat Q S ->
+         exists T1 T2, forall rv,
+             In rv rvs -> tree_subst_eq S (tr_rvar rv) (tr_eq T1 T2)) ->
+      qcoherent Q (Some k, rvs).
+
 Definition kenv := env kind.
 
 Definition kenv_ok (Q : qenv) K :=
-  ok K /\ env_prop (All_kind_types type) K.
-  (* and the kinds are coherent with the equations *)
+  ok K /\ env_prop (All_kind_types type) K /\ env_prop (qcoherent Q) K.
 
 (** Proper instantiation *)
 
