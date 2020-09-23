@@ -480,6 +480,7 @@ Fixpoint trm_rigid_rec (k : nat) (u : rvar) (t : trm) {struct t} : trm :=
 
 Definition trm_open_rigid t u := trm_rigid_rec 0 u t.
 
+Parameter trm_shift_rigid : trm -> trm.
 
 (** Locally closed termessions *)
 
@@ -662,7 +663,11 @@ Inductive valu : nat -> trm -> Prop :=
       valu (S n) t1 ->
       valu n2 t2 ->
       valu n (trm_app t1 t2)
-  | value_eq  : valu 0 trm_eq.
+  | value_eq  : valu 0 trm_eq
+  | value_ann : forall n t T, valu n t -> valu n (trm_app (trm_ann T) t)
+  | value_rigid : forall n t, valu n t -> valu n (trm_rigid t)
+  | value_use : forall t1 T1 T2 n t2,
+      valu 0 t1 -> valu n t2 -> valu n (trm_use t1 T1 T2 t2).
 
 Definition value t := exists n, valu n t.
 
@@ -822,8 +827,16 @@ Inductive red : trm -> trm -> Prop :=
       term t' ->
       red (trm_app (trm_app (trm_ann (tr_rvar r)) (trm_abs t)) t')
           (trm_let (trm_app (trm_ann (tr_rvar (rvar_attr r Cstr.arrow_dom))) t')
-                   (trm_app (trm_ann (tr_rvar (rvar_attr r Cstr.arrow_cod))) t)).
-                   
+                   (trm_app (trm_ann (tr_rvar (rvar_attr r Cstr.arrow_cod))) t))
+  | red_apply_use : forall t1 T1 T2 t2 t3,
+      term t1 -> term t2 -> term t3 ->
+      red (trm_app (trm_use t1 T1 T2 t2) t3)
+          (trm_use t1 T1 T2 (trm_app t2 t3))
+  | red_apply_rigid : forall t1 t2,
+      term t1 -> term t2 ->
+      red (trm_app (trm_rigid t1) t2)
+          (trm_rigid (trm_app t1 (trm_shift_rigid t2))).
+               
 
 Notation "t --> t'" := (red t t') (at level 68).
 
