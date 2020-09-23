@@ -612,7 +612,6 @@ Module MkJudge(Delta:DeltaIntf).
 
 (** The typing judgment *)
 
-Reserved Notation "K ; E | gc |= t ~: T" (at level 69).
 (*Reserved Notation "K ; E ; Q | gc |= t ~: T" (at level 69).*)
 
 Inductive gc_kind : Set := GcAny | GcLet.
@@ -629,13 +628,16 @@ Fixpoint gc_lower (gc:gc_info) : gc_info :=
   | _ => gc
   end.
 
-Inductive typing(gc:gc_info) : (* qenv ->*) kenv -> env -> trm -> typ -> Prop :=
+Reserved Notation "|- Q ; K ; E | gc |= t ~: T" (at level 69).
+
+Inductive typing(gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
   | typing_var : forall Q K E x M Us,
       kenv_ok Q K ->
       env_ok E -> 
       binds x M E -> 
       proper_instance K (sch_kinds M) Us ->
-      (*Q;*) K ; E | gc |= (trm_fvar x) ~: (M ^^ Us)
+      |- Q ; K ; E | gc |= (trm_fvar x) ~: (M ^^ Us)
+where "|- Q ; K ; E | gc |= t ~: T" := (typing gc Q K E t T).
   | typing_abs : forall L (K : kenv) E U T t1 V k rvs,
       type U ->
       binds V (Some k, rvs) K ->
