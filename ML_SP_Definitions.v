@@ -227,8 +227,18 @@ Definition annotation_tree (S : tree_type) :=
   (tr_arrow T (bsubst_tree V T), K ++ right_tree_kinds V K).
 
 (* Need also to define substitution of rigid variables *)
-Parameter tree_open_rigid : nat -> rvar -> tree -> tree.
-Parameter tree_type_open_rigid : nat -> rvar -> tree_type -> tree_type.
+Print tree.
+Fixpoint tree_open_rigid (k : nat) (u : rvar) (T : tree) :=
+  match T with
+  | tr_bvar _ => T
+  | tr_arrow T1 T2 => tr_arrow (tree_open_rigid k u T1) (tree_open_rigid k u T2)
+  | tr_eq T1 T2 => tr_eq (tree_open_rigid k u T1) (tree_open_rigid k u T2)
+  | tr_rvar (rvar_b i) => if k === i then tr_rvar u else T
+  | tr_rvar _ => T
+  end.
+
+Definition tree_type_open_rigid (k : nat) (u : rvar) (S : tree_type) :=
+  (tree_open_rigid k u (fst S), snd S).
 
 Section tree_subst.
 Variable S : env tree.
@@ -480,7 +490,20 @@ Fixpoint trm_rigid_rec (k : nat) (u : rvar) (t : trm) {struct t} : trm :=
 
 Definition trm_open_rigid t u := trm_rigid_rec 0 u t.
 
-Parameter trm_shift_rigid : trm -> trm.
+Fixpoint trm_shift_rigid (t : trm) : trm :=
+  match t with
+  | trm_eq | trm_bvar _ | trm_fvar _ | trm_cst _ => t
+  | trm_abs t' => trm_abs (trm_shift_rigid t')
+  | trm_let t1 t2 => trm_let (trm_shift_rigid t1) (trm_shift_rigid t2)
+  | trm_app t1 t2 => trm_app (trm_shift_rigid t1) (trm_shift_rigid t2)
+  | trm_use t1 (tr_rvar (rvar_b x1)) (tr_rvar (rvar_b x2)) t2 =>
+    trm_use (trm_shift_rigid t1) (tr_rvar (rvar_b (S x1))) (tr_rvar (rvar_b (S x2))) (trm_shift_rigid t2)
+  | trm_use t1 T1 T2 t2 =>
+    trm_use (trm_shift_rigid t1) T1 T2 (trm_shift_rigid t2)
+  | trm_rigid t => trm_rigid (trm_shift_rigid t)
+  | trm_ann (tr_rvar (rvar_b x)) => trm_ann (tr_rvar (rvar_b (S x)))
+  | trm_ann T => trm_ann T
+  end.
 
 (** Locally closed termessions *)
 
