@@ -36,6 +36,7 @@ Module Type CstrIntf.
   Parameter arrow : cstr.
   Parameter arrow_dom : attr.
   Parameter arrow_cod : attr.
+  Parameter arrow_attrs : arrow_dom <> arrow_cod.
   Parameter valid_arrow : valid arrow.
   Parameter static_arrow : static arrow = true.
   Parameter unique_dom : unique arrow arrow_dom = true.
@@ -46,6 +47,7 @@ Module Type CstrIntf.
   Parameter eq : cstr.
   Parameter eq_fst : attr.
   Parameter eq_snd : attr.
+  Parameter eq_attrs : eq_fst <> eq_snd.
   Parameter valid_eq : valid eq.
   Parameter static_eq : static eq = true.
   Parameter unique_fst : unique eq eq_fst = true.
@@ -139,8 +141,31 @@ Definition tree_kind : Set :=
 Definition tree_type : Set :=
   tree * list tree_kind.
 
-Parameter arrow_kind : nat -> nat -> ckind.
-Parameter eq_kind : nat -> nat -> ckind.
+Lemma coherent_pair k (a b : Cstr.attr) (T T' : typ) :
+  a <> b -> coherent k ((a,T) :: (b,T') :: nil).
+Proof.
+intros ab x U U' _; simpl.
+destruct 1.
+  destruct 1.
+    inversions H; now inversions H0.
+  destruct H0.
+    inversions H; inversions H0. contradiction.
+  contradiction.
+destruct H.
+  destruct 1.
+    inversions H; inversions H0; contradiction.
+  destruct H0.
+    inversions H; now inversions H0.
+  contradiction.
+contradiction.
+Qed.
+    
+Definition arrow_kind (m n : nat) :=
+  Kind Cstr.valid_arrow
+       (coherent_pair (T:=typ_bvar m) (T':=typ_bvar n) Cstr.arrow_attrs).
+Definition eq_kind (m n : nat) :=
+  Kind Cstr.valid_eq
+       (coherent_pair (T:=typ_bvar m) (T':=typ_bvar n) Cstr.eq_attrs).
 
 Fixpoint graph_of_tree ofs (tr : tree) : nat * list kind :=
   match tr with
@@ -227,18 +252,38 @@ Definition annotation_tree (S : tree_type) :=
   (tr_arrow T (bsubst_tree V T), K ++ right_tree_kinds V K).
 
 (* Need also to define substitution of rigid variables *)
-Print tree.
+Fixpoint rvar_open (k : nat) (u : rvar) (t : rvar) :=
+  match t with
+  | rvar_b i => if k === i then u else rvar_b i
+  | rvar_f v => rvar_f v
+  | rvar_attr r att => rvar_attr (rvar_open k u r) att
+  end.
+
 Fixpoint tree_open_rigid (k : nat) (u : rvar) (T : tree) :=
   match T with
   | tr_bvar _ => T
   | tr_arrow T1 T2 => tr_arrow (tree_open_rigid k u T1) (tree_open_rigid k u T2)
   | tr_eq T1 T2 => tr_eq (tree_open_rigid k u T1) (tree_open_rigid k u T2)
-  | tr_rvar (rvar_b i) => if k === i then tr_rvar u else T
-  | tr_rvar _ => T
+  | tr_rvar v => tr_rvar (rvar_open k u v)
   end.
 
 Definition tree_type_open_rigid (k : nat) (u : rvar) (S : tree_type) :=
   (tree_open_rigid k u (fst S), snd S).
+
+Fixpoint rvar_shift (k : nat) (t : rvar) :=
+  match t with
+  | rvar_b i => if le_lt_dec k i then rvar_b (i+1) else rvar_b i
+  | rvar_f v => rvar_f v
+  | rvar_attr r att => rvar_attr (rvar_shift k r) att
+  end.
+
+Fixpoint tree_shift_rigid (k : nat) (T : tree) :=
+  match T with
+  | tr_bvar _ => T
+  | tr_arrow T1 T2 => tr_arrow (tree_shift_rigid k T1) (tree_shift_rigid k T2)
+  | tr_eq T1 T2 => tr_eq (tree_shift_rigid k T1) (tree_shift_rigid k T2)
+  | tr_rvar v => tr_rvar (rvar_shift k v)
+  end.
 
 Section tree_subst.
 Variable S : env tree.
@@ -327,13 +372,6 @@ Fixpoint typ_open (T : typ) (Vs : list typ) {struct T} : typ :=
   end.
 
 (* Opening kind with rigid variables. *)
-
-Fixpoint rvar_open (k : nat) (u : rvar) (t : rvar) :=
-  match t with
-  | rvar_b i => if k === i then u else rvar_b i
-  | rvar_f v => rvar_f v
-  | rvar_attr r att => rvar_attr (rvar_open k u r) att
-  end.
 
 Definition kind_open_rigid (k : nat) (u : rvar) (t : kind) : kind :=
   (fst t, map (rvar_open k u) (snd t)).
@@ -490,19 +528,17 @@ Fixpoint trm_rigid_rec (k : nat) (u : rvar) (t : trm) {struct t} : trm :=
 
 Definition trm_open_rigid t u := trm_rigid_rec 0 u t.
 
-Fixpoint trm_shift_rigid (t : trm) : trm :=
+Fixpoint trm_shift_rigid k (t : trm) : trm :=
   match t with
   | trm_eq | trm_bvar _ | trm_fvar _ | trm_cst _ => t
-  | trm_abs t' => trm_abs (trm_shift_rigid t')
-  | trm_let t1 t2 => trm_let (trm_shift_rigid t1) (trm_shift_rigid t2)
-  | trm_app t1 t2 => trm_app (trm_shift_rigid t1) (trm_shift_rigid t2)
-  | trm_use t1 (tr_rvar (rvar_b x1)) (tr_rvar (rvar_b x2)) t2 =>
-    trm_use (trm_shift_rigid t1) (tr_rvar (rvar_b (S x1))) (tr_rvar (rvar_b (S x2))) (trm_shift_rigid t2)
+  | trm_abs t' => trm_abs (trm_shift_rigid k t')
+  | trm_let t1 t2 => trm_let (trm_shift_rigid k t1) (trm_shift_rigid k t2)
+  | trm_app t1 t2 => trm_app (trm_shift_rigid k t1) (trm_shift_rigid k t2)
   | trm_use t1 T1 T2 t2 =>
-    trm_use (trm_shift_rigid t1) T1 T2 (trm_shift_rigid t2)
-  | trm_rigid t => trm_rigid (trm_shift_rigid t)
-  | trm_ann (tr_rvar (rvar_b x)) => trm_ann (tr_rvar (rvar_b (S x)))
-  | trm_ann T => trm_ann T
+    trm_use (trm_shift_rigid k t1) (tree_shift_rigid k T1)
+            (tree_shift_rigid k T1) (trm_shift_rigid k t2)
+  | trm_rigid t => trm_rigid (trm_shift_rigid (k+1) t)
+  | trm_ann T => trm_ann (tree_shift_rigid k T)
   end.
 
 (** Locally closed termessions *)
@@ -858,7 +894,7 @@ Inductive red : trm -> trm -> Prop :=
   | red_apply_rigid : forall t1 t2,
       term t1 -> term t2 ->
       red (trm_app (trm_rigid t1) t2)
-          (trm_rigid (trm_app t1 (trm_shift_rigid t2))).
+          (trm_rigid (trm_app t1 (trm_shift_rigid 0 t2))).
                
 
 Notation "t --> t'" := (red t t') (at level 68).
