@@ -279,35 +279,74 @@ Proof.
   case_nat*. case_nat*. 
 Qed.
 
-Lemma trm_open_rec : forall t u,
+Lemma trm_open_rec_term : forall t u,
   term t -> forall k, t = trm_open_rec k u t.
 Proof.
-  induction 1; intros; simpl; f_equal*. 
+  intros; revert u k; induction H; intros; simpl; f_equal*. 
   unfolds trm_open. pick_fresh x.
    apply* (@trm_open_rec_core t1 0 (trm_fvar x)).
   unfolds trm_open. pick_fresh x.
-   apply* (@trm_open_rec_core t2 0 (trm_fvar x)).
+  apply* (@trm_open_rec_core t2 0 (trm_fvar x)).
 Qed.
 
 (* end hide *)
 
 (** Substitution for a fresh name is identity. *)
 
+Lemma trm_shift_rigid_comm : forall k j t, term t -> k <= j ->
+  trm_shift_rigid k (trm_shift_rigid j t) = trm_shift_rigid (j + 1) (trm_shift_rigid k t).
+Proof. 
+  intros. induction t; simpls; f_equal*.
+Admitted.
+
 Lemma trm_subst_fresh : forall x t u, 
   x \notin trm_fv t ->  [x ~> u] t = t.
 Proof.
-  intros. induction t; simpls; f_equal*.
+  intros. revert u. induction t; intros; simpls; f_equal*.
   case_var*. notin_contradiction.
 Qed.
 
 (** Substitution distributes on the open operation. *)
+Lemma trm_shift_rigid_open_var : forall t k j x,
+  trm_shift_rigid k (trm_open_rec j (trm_fvar x) t) =
+  trm_open_rec j (trm_fvar x) (trm_shift_rigid k t).
+Proof.
+  induction t; intros; simpls; f_equal*.
+  case_nat*.
+Qed.
+  
+Lemma term_trm_shift_rigid : forall k t, term t ->
+  term (trm_shift_rigid k t).
+Proof.
+  intros; revert k. induction H; intros; simpls; f_equal*;
+  econstructor; try auto; intros;
+  unfolds trm_open; rewrite* <- trm_shift_rigid_open_var.
+Qed.
+Hint Resolve term_trm_shift_rigid.
 
+Lemma trm_shift_rigid_open_rec : forall t k j u , term u ->
+  trm_shift_rigid k (trm_open_rec j u t) =
+  trm_open_rec j (trm_shift_rigid k u)
+                 (trm_shift_rigid k t).
+Proof.
+  induction t; intros; simpls; f_equal*.
+  case_nat*. rewrite* IHt. rewrite* <- trm_shift_rigid_comm; lia.
+Qed.
+
+Lemma trm_shift_rigid_subst : forall k x u t, term u ->
+  trm_shift_rigid k ([x ~> u] t) = [x ~> trm_shift_rigid k u] (trm_shift_rigid k t).
+Proof.
+  intros. revert u k H. induction t; intros; simpls; f_equal*.
+  case_var*. rewrite* trm_shift_rigid_comm; try lia. 
+Qed.
+  
 Lemma trm_subst_open : forall x u t1 t2, term u -> 
   [x ~> u] (t1 ^^ t2) = ([x ~> u]t1) ^^ ([x ~> u]t2).
 Proof.
-  intros. unfold trm_open. generalize 0.
+  intros. revert u H t2. unfold trm_open. generalize 0.
   induction t1; intros; simpl; f_equal*.
-  case_nat*. case_var*. apply* trm_open_rec.
+  case_nat*. case_var*. apply* trm_open_rec_term.
+  rewrite* IHt1. rewrite* trm_shift_rigid_subst.
 Qed.
 
 (** Substitution and open_var for distinct names commute. *)

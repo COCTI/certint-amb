@@ -489,6 +489,19 @@ Inductive trm : Set :=
 
 (** Opening term binders. *)
 
+Fixpoint trm_shift_rigid k (t : trm) : trm :=
+  match t with
+  | trm_eq | trm_bvar _ | trm_fvar _ | trm_cst _ => t
+  | trm_abs t' => trm_abs (trm_shift_rigid k t')
+  | trm_let t1 t2 => trm_let (trm_shift_rigid k t1) (trm_shift_rigid k t2)
+  | trm_app t1 t2 => trm_app (trm_shift_rigid k t1) (trm_shift_rigid k t2)
+  | trm_use t1 T1 T2 t2 =>
+    trm_use (trm_shift_rigid k t1) (tree_shift_rigid k T1)
+            (tree_shift_rigid k T1) (trm_shift_rigid k t2)
+  | trm_rigid t => trm_rigid (trm_shift_rigid (k+1) t)
+  | trm_ann T => trm_ann (tree_shift_rigid k T)
+  end.
+
 Fixpoint trm_open_rec (k : nat) (u : trm) (t : trm) {struct t} : trm :=
   match t with
   | trm_eq        => trm_eq
@@ -499,7 +512,7 @@ Fixpoint trm_open_rec (k : nat) (u : trm) (t : trm) {struct t} : trm :=
   | trm_app t1 t2 => trm_app (trm_open_rec k u t1) (trm_open_rec k u t2)
   | trm_cst c     => trm_cst c
   | trm_use t1 T U t2 => trm_use (trm_open_rec k u t1) T U (trm_open_rec k u t2)
-  | trm_rigid t => trm_rigid (trm_open_rec k u t)
+  | trm_rigid t => trm_rigid (trm_open_rec k (trm_shift_rigid 0 u) t)
   | trm_ann T     => trm_ann T
   end.
 
@@ -528,19 +541,6 @@ Fixpoint trm_rigid_rec (k : nat) (u : rvar) (t : trm) {struct t} : trm :=
 
 Definition trm_open_rigid t u := trm_rigid_rec 0 u t.
 
-Fixpoint trm_shift_rigid k (t : trm) : trm :=
-  match t with
-  | trm_eq | trm_bvar _ | trm_fvar _ | trm_cst _ => t
-  | trm_abs t' => trm_abs (trm_shift_rigid k t')
-  | trm_let t1 t2 => trm_let (trm_shift_rigid k t1) (trm_shift_rigid k t2)
-  | trm_app t1 t2 => trm_app (trm_shift_rigid k t1) (trm_shift_rigid k t2)
-  | trm_use t1 T1 T2 t2 =>
-    trm_use (trm_shift_rigid k t1) (tree_shift_rigid k T1)
-            (tree_shift_rigid k T1) (trm_shift_rigid k t2)
-  | trm_rigid t => trm_rigid (trm_shift_rigid (k+1) t)
-  | trm_ann T => trm_ann (tree_shift_rigid k T)
-  end.
-
 (** Locally closed termessions *)
 
 Inductive term : trm -> Prop :=
@@ -559,8 +559,8 @@ Inductive term : trm -> Prop :=
       term (trm_app t1 t2)
   | term_cst : forall c,
       term (trm_cst c)
-  | term_rigid : forall L t1,
-      (forall x, x \notin L -> term (trm_open_rigid t1 (rvar_f x))) -> 
+  | term_rigid : forall t1,
+      term t1 ->
       term (trm_rigid t1)
   | term_ann : forall T,
       (* tree T -> *)
