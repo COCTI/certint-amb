@@ -123,6 +123,38 @@ Fixpoint trm_fv (t : trm) {struct t} : vars :=
   | trm_let t1 t2 => (trm_fv t1) \u (trm_fv t2)
   | trm_app t1 t2 => (trm_fv t1) \u (trm_fv t2)
   | trm_cst c     => {}
+  | trm_use t1 _ _ t2 => (trm_fv t1) \u (trm_fv t2)
+  | trm_rigid t1  => (trm_fv t1)
+  | trm_ann _     => {}
+  | trm_eq        => {}
+  end.
+
+Fixpoint rvar_fv (r : rvar) : vars :=
+  match r with
+  | rvar_b _ => {}
+  | rvar_f x => {{x}}
+  | rvar_attr x _ => rvar_fv x
+  end.
+                      
+
+Fixpoint tree_fv (T : tree) : vars :=
+  match T with
+  | tr_bvar i   => {}
+  | tr_arrow T1 T2
+  | tr_eq T1 T2 => (tree_fv T1) \u (tree_fv T2)
+  | tr_rvar r   => rvar_fv r
+  end.
+
+Definition qitem_fv (q : qitem) : vars :=
+  match q with
+  | qvar x    => {{x}}
+  | qeq T1 T2 => (tree_fv T1) \u (tree_fv T2)
+  end.
+
+Fixpoint qenv_fv (Q : qenv) : vars :=
+  match Q with
+  | nil => {}
+  | q :: Q' => (qitem_fv q) \u (qenv_fv Q')
   end.
 
 (* ********************************************************************** *)
@@ -160,6 +192,10 @@ Fixpoint trm_subst (z : var) (u : trm) (t : trm) {struct t} : trm :=
   | trm_let t1 t2 => trm_let (trm_subst z u t1) (trm_subst z u t2) 
   | trm_app t1 t2 => trm_app (trm_subst z u t1) (trm_subst z u t2)
   | trm_cst c     => trm_cst c
+  | trm_use t1 T1 T2 t2 => trm_use (trm_subst z u t1) T1 T2 (trm_subst z u t2)
+  | trm_rigid t1  => trm_rigid (trm_subst z (trm_shift_rigid 0 u) t1)
+  | trm_ann T     => trm_ann T
+  | trm_eq        => trm_eq
   end.
 
 Notation "[ z ~> u ] t" := (trm_subst z u t) (at level 68).
@@ -183,6 +219,7 @@ Ltac gather_vars :=
   let I := gather_vars_with (fun x : kenv => dom x) in
   let J := gather_vars_with (fun x : kenv => fv_in kind_fv x) in
   let K := gather_vars_with (fun x : list kind => kind_fv_list x) in
+  let L := gather_vars_with (fun x : qenv => qenv_fv x) in
   constr:(A \u B \u C \u D \u E \u F \u G \u H \u I \u J \u K).
 
 Tactic Notation "pick_fresh" ident(x) :=
