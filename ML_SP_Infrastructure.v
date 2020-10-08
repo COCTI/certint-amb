@@ -374,7 +374,7 @@ Qed.
 Lemma trm_subst_term : forall t z u,
   term u -> term t -> term ([z ~> u]t).
 Proof.
-  induction 2; simpl*.
+  intros; revert u H. induction H0; intros; simpl*.
   case_var*.
   apply_fresh term_abs as y. rewrite* trm_subst_open_var.
   apply_fresh* term_let as y. rewrite* trm_subst_open_var.
