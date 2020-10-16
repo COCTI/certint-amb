@@ -474,8 +474,8 @@ Lemma kind_subst_fresh : forall S k,
   disjoint (dom S) (kind_fv k) ->
   kind_subst S k = k.
 Proof.
-  unfold kind_subst, kind_fv, kind_types.
-  intros; destruct k as [[kc kv kr kh]|]; simpl*.
+  unfold kind_subst, kind_fv, kind_types, kind_map, ckind_map.
+  intros. destruct k as [[[kc kv kr kh]|] rvs]; simpl*. f_equal*.
   apply* kind_pi; simpl in *.
   clear -H; induction* kr; intros.
   destruct a; simpl.
@@ -538,8 +538,9 @@ Lemma kind_subst_open_vars : forall S k Xs,
   kind_open (kind_subst S k) (typ_fvars Xs).
 Proof.
   intros.
-  destruct* k as [[kc kv kr kh]|].
-  simpl.
+  destruct* k as [[[kc kv kr kh]|] rvs]. 
+  unfold kind_subst, kind_open, kind_map, ckind_map.
+  simpl. f_equal*.
   apply* kind_pi; simpl.
   clear kh; induction* kr.
   simpl. fold (typ_open_vars (snd a) Xs).
@@ -729,7 +730,8 @@ Lemma kind_subst_open : forall S k Us,
   kind_open (kind_subst S k) (List.map (typ_subst S) Us).
 Proof.
   intros.
-  destruct* k as [[kc kv kr kh]|]; simpl.
+  destruct* k as  [[[kc kv kr kh]|] rvs].
+  unfold kind_subst, kind_open, kind_map, ckind_map. simpl; f_equal*.
   apply* kind_pi; simpl.
   clear kh; induction* kr.
   simpl. rewrite <- IHkr.
@@ -750,14 +752,20 @@ Qed.
 
 (** Properties of entailment. *)
 
-Lemma entails_refl : forall k, entails k k.
+Lemma entails_ckind_refl : forall k, entails_ckind k k.
 Proof.
   intros. split2*.
 Qed.
+Hint Resolve entails_ckind_refl : core.
+
+Lemma entails_refl : forall k, entails k k.
+Proof.
+  intros. destruct k as [[k'|] ?]; split2*; simpl*.
+Qed.
 Hint Resolve entails_refl : core.
 
-Lemma entails_trans : forall k1 k2 k3,
-  entails k1 k2 -> entails k2 k3 -> entails k1 k3.
+Lemma entails_ckind_trans : forall k1 k2 k3,
+  entails_ckind k1 k2 -> entails_ckind k2 k3 -> entails_ckind k1 k3.
 Proof.
   intros.
   destruct H; destruct H0.
@@ -766,9 +774,18 @@ Proof.
   intros; auto.
 Qed.
 
-Lemma kind_subst_entails : forall S k k',
-  entails k' k ->
-  entails (ckind_map (typ_subst S) k') (ckind_map (typ_subst S) k).
+Lemma entails_trans : forall k1 k2 k3,
+  entails k1 k2 -> entails k2 k3 -> entails k1 k3.
+Proof.
+  intros.
+  destruct k1 as [[k1'|] ?]; destruct k2 as [[k2'|] ?]; destruct k3 as [[k3'|] ?];
+  destruct H; destruct H0; simpl in *; split; simpl*.
+  apply (entails_ckind_trans H H0).
+Qed.
+
+Lemma ckind_subst_entails_ckind : forall S k k',
+  entails_ckind k' k ->
+  entails_ckind (ckind_map (typ_subst S) k') (ckind_map (typ_subst S) k).
 Proof.
   intros.
   destruct H.
@@ -780,17 +797,36 @@ Proof.
   rewrite <- e.
   apply* in_map_snd.
 Qed.
-Hint Resolve kind_subst_entails : core.
+Hint Resolve ckind_subst_entails_ckind : core.
+
+Lemma kind_subst_entails : forall S k k',
+  entails k' k ->
+  entails (kind_map (typ_subst S) k') (kind_map (typ_subst S) k).
+Proof.
+  intros.
+  destruct k as [[k|] ?]; destruct k' as [[k'|] ?]; inversion H; simpl in *;
+  unfold kind_map; split; simpl*.
+Qed.
 
 (** Properties of well-kindedness *)
 
+Hint Constructors wf_kind : core.
+
 Lemma well_kinded_extend : forall K K' x T,
-  disjoint (dom K) (dom K') ->
+  ok (K & K') ->
   well_kinded K x T -> well_kinded (K & K') x T.
 Proof.
   induction 2.
     apply wk_any.
   apply* wk_kind.
+  destruct* k' as [[k'|] rvs].
+  destruct* H2.
+  apply* wf_attrs; intros. 
+  specialize (H2 l a H3 H4).
+  destruct H2 as [k1 [rvs1 []]].
+  exists k1; exists rvs1; split.
+  * apply* binds_concat_ok.
+  * intros. apply* H5.
 Qed.
 Hint Resolve well_kinded_extend : core.
 
@@ -804,10 +840,10 @@ Proof.
   induction WK; introv Ok EQ; subst.
     apply wk_any.
   apply* (@wk_kind k').
-  destruct* (binds_concat_inv H).
-  destruct H1.
-  destruct* (binds_concat_inv H2).
-Qed.
+    destruct* (binds_concat_inv H).
+    destruct H2.
+    destruct* (binds_concat_inv H3).
+Admitted.
 
 Lemma well_kinded_weaken : forall K K' K'',
   ok (K & K' & K'') ->
