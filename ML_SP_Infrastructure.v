@@ -812,23 +812,39 @@ Qed.
 
 Hint Constructors wf_kind : core.
 
-Lemma well_kinded_extend : forall K K' x T,
-  ok (K & K') ->
-  well_kinded K x T -> well_kinded (K & K') x T.
+Lemma wf_kind_extend : forall K K' k,
+  ok (K & K') -> wf_kind K k -> wf_kind (K & K') k.
 Proof.
-  induction 2.
-    apply wk_any.
-  apply* wk_kind.
-  destruct* k' as [[k'|] rvs].
-  destruct* H2.
+  intros.
+  destruct* H0.
   apply* wf_attrs; intros. 
-  specialize (H2 l a H3 H4).
-  destruct H2 as [k1 [rvs1 []]].
-  exists k1; exists rvs1; split.
-  * apply* binds_concat_ok.
-  * intros. apply* H5.
+  destruct* (H0 l a) as [k1 [rvs1 []]].
 Qed.
+Hint Resolve wf_kind_extend : core.
+
+Lemma well_kinded_extend : forall K K' x T,
+  ok (K & K') -> well_kinded K x T -> well_kinded (K & K') x T.
+Proof. induction 2; auto*. Qed.
 Hint Resolve well_kinded_extend : core.
+
+Lemma binds_comm : forall (A : Set) x (a : A) E F G,
+  ok (E & F & G) ->
+  binds x a (E & F & G) -> binds x a (E & G & F).
+Proof.
+  introv Ok B.
+  destruct* (binds_concat_inv B) as [[Hn B']|].
+  destruct* (binds_concat_inv B') as [[Hn' B'']|].
+Qed.
+Hint Immediate binds_comm : core.
+
+Lemma wf_kind_comm : forall K K' K'' k,
+  ok (K & K' & K'') -> wf_kind (K & K' & K'') k -> wf_kind (K & K'' & K') k.
+Proof.
+  introv Hok Hwf; inversions* Hwf.
+  apply* wf_attrs; intros. 
+  destruct* (H l a) as [k1 [rvs1 []]].
+Qed.
+Hint Resolve wf_kind_comm : core.
 
 Lemma well_kinded_comm : forall K K' K'',
   ok (K & K' & K'') ->
@@ -840,10 +856,8 @@ Proof.
   induction WK; introv Ok EQ; subst.
     apply wk_any.
   apply* (@wk_kind k').
-    destruct* (binds_concat_inv H).
-    destruct H2.
-    destruct* (binds_concat_inv H3).
-Admitted.
+  apply* binds_comm.
+Qed.
 
 Lemma well_kinded_weaken : forall K K' K'',
   ok (K & K' & K'') ->
@@ -872,16 +886,22 @@ Proof.
   induction H0.
     constructor.
   generalize (H x _ H0); intro HW.
-  inversions HW.
-  simpl typ_subst.
-  case_eq (get x S); intros; rewrite H2 in H3.
-    subst.
-    simpl. apply* wk_kind.
-    refine (entails_trans H6 _); auto.
+  inversions HW; clear HW.
+    destruct* k' as [[ck'|] rvs']; try discriminate.
+    apply H.
+    simpl in *; subst.
+    inversions H1; simpl in *.
+    destruct* k as [[k|] []]; try contradiction.
+    elim (H4 r); now auto.
   simpl.
+  case_eq (get x S); introv Hget; rewrite Hget in H3; subst.
+    apply* wk_kind.
+    refine (entails_trans H5 _).
+    apply* kind_subst_entails.
   inversions H3.
   apply* wk_kind.
-  refine (entails_trans H6 _); auto.
+  refine (entails_trans H5 _).
+  apply* kind_subst_entails.
 Qed.
 Hint Resolve well_kinded_subst : core.
 
