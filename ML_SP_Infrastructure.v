@@ -1328,12 +1328,18 @@ Lemma red_regular : forall e e',
   red e e' -> term e /\ term e'.
 Proof.
   induction 1; auto*.
-  split.
-    destruct vl.
-    clear H; unfold const_app.
-    assert (term (trm_cst c)) by auto.
-    revert H; generalize (trm_cst c); induction H0; simpl*.
-  apply* Delta.term.
+  - split.
+      destruct vl.
+      clear H; unfold const_app.
+      assert (term (trm_cst c)) by auto.
+      revert H; generalize (trm_cst c); induction H0; simpl*.
+    apply* Delta.term.
+  - splits*.
+    inversions H.
+    econstructor; unfold trm_open; simpl*.
+  - splits*.
+    inversions H.
+    econstructor; unfold trm_open; simpl*.
 Qed.
 
 (* ********************************************************************** *)
