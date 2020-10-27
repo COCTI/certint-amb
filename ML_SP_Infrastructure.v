@@ -1231,6 +1231,31 @@ Proof.
   induction 1; subst Q'; solve [constructor; auto*].
 Qed.
 
+Lemma trm_rigid_rec_open n r t x :
+  trm_rigid_rec n r t ^ x = trm_rigid_rec n r (t ^ x).
+Proof.
+  unfold trm_open.
+  generalize 0.
+  revert n; induction t; simpl*; intros;
+    try now (rewrite IHt || rewrite IHt1, IHt2).
+  now case (n1 === n).
+Qed.
+
+Lemma term_rigid_of_open t r :
+  term (trm_open_rigid t r) -> term t.
+Proof.
+  remember (trm_open_rigid t r) as t'. 
+  intros Term; revert t Heqt'.
+  unfold trm_open_rigid; generalize 0.
+  induction Term; destruct t; simpl*; intros; try discriminate; inversions Heqt';
+    econstructor; intros; auto*.
+  - specialize (H _ H1).
+    apply (H0 _ H1 n).
+    apply trm_rigid_rec_open.
+  - apply (H0 _ H1 (S n)).
+    apply trm_rigid_rec_open.
+Qed.
+
 Lemma typing_regular : forall gc Q K E e T,
   typing gc Q K E e T -> kenv_ok Q K /\ env_ok E /\ term e /\ type T.
 Proof.
@@ -1278,6 +1303,12 @@ Proof.
     intros x k' Hx.
     apply* qcoherent_remove_qvar.
   auto*.
+  pick_fresh y. destruct* (H2 y).
+  pick_fresh y. destruct* (H2 y) as [_ [_ []]].
+  constructor.
+  apply* term_rigid_of_open.
+  pick_fresh y. destruct* (H2 y) as [_ [_ []]].
+  
 Admitted.
 
 (** The value predicate only holds on locally-closed terms. *)
