@@ -639,11 +639,6 @@ Inductive qcoherent (Q : qenv) : kind -> Prop :=
 
 Definition kenv := env kind.
 
-Definition kenv_ok (Q : qenv) K :=
-  ok K /\ env_prop (All_kind_types type) K /\ env_prop (qcoherent Q) K.
-
-(** Proper instantiation *)
-
 Inductive is_prefix : rvar -> rvar -> Prop :=
 | prefix_eq : forall r, is_prefix r r
 | prefix_attr : forall r s attr, is_prefix r s ->
@@ -659,6 +654,12 @@ Inductive wf_kind : kenv -> kind -> Prop :=
           (forall rv, In rv r ->
             (exists rv', In rv' rvs /\ is_prefix rv' (rvar_attr rv l))))) ->
     wf_kind K (Some ck, r).
+
+Definition kenv_ok (Q : qenv) K :=
+  ok K /\ env_prop (All_kind_types type) K /\ env_prop (qcoherent Q) K
+  /\ env_prop (wf_kind K) K.
+
+(** Proper instantiation *)
 
 Inductive well_kinded : kenv -> kind -> typ -> Prop :=
   | wk_any : forall K T,
@@ -818,8 +819,7 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
       proper_instance K Ks Us ->
       [ Q; K; E | gc |= (trm_ann T) ~: nth n Us typ_def ]
   | typing_rigid : forall Q L K X k E t T,
-      qcoherent Q k ->
-      All_kind_types type k ->
+      kenv_ok Q (K & X ~ k) ->
       (forall R, R \notin L ->
         [ qvar R :: Q; K & X ~ (None, rvar_f R :: nil); E | gc_raise gc |=
            trm_open_rigid t (rvar_f R) ~: T ]) ->

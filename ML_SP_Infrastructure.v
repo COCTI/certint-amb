@@ -1256,6 +1256,12 @@ Proof.
     apply trm_rigid_rec_open.
 Qed.
 
+Lemma wf_kind_weaken K K' k :
+  ok (K & K') -> wf_kind K k -> wf_kind (K & K') k.
+Proof. induction 2; simpl*. Qed.
+
+Hint Resolve wf_kind_weaken : core.
+  
 Lemma typing_regular : forall gc Q K E e T,
   typing gc Q K E e T -> kenv_ok Q K /\ env_ok E /\ term e /\ type T.
 Proof.
@@ -1288,6 +1294,25 @@ Proof.
   destruct H1. auto*.
   (* typing_gc *)
   destruct H2 as [[]]. splits*.
+  destruct H3 as [_ []].
+  intros x k Hx.
+  assert (Hwf : wf_kind (K & kinds_open_vars Ks Xs) k).
+    apply* H5.
+  inversions Hwf.
+    constructor.
+  constructor; intros.
+  destruct (H6 l a H7 H8) as [k [rvs [B Hrvs]]].
+  exists k; exists rvs; splits*.
+  binds_cases B; auto.
+  elim (binds_fresh B1).
+  rewrite* dom_kinds_open_vars.
+  assert (Ha' : a \in fv_in kind_fv K).
+    apply (fv_in_spec kind_fv K _ _ Hx).
+    unfold kind_fv, kind_types; simpl.
+    revert H8; clear.
+    induction (kind_rel ck); simpl*; intros.
+    destruct H8; subst; simpl*.
+  disjoint_solve.
   (* typing_ann *)
   destruct H2 as [[]]. clear H4.
   apply* (list_forall_out H3). apply* nth_In.
@@ -1297,17 +1322,11 @@ Proof.
   rewrite H1.
   now rewrite H2.
   (* typing_rigid *)
-  pick_fresh y. destruct* (H2 y) as [[H3 []]].
-  splits*.
-  assert (env_prop (qcoherent Q) K).
-    intros x k' Hx.
-    apply* qcoherent_remove_qvar.
-  auto*.
-  pick_fresh y. destruct* (H2 y).
-  pick_fresh y. destruct* (H2 y) as [_ [_ []]].
+  pick_fresh y. destruct* (H1 y).
+  pick_fresh y. destruct* (H1 y) as [_ [_ []]].
   constructor.
   apply* term_rigid_of_open.
-  pick_fresh y. destruct* (H2 y) as [_ [_ []]].
+  pick_fresh y. destruct* (H1 y) as [_ [_ []]].
   (* typing_rigid *)
   destruct IHtyping as [[]]; splits*.
 Qed.
