@@ -139,7 +139,7 @@ Fixpoint rvar_fv (r : rvar) : vars :=
 
 Fixpoint tree_fv (T : tree) : vars :=
   match T with
-  | tr_bvar i   => {}
+  (* | tr_bvar i   => {} *)
   | tr_arrow T1 T2
   | tr_eq T1 T2 => (tree_fv T1) \u (tree_fv T2)
   | tr_rvar r   => rvar_fv r
@@ -1156,9 +1156,9 @@ Qed.
 
 Hint Resolve sch_open_types : core.
 
-Definition kenv_ok_is_ok K (H:kenv_ok K) := proj1 H.
+Definition kenv_ok_is_ok Q K (H : kenv_ok Q K) : ok K := proj1 H.
 Definition env_ok_is_ok E (H:env_ok E) := proj1 H.
-Definition kenv_ok_env_prop K (H:kenv_ok K) := proj2 H.
+Definition kenv_ok_env_prop Q K (H : kenv_ok Q K) := proj2 H.
 Definition env_ok_env_prop E (H:env_ok E) := proj2 H.
 
 Hint Immediate kenv_ok_is_ok env_ok_is_ok kenv_ok_env_prop env_ok_env_prop : core.
@@ -1193,9 +1193,46 @@ Hint Constructors typing valu red : core.
 (** ** Regularity of relations *)
 
 (** A typing relation is restricted to well-formed objects. *)
+Lemma graph_of_tree_n m T :
+  let '(n, Ks) := graph_of_tree m T in
+  n < length Ks + m.
+Proof.
+  revert m. induction T; intros; simpl*.
+  case_eq (graph_of_tree (m + 1) T1); intros.
+  case_eq (graph_of_tree (m + length l + 1) T2); intros.
+  simpl*. lia.
+  case_eq (graph_of_tree (m + 1) T1); intros.
+  case_eq (graph_of_tree (m + length l + 1) T2); intros.
+  simpl*. lia.
+Qed.
+  
+Lemma graph_of_tree_type_n T :
+  let '(n, Ks) := graph_of_tree_type (T, nil) in
+  n < length Ks.
+Proof.
+  simpl*.
+  case_eq (graph_of_tree 0 T); intros.
+  generalize (graph_of_tree_n 0 T).
+  rewrite H. lia.
+Qed.
 
-Lemma typing_regular : forall gc K E e T,
-  typing gc K E e T -> kenv_ok K /\ env_ok E /\ term e /\ type T.
+Lemma qsat_remove_qvar x Q Ts :
+   qsat Q Ts -> qsat (qvar x :: Q) Ts.
+Proof.
+  unfold qsat. assert (qsat_item Ts (qvar x)) by constructor.
+  auto*.
+Qed.
+Hint Resolve qsat_remove_qvar : core.
+
+Lemma qcoherent_remove_qvar x Q k :
+  qcoherent (qvar x :: Q) k -> qcoherent Q k.
+Proof.
+  remember (qvar x :: Q) as Q'.
+  induction 1; subst Q'; solve [constructor; auto*].
+Qed.
+
+Lemma typing_regular : forall gc Q K E e T,
+  typing gc Q K E e T -> kenv_ok Q K /\ env_ok E /\ term e /\ type T.
 Proof.
   introv H.
   induction* H; try (pick_freshes (length Ks) Xs; forward~ (H1 Xs)); split4*.
@@ -1215,7 +1252,7 @@ Proof.
   forward~ (H2 y) as [_ [_ [G _]]].
   pick_fresh y. forward~ (H2 y) as [_ [_ [_ G]]].
   (* typing_app *)
-  destruct IHtyping1 as [[OkK TK] _].
+  destruct IHtyping1 as [[OkK [TK QK]] _].
   specialize (env_prop_binds H TK).
   unfold All_kind_types; simpl.
   intros HL.
@@ -1224,7 +1261,24 @@ Proof.
   (* typing_cst *)
   puts (Delta.scheme c).
   destruct H1. auto*.
-Qed.
+  (* typing_gc *)
+  destruct H2 as [[]]. splits*.
+  (* typing_ann *)
+  destruct H2 as [[]]. clear H4.
+  apply* (list_forall_out H3). apply* nth_In.
+  simpl annotation_tree in H1.
+  generalize (graph_of_tree_type_n (tr_arrow T (bsubst_tree T))).
+  fold tree_kind in H1.
+  rewrite H1.
+  now rewrite H2.
+  (* typing_rigid *)
+  pick_fresh y. destruct* (H2 y) as [[H3 []]].
+  splits*.
+  assert (env_prop (qcoherent Q) K).
+    intros x k' Hx.
+    apply* qcoherent_remove_qvar.
+  auto*.
+Admitted.
 
 (** The value predicate only holds on locally-closed terms. *)
 

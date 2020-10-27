@@ -128,7 +128,7 @@ Notation "'sch_arity' M" :=
 (* Tree types *)
 
 Inductive tree : Set :=
-  | tr_bvar : nat -> tree
+  (* | tr_bvar : nat -> tree *)
   | tr_arrow : tree -> tree -> tree
   | tr_eq : tree -> tree -> tree
   | tr_rvar : rvar -> tree.
@@ -169,7 +169,7 @@ Definition eq_kind (m n : nat) :=
 
 Fixpoint graph_of_tree ofs (tr : tree) : nat * list kind :=
   match tr with
-  | tr_bvar n => (n, nil)
+  (* | tr_bvar n => (n, nil) *)
   | tr_arrow t1 t2 =>
     let '(n1, g1) := graph_of_tree (ofs + 1) t1 in
     let '(n2, g2) := graph_of_tree (ofs + length g1 + 1) t2 in
@@ -229,7 +229,7 @@ Section right_tree.
 Variable V : nat -> nat.
 Fixpoint bsubst_tree (T : tree) :=
   match T with
-  | tr_bvar x => tr_bvar (V x)
+  (* | tr_bvar x => tr_bvar (V x) *)
   | tr_arrow T U => tr_arrow (bsubst_tree T) (bsubst_tree U)
   | tr_eq T U => tr_eq (bsubst_tree T) (bsubst_tree U)
   | tr_rvar r => T
@@ -249,7 +249,7 @@ End right_tree.
 Definition annotation_tree (S : tree_type) :=
   let '(T,K) := S in
   let V := build_right_map 0 (length K) K in
-  (tr_arrow T (bsubst_tree V T), K ++ right_tree_kinds V K).
+  (tr_arrow T (bsubst_tree T), K ++ right_tree_kinds K).
 
 (* Need also to define substitution of rigid variables *)
 Fixpoint rvar_open (k : nat) (u : rvar) (t : rvar) :=
@@ -261,7 +261,7 @@ Fixpoint rvar_open (k : nat) (u : rvar) (t : rvar) :=
 
 Fixpoint tree_open_rigid (k : nat) (u : rvar) (T : tree) :=
   match T with
-  | tr_bvar _ => T
+  (* | tr_bvar _ => T *)
   | tr_arrow T1 T2 => tr_arrow (tree_open_rigid k u T1) (tree_open_rigid k u T2)
   | tr_eq T1 T2 => tr_eq (tree_open_rigid k u T1) (tree_open_rigid k u T2)
   | tr_rvar v => tr_rvar (rvar_open k u v)
@@ -279,7 +279,7 @@ Fixpoint rvar_shift (k : nat) (t : rvar) :=
 
 Fixpoint tree_shift_rigid (k : nat) (T : tree) :=
   match T with
-  | tr_bvar _ => T
+  (* | tr_bvar _ => T *)
   | tr_arrow T1 T2 => tr_arrow (tree_shift_rigid k T1) (tree_shift_rigid k T2)
   | tr_eq T1 T2 => tr_eq (tree_shift_rigid k T1) (tree_shift_rigid k T2)
   | tr_rvar v => tr_rvar (rvar_shift k v)
@@ -337,14 +337,14 @@ Eval compute in
   graph_of_tree_type (
   annotation_tree (tr_arrow (tr_rvar (rvar_b 0)) (tr_rvar (rvar_b 1)), nil)).
 
-Eval compute in
+(* Eval compute in
   annotation_tree (tr_arrow (tr_rvar (rvar_b 0)) (tr_bvar 0),
-                   (None, rvar_b 1 :: nil) :: nil).
+                   (None, rvar_b 1 :: nil) :: nil). 
 
 Eval compute in
   graph_of_tree_type (
   annotation_tree (tr_arrow (tr_rvar (rvar_b 0)) (tr_bvar 0),
-                   (None, rvar_b 1 :: nil) :: nil)).
+                   (None, rvar_b 1 :: nil) :: nil)). *)
 
 (*
 \/ 'a::int, 'b. eq('a, 'b)
@@ -609,7 +609,8 @@ Inductive qitem :=
 Definition qenv := list qitem.
 
 Inductive qsat_item (S : env tree) : qitem -> Prop :=
-  qsat_qeq : forall T1 T2, tree_subst_eq S T1 T2 -> qsat_item S (qeq T1 T2).
+| qsat_qvar : forall x, qsat_item S (qvar x)
+| qsat_qeq : forall T1 T2, tree_subst_eq S T1 T2 -> qsat_item S (qeq T1 T2).
 
 Definition qsat Q S := list_forall (qsat_item S) Q.
 
@@ -806,10 +807,14 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
         [ Q; K & kinds_open_vars Ks Xs; E | gc |= t ~: T ]) ->
       [ Q; K; E | gc |= t ~: T ]
   | typing_ann : forall Q (T : tree) n Ks K E Us,
+      kenv_ok Q K ->
+      env_ok E ->
       graph_of_tree_type (annotation_tree (T,nil)) = (n, Ks) ->
       proper_instance K Ks Us ->
       [ Q; K; E | gc |= (trm_ann T) ~: nth n Us typ_def ]
   | typing_rigid : forall Q L K X k E t T,
+      qcoherent Q k ->
+      All_kind_types type k ->
       (forall R, R \notin L ->
         [ qvar R :: Q; K & X ~ (None, rvar_f R :: nil); E | gc_raise gc |=
            trm_open_rigid t (rvar_f R) ~: T ]) ->
@@ -820,6 +825,8 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
       [ qeq T1 T2 :: Q; K; E | gc_raise gc |= w ~: nth n Us typ_def ] -> 
       [ Q; K; E | gc |= t ~: T ]
   | typing_eq : forall Q K E x k rs T,
+      kenv_ok Q K ->
+      env_ok E ->
       binds x (Some k, rs) K ->
       In (Cstr.eq_fst, T) (kind_rel k) ->
       In (Cstr.eq_snd, T) (kind_rel k) ->
