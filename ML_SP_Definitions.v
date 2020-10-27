@@ -562,9 +562,14 @@ Inductive term : trm -> Prop :=
   | term_rigid : forall t1,
       term t1 ->
       term (trm_rigid t1)
+  | term_use : forall t1 T1 T2 t2,
+      term t1 ->
+      term t2 ->
+      term (trm_use t1 T1 T2 t2)
   | term_ann : forall T,
       (* tree T -> *)
-      term (trm_ann T).
+      term (trm_ann T)
+  | term_eq : term trm_eq.
 
 
 (** Definition of the body of an abstraction *)
@@ -819,11 +824,12 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
         [ qvar R :: Q; K & X ~ (None, rvar_f R :: nil); E | gc_raise gc |=
            trm_open_rigid t (rvar_f R) ~: T ]) ->
       [ Q; K & X ~ k; E | gc |= trm_rigid t ~: T ]
-  | typing_use : forall n Ks Us Q K E w T1 T2 t T,
+  | typing_use : forall n Ks Us Q K E t T1 T2,
       graph_of_tree_type (tr_eq T1 T2, nil) = (n, Ks) ->
       proper_instance K Ks Us ->
-      [ qeq T1 T2 :: Q; K; E | gc_raise gc |= w ~: nth n Us typ_def ] -> 
-      [ Q; K; E | gc |= t ~: T ]
+      env_prop (qcoherent Q) K ->
+      [ qeq T1 T2 :: Q; K; E | gc_raise gc |= t ~: nth n Us typ_def ] -> 
+      [ Q; K; E | gc |= t ~: nth n Us typ_def ]
   | typing_eq : forall Q K E x k rs T,
       kenv_ok Q K ->
       env_ok E ->

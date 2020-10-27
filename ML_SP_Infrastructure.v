@@ -1308,8 +1308,9 @@ Proof.
   constructor.
   apply* term_rigid_of_open.
   pick_fresh y. destruct* (H2 y) as [_ [_ []]].
-  
-Admitted.
+  (* typing_rigid *)
+  destruct IHtyping as [[]]; splits*.
+Qed.
 
 (** The value predicate only holds on locally-closed terms. *)
 
