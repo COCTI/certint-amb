@@ -910,12 +910,10 @@ Hint Resolve well_kinded_subst : core.
 Lemma trm_inst_nil : forall t, trm_inst t nil = t.
 Proof.
   unfold trm_inst; intros.
-  generalize 0; induction t; intros; simpl*.
-     destruct* (Compare_dec.le_lt_dec n0 n).
-     destruct* (n-n0).
-    rewrite* IHt.
-   rewrite IHt1; rewrite* IHt2.
-  rewrite IHt1; rewrite* IHt2.
+  generalize 0; induction t; intros; simpl*;
+    try solve [rewrite* IHt | rewrite IHt1; rewrite* IHt2].
+  destruct* (Compare_dec.le_lt_dec n0 n).
+  destruct* (n-n0).
 Qed.
 
 Lemma const_app_app : forall c l l',
@@ -984,9 +982,9 @@ Qed.
 
 (* Extra properties *)
 
-Lemma All_kind_types_None : forall P, All_kind_types P None.
+Lemma All_kind_types_None : forall P rvs, All_kind_types P (None, rvs).
 Proof.
-  unfold All_kind_types. simpl*.
+  unfold All_kind_types, kind_types. simpl*.
 Qed.
 
 Hint Resolve All_kind_types_None : core.
@@ -996,7 +994,7 @@ Lemma All_kind_types_imp (P P' : typ -> Prop) k:
   All_kind_types P k -> All_kind_types P' k.
 Proof.
   intros.
-  destruct* k as [[kc kv kr kh]|].
+  destruct* k as [[[kc kv kr kh]|] rvs].
   unfold All_kind_types, kind_types in *.
   simpl in *.
   clear -H H0; induction kr; simpl in *. auto.
@@ -1008,10 +1006,12 @@ Lemma All_kind_types_map : forall P f a,
   All_kind_types P (kind_map f a).
 Proof.
   intros.
-  destruct a as [[kc kv kr kh]|]; simpl*.
-  unfold All_kind_types in *; simpl in *.
-  clear kv kh; induction kr. simpl*.
-  simpl in *. inversions* H.
+  destruct a as [[[kc kv kr kh]|] rvs].
+    unfold All_kind_types, kind_map, ckind_map, kind_types in H |- *; simpl in *.
+    rewrite list_snd_map_snd.
+    apply* list_forall_map.
+    simpl*.
+  apply All_kind_types_None.
 Qed.
 
 Lemma All_kind_types_inv: forall P f a,
@@ -1019,8 +1019,8 @@ Lemma All_kind_types_inv: forall P f a,
   All_kind_types (fun x => P (f x)) a.
 Proof.
   intros.
-  destruct a as [[kc kv kr kh]|]; simpl*.
-  unfold All_kind_types in *; simpl in *.
+  destruct a as [[[kc kv kr kh]|] rvs]; simpl*.
+    unfold All_kind_types, kind_map, ckind_map, kind_types in H |- *; simpl in *.
   clear kv kh; induction kr. simpl*.
   simpl in *. inversions* H.
 Qed.
@@ -1113,8 +1113,8 @@ Qed.
 Lemma sch_subst_type : forall S M,
   env_prop type S -> scheme M -> scheme (sch_subst S M).
 Proof.
-  unfold scheme. intros S [T Ks] TU K.
-  simpls.
+  unfold scheme. intros S [T Ks] TU [K _].
+  simpls. split; try apply* map_prop.
   introv Len.
   rewrite map_length in Len.
   destruct (var_freshes (dom S) (length Ks)) as [Ys Fr].
