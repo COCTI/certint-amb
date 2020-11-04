@@ -48,18 +48,16 @@ Lemma typing_weaken : forall gc G E F Q K t T,
    [Q; K ; (E & F & G) |gc|= t ~: T].
 Proof.
   introv Typ. gen_eq (E & G) as H. gen G.
-  induction Typ; introv EQ Ok; subst.
+  induction Typ; introv EQ Ok; subst; auto*.
   apply* typing_var. apply* binds_weaken.
   inversions H.
   apply_fresh* (@typing_abs gc Q) as y.
   apply_ih_bind* H5.
   forward~ (H4 y) as R.
   destruct* (typing_regular R) as [_ [R' _]].
-  apply_fresh* (@typing_let gc M L1) as y. apply_ih_bind* H2.
-    forward~ (H1 y) as Q.
-  auto*.
-  auto.
-  apply_fresh* (@typing_gc gc Ks) as y.
+  apply_fresh* (@typing_let gc Q M L1) as y. apply_ih_bind* H2.
+    forward~ (H1 y) as R.
+    destruct* (typing_regular R) as [_ [R' _]].
 Qed.
 
 Lemma proper_instance_weaken : forall K K' K'' Ks Us,
