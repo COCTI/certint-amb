@@ -21,9 +21,11 @@ Module JudgInfra := MkJudgInfra(Delta).
 Import JudgInfra.
 Import Judge.
 
+(*
 Lemma kenv_ok_concat : forall K1 K2,
   kenv_ok K1 -> kenv_ok K2 -> disjoint (dom K1) (dom K2) -> kenv_ok (K1 & K2).
 Proof. auto. Qed.
+*)
 
 Lemma ok_kinds_open_vars : forall K Ks Xs,
   ok K -> fresh (dom K) (length Ks) Xs ->
@@ -40,18 +42,19 @@ Hint Resolve ok_kinds_open_vars : core.
 (* ********************************************************************** *)
 (** Typing is preserved by weakening *)
 
-Lemma typing_weaken : forall gc G E F K t T,
-   K ; (E & G) |gc|= t ~: T ->
+Lemma typing_weaken : forall gc G E F Q K t T,
+   [Q ; K ; (E & G) |gc|= t ~: T] ->
    env_ok (E & F & G) ->
-   K ; (E & F & G) |gc|= t ~: T.
+   [Q; K ; (E & F & G) |gc|= t ~: T].
 Proof.
   introv Typ. gen_eq (E & G) as H. gen G.
   induction Typ; introv EQ Ok; subst.
   apply* typing_var. apply* binds_weaken.
   inversions H.
-  apply_fresh* (@typing_abs gc) as y.
+  apply_fresh* (@typing_abs gc Q) as y.
   apply_ih_bind* H5.
-  forward~ (H4 y) as Q.
+  forward~ (H4 y) as R.
+  destruct* (typing_regular R) as [_ [R' _]].
   apply_fresh* (@typing_let gc M L1) as y. apply_ih_bind* H2.
     forward~ (H1 y) as Q.
   auto*.
