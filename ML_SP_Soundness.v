@@ -69,22 +69,38 @@ Proof.
   destruct* H0 as [TM FM]; split2*.
 Qed.
 
+Lemma typing_exchange : forall gc Q K K1 K2 K' E t T,
+  [ Q ; K & K1 & K2 & K'; E | gc |= t ~: T ] ->
+  [ Q ; K & K2 & K1 & K'; E | gc |= t ~: T ].
+Admitted.
+
 Lemma typing_weaken_kinds : forall gc Q K K' K'' E t T,
   [ Q ; K & K''; E | gc |= t ~: T ] ->
   kenv_ok Q (K & K' & K'') ->
   [ Q; K & K' & K''; E | gc |= t ~: T ].
 Proof.
-  introv Typ. gen_eq (K & K'') as H. gen K''.
+  introv Typ. gen_eq (K & K'') as H. gen K K''.
   induction Typ; introv EQ Ok; subst.
   apply* typing_var. apply* proper_instance_weaken.
   inversions H.
   eapply (@typing_abs gc); try apply* binds_weaken; eauto.
-  apply_fresh* (@typing_let gc Q M (L1 \u dom(K&K'&K''))) as y.
+  apply_fresh* (@typing_let gc Q M (L1 \u dom(K0&K'&K''))) as y.
     intros. clear H1 H2.
     rewrite concat_assoc.
     apply* H0; clear H0. rewrite* concat_assoc.
     forward~ (H Xs) as Typ.
-    admit.
+    destruct* (typing_regular Typ) as [[Rok [RK1 [RK2 RK3]]] _].
+    destruct* Ok as [Ok [ROk1 [ROk2 ROk3]]].
+    rewrite <- concat_assoc.
+    splits*.
+    apply env_prop_concat.
+      intros x k B.
+      apply* wf_kind_extend.
+    rewrite concat_assoc.
+    intros x k B.
+    apply* wf_kind_weaken.
+    rewrite <- concat_assoc.
+    apply* env_prop_binds.
   eapply (typing_app gc); try apply* binds_weaken; eauto.
   apply* typing_cst. apply* proper_instance_weaken.
   apply_fresh* (@typing_gc gc Q Ks) as y.
@@ -95,9 +111,21 @@ Proof.
   forward~ (H0 Xs) as Typ; clear H0.
   admit.
   apply* typing_ann. apply* proper_instance_weaken.
+  rewrite <- (concat_empty K''), <- concat_assoc.
+  apply typing_exchange.
+  rewrite <- EQ.
+  rewrite concat_empty, concat_assoc.
+  eapply typing_rigid.
+    rewrite <- concat_assoc, EQ.
+    admit.
   admit.
+  apply* typing_use.
+      admit.
+    admit.
+  apply* IHTyp.
   admit.
-  apply* typing_eq. Search binds. apply* binds_comm.
+  apply* typing_eq.
+  apply* binds_weaken.
 Admitted.
 
 Lemma typing_weaken_kinds' : forall gc K K' E t T,

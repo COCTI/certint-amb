@@ -818,12 +818,12 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
       graph_of_tree_type (annotation_tree (T,nil)) = (n, Ks) ->
       proper_instance K Ks Us ->
       [ Q; K; E | gc |= (trm_ann T) ~: nth n Us typ_def ]
-  | typing_rigid : forall Q L K X k E t T,
-      kenv_ok Q (K & X ~ k) ->
+  | typing_rigid : forall Q L K X K' k E t T,
+      kenv_ok Q (K & X ~ k & K') ->
       (forall R, R \notin L ->
-        [ qvar R :: Q; K & X ~ (None, rvar_f R :: nil); E | gc_raise gc |=
+        [ qvar R :: Q; K & X ~ (None, rvar_f R :: nil) & K'; E | gc_raise gc |=
            trm_open_rigid t (rvar_f R) ~: T ]) ->
-      [ Q; K & X ~ k; E | gc |= trm_rigid t ~: T ]
+      [ Q; K & X ~ k & K'; E | gc |= trm_rigid t ~: T ]
   | typing_use : forall n Ks Us Q K E t T1 T2,
       graph_of_tree_type (tr_eq T1 T2, nil) = (n, Ks) ->
       proper_instance K Ks Us ->

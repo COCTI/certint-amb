@@ -1256,9 +1256,19 @@ Proof.
     apply trm_rigid_rec_open.
 Qed.
 
-Lemma wf_kind_weaken K K' k :
-  ok (K & K') -> wf_kind K k -> wf_kind (K & K') k.
-Proof. induction 2; simpl*. Qed.
+Lemma wf_kind_weaken K K' K'' k :
+  ok (K & K' & K'') -> wf_kind (K & K'') k -> wf_kind (K & K' & K'') k.
+Proof.
+  remember (K & K'') as K0.
+  intros Ok WF.
+  revert HeqK0.
+  induction WF; simpl*; intros.
+  subst; constructor; intros.
+  destruct (H _ _ H0 H1) as [k [rvs [B]]].
+  exists k; exists rvs.
+  splits*.
+  binds_cases B; auto*.
+Qed.
 
 Hint Resolve wf_kind_weaken : core.
   
