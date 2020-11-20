@@ -60,10 +60,10 @@ Proof.
     destruct* (typing_regular R) as [_ [R' _]].
 Qed.
 
-Lemma proper_instance_weaken : forall K K' K'' Ks Us,
-  ok (K & K' & K'') ->
-  proper_instance (K & K'') Ks Us ->
-  proper_instance (K & K' & K'') Ks Us.
+Lemma proper_instance_weaken : forall K K' Ks Us,
+  ok (K & K') ->
+  proper_instance K Ks Us ->
+  proper_instance (K & K') Ks Us.
 Proof.
   intros.
   destruct* H0 as [TM FM]; split2*.
@@ -109,60 +109,51 @@ Proof.
   apply* typing_var.
 Admitted.
 
-Lemma typing_weaken_kinds : forall gc Q K K' K'' E t T,
-  [ Q ; K & K''; E | gc |= t ~: T ] ->
-  kenv_ok Q (K & K' & K'') ->
-  [ Q; K & K' & K''; E | gc |= t ~: T ].
+Lemma typing_weaken_kinds : forall gc Q K K' E t T,
+  [ Q ; K; E | gc |= t ~: T ] ->
+  kenv_ok Q (K & K') ->
+  [ Q; K & K'; E | gc |= t ~: T ].
 Proof.
-  introv Typ. gen_eq (K & K'') as H. gen K K''.
-  induction Typ; introv EQ Ok; subst.
+  introv Typ.
+  induction* Typ; intros.
   apply* typing_var. apply* proper_instance_weaken.
-  inversions H.
-  eapply (@typing_abs gc); try apply* binds_weaken; eauto.
-  apply_fresh* (@typing_let gc Q M (L1 \u dom(K0&K'&K''))) as y.
+  apply_fresh* (@typing_let gc Q M (L1 \u dom(K&K'))) as y.
     intros. clear H1 H2.
-    rewrite concat_assoc.
+    rewrite <- (concat_empty (K & _ & _)).
+    apply typing_exchange.
     apply* H0; clear H0. rewrite* concat_assoc.
     forward~ (H Xs) as Typ.
     destruct* (typing_regular Typ) as [[Rok [RK1 [RK2 RK3]]] _].
-    destruct* Ok as [Ok [ROk1 [ROk2 ROk3]]].
+    destruct* H3 as [Ok [ROk1 [ROk2 ROk3]]].
     rewrite <- concat_assoc.
     splits*.
     apply env_prop_concat.
       intros x k B.
       apply* wf_kind_extend.
-    rewrite concat_assoc.
     intros x k B.
     apply* wf_kind_weaken.
-    rewrite <- concat_assoc.
-    apply* env_prop_binds.
-  eapply (typing_app gc); try apply* binds_weaken; eauto.
   apply* typing_cst. apply* proper_instance_weaken.
   apply_fresh* (@typing_gc gc Q Ks) as y.
   intros.
-  rewrite concat_assoc.
+  rewrite <- (concat_empty (K & _ & _)).
+  apply typing_exchange.
   apply* (H1 Xs); clear H1.
-    rewrite* concat_assoc.
   forward~ (H0 Xs) as Typ; clear H0.
   admit.
   apply* typing_ann. apply* proper_instance_weaken.
-  rewrite <- (concat_empty K''), <- concat_assoc.
-  apply typing_exchange.
-  rewrite <- EQ.
-  rewrite concat_empty, concat_assoc.
-  eapply typing_rigid.
-    rewrite <- concat_assoc, EQ.
-    apply* kenv_ok_comm.
+  rewrite concat_assoc.
+  apply* typing_rigid.
+    rewrite* <- concat_assoc.
   intros R HR.
   specialize (H1 R HR).
+  rewrite <- concat_assoc.
+  apply H1.
   admit.
   apply* typing_use.
-      admit.
+      apply* proper_instance_weaken.
     admit.
   apply* IHTyp.
   admit.
-  apply* typing_eq.
-  apply* binds_weaken.
 Admitted.
 
 Lemma typing_weaken_kinds' : forall gc K K' E t T,
