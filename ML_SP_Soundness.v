@@ -178,34 +178,32 @@ Lemma typing_exchange : forall gc Q K K1 K2 K' E t T,
   [ Q ; K & K1 & K2 & K'; E | gc |= t ~: T ] ->
   [ Q ; K & K2 & K1 & K'; E | gc |= t ~: T ].
 Proof.
-  introv Typ. gen_eq (K & K1 & K2 & K') as H. gen K K1 K2 K'.
-  induction Typ; introv EQ; subst; auto*.
-  apply proper_instance_exchange in H2.
-  apply* typing_var.
-  eauto.
-  assert (Typ := typing_abs _ _ H H0 H1 H2 H3 H4).
+introv Typ. gen_eq (K & K1 & K2 & K') as H. gen K K1 K2 K'.
+induction Typ; introv EQ; subst.
+- apply proper_instance_exchange in H2; eauto.
+- assert (Typ := typing_abs _ _ H H0 H1 H2 H3 H4).
   inversions H.
   apply_fresh* (@typing_abs gc Q) as y.
   apply binds_comm. apply H0.
   destruct* (typing_regular Typ).
-  apply_fresh* (@typing_let gc Q M) as y.
+- apply_fresh* (@typing_let gc Q M) as y.
   introv Fr.
   rewrite concat_assoc.
   apply* (H0 Xs).
   rewrite* concat_assoc.
-  assert (Typ := typing_app gc T H H0 H1 H2 Typ1 Typ2).
+- assert (Typ := typing_app gc T H H0 H1 H2 Typ1 Typ2).
   apply* typing_app.
   apply* (@binds_comm _ V (Some k, rvs)).
   destruct* (typing_regular Typ).
-  apply* typing_cst. apply* proper_instance_exchange.
-  apply* typing_gc.
+- apply* typing_cst. apply* proper_instance_exchange.
+- apply* typing_gc.
   introv Fr.
   rewrite concat_assoc.
   apply* (H1 Xs).
   rewrite* concat_assoc.
-  apply* typing_ann.
+- apply* typing_ann.
   apply* proper_instance_exchange.
-  destruct (split_env_middle EQ) as [K3 []]; subst.
+- destruct (split_env_middle EQ) as [K3 []]; subst.
     rewrite <- concat_assoc in EQ.
     apply concat_r_inj in EQ.
     destruct (split_env_middle EQ) as [K4 []]; subst.
@@ -249,9 +247,9 @@ Proof.
     now repeat rewrite <- concat_assoc.
   apply* H1.
   now repeat rewrite <- concat_assoc.
-  apply* typing_use. apply* proper_instance_exchange.
+- apply* typing_use. apply* proper_instance_exchange.
   destruct* (typing_regular Typ).
-  apply* typing_eq.
+- apply* typing_eq.
   apply binds_comm in H1; auto*.
 Qed.
 
