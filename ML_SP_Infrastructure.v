@@ -1231,6 +1231,11 @@ Proof.
   induction 1; subst Q'; solve [constructor; auto*].
 Qed.
 
+Lemma qcoherent_add_qvar x Q k :
+  qcoherent Q k -> qcoherent (qvar x :: Q) k.
+Proof. induction 1; constructor; auto; introv QS; inversions* QS. Qed.
+Hint Resolve qcoherent_add_qvar.
+
 Lemma trm_rigid_rec_open n r t x :
   trm_rigid_rec n r t ^ x = trm_rigid_rec n r (t ^ x).
 Proof.
