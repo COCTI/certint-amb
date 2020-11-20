@@ -136,24 +136,43 @@ Hint Immediate kenv_ok_comm proper_instance_exchange : core.
 
 Lemma split_middle {A} (a : A) K K' K1 K2 :
   K ++ (a::nil) ++ K' = K1 ++ K2 ->
-  exists K3, exists K4, K3 ++ (a::nil) ++ K4 = K1 \/ K3 ++ (a::nil) ++ K4 = K2.
+  exists K3, K' = K3 ++ K2 \/ K = K1 ++ K3.
 Proof.
 revert K; induction K1 as [|b K1 IH]; intros; simpl in *.
-  exists K; exists K'; rewrite* H.
+  exists* K.
 destruct K as [|c K]; simpl in *; inversions H.
-  exists (@nil A); exists K1; auto.
-destruct* (IH K) as [K3 [K4 []]].
-exists (b :: K3); exists K4.
-rewrite* <- H0.
+  exists* K1.
+destruct* (IH K) as [K3 [EQ|EQ]]; subst.
+exists* K3.
 Qed.
 
 Lemma split_env_middle {A : Set} {x} {a : A} {K K' K1 K2} :
   K & x ~ a & K' = K1 & K2 ->
-  exists K3, exists K4, K3 & x ~ a & K4 = K1 \/ K3 & x ~ a & K4 = K2.
+  exists K3, K' = K3 & K2 \/ K = K1 & K3.
 Proof.
 introv H; apply split_middle in H.
-destruct H as [K3 [K4 H]]; exists K4; exists* K3.
+destruct H as [K3 []]; exists* K3.
 Qed.
+
+Lemma app_l_inj {A} (K K1 K2 : list A) : K ++ K1 = K ++ K2 -> K1 = K2.
+Proof. induction K; simpl; auto; intros; apply IHK; now injection H. Qed.
+
+Lemma app_r_inj {A} (K K1 K2 : list A) : K1 ++ K = K2 ++ K -> K1 = K2.
+Proof.
+Search rev.
+rewrite <- (rev_involutive (K1 ++ K)).
+intros H.
+apply rev_eq_app in H.
+rewrite rev_app_distr in H.
+rewrite <- (rev_involutive K1), <- (rev_involutive K2); f_equal.
+now apply app_l_inj in H.
+Qed.
+
+Lemma concat_l_inj {A} (K K1 K2 : Env.env A) : K & K1 = K & K2 -> K1 = K2.
+Proof. apply app_r_inj. Qed.
+
+Lemma concat_r_inj {A} (K K1 K2 : Env.env A) : K1 & K = K2 & K -> K1 = K2.
+Proof. apply app_l_inj. Qed.
 
 Lemma typing_exchange : forall gc Q K K1 K2 K' E t T,
   [ Q ; K & K1 & K2 & K'; E | gc |= t ~: T ] ->
@@ -186,18 +205,55 @@ Proof.
   rewrite* concat_assoc.
   apply* typing_ann.
   apply* proper_instance_exchange.
-  destruct (split_env_middle EQ) as [K3 [K4 [EQ2|EQ2]]].
-    destruct (split_env_middle EQ2) as [K5 [K6 [EQ3|EQ3]]].
-      destruct (split_env_middle EQ3) as [K7 [K8 [EQ4|EQ4]]].
-        subst K0.
+  destruct (split_env_middle EQ) as [K3 []]; subst.
+    rewrite <- concat_assoc in EQ.
+    apply concat_r_inj in EQ.
+    destruct (split_env_middle EQ) as [K4 []]; subst.
+      rewrite <- concat_assoc in EQ.
+      apply concat_r_inj in EQ.
+      destruct (split_env_middle EQ) as [K5 []]; subst.
+        rewrite <- concat_assoc in EQ.
+        apply concat_r_inj in EQ; subst.
         rewrite concat_assoc, concat_assoc, concat_assoc.
-        eapply typing_rigid.
-          rewrite EQ in H.
-          repeat rewrite <- concat_assoc.
+        eapply typing_rigid; [| introv HR]; do 3 rewrite <- concat_assoc.
           apply* kenv_ok_comm.
-          introv HR.
-          repeat rewrite <- concat_assoc.
-Admitted.
+          now repeat rewrite <- concat_assoc in H.
+        apply* H1.
+        now repeat rewrite concat_assoc.
+      repeat rewrite concat_assoc in EQ.
+      apply concat_l_inj in EQ; subst.
+      do 2 rewrite <- concat_assoc; rewrite concat_assoc.
+      eapply typing_rigid; [| introv HR];
+        rewrite <- concat_assoc, (concat_assoc _ _ K4), (concat_assoc _ K5).
+        apply* kenv_ok_comm.
+        now repeat rewrite <- concat_assoc in H |- *.
+      apply* H1.
+      now repeat rewrite concat_assoc.
+    do 2 rewrite concat_assoc in EQ.
+    apply concat_l_inj in EQ; subst.
+    repeat rewrite <- concat_assoc.
+    do 2 rewrite concat_assoc.
+    eapply typing_rigid; [| introv HR];
+      repeat rewrite <- concat_assoc;
+      rewrite (concat_assoc _ _ K3), (concat_assoc K0).
+      apply* kenv_ok_comm.
+      rewrite <- concat_assoc in H.
+      now repeat rewrite <- concat_assoc.
+    apply* H1.
+    now repeat rewrite concat_assoc.
+  do 2 rewrite concat_assoc in EQ.
+  apply concat_l_inj in EQ; subst.
+  repeat rewrite <- concat_assoc.
+  eapply typing_rigid; [| introv HR]; do 2 rewrite concat_assoc.
+    apply* kenv_ok_comm.
+    now repeat rewrite <- concat_assoc.
+  apply* H1.
+  now repeat rewrite <- concat_assoc.
+  apply* typing_use. apply* proper_instance_exchange.
+  destruct* (typing_regular Typ).
+  apply* typing_eq.
+  apply binds_comm in H1; auto*.
+Qed.
 
 Lemma typing_weaken_kinds : forall gc Q K K' E t T,
   [ Q ; K; E | gc |= t ~: T ] ->
