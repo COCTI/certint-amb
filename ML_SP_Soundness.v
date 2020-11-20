@@ -134,6 +134,27 @@ Qed.
 
 Hint Immediate kenv_ok_comm proper_instance_exchange : core.
 
+Lemma split_middle {A} (a : A) K K' K1 K2 :
+  K ++ (a::nil) ++ K' = K1 ++ K2 ->
+  exists K3, exists K4, K3 ++ (a::nil) ++ K4 = K1 \/ K3 ++ (a::nil) ++ K4 = K2.
+Proof.
+revert K; induction K1 as [|b K1 IH]; intros; simpl in *.
+  exists K; exists K'; rewrite* H.
+destruct K as [|c K]; simpl in *; inversions H.
+  exists (@nil A); exists K1; auto.
+destruct* (IH K) as [K3 [K4 []]].
+exists (b :: K3); exists K4.
+rewrite* <- H0.
+Qed.
+
+Lemma split_env_middle {A : Set} {x} {a : A} {K K' K1 K2} :
+  K & x ~ a & K' = K1 & K2 ->
+  exists K3, exists K4, K3 & x ~ a & K4 = K1 \/ K3 & x ~ a & K4 = K2.
+Proof.
+introv H; apply split_middle in H.
+destruct H as [K3 [K4 H]]; exists K4; exists* K3.
+Qed.
+
 Lemma typing_exchange : forall gc Q K K1 K2 K' E t T,
   [ Q ; K & K1 & K2 & K'; E | gc |= t ~: T ] ->
   [ Q ; K & K2 & K1 & K'; E | gc |= t ~: T ].
@@ -165,7 +186,17 @@ Proof.
   rewrite* concat_assoc.
   apply* typing_ann.
   apply* proper_instance_exchange.
-  
+  destruct (split_env_middle EQ) as [K3 [K4 [EQ2|EQ2]]].
+    destruct (split_env_middle EQ2) as [K5 [K6 [EQ3|EQ3]]].
+      destruct (split_env_middle EQ3) as [K7 [K8 [EQ4|EQ4]]].
+        subst K0.
+        rewrite concat_assoc, concat_assoc, concat_assoc.
+        eapply typing_rigid.
+          rewrite EQ in H.
+          repeat rewrite <- concat_assoc.
+          apply* kenv_ok_comm.
+          introv HR.
+          repeat rewrite <- concat_assoc.
 Admitted.
 
 Lemma typing_weaken_kinds : forall gc Q K K' E t T,
