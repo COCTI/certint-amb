@@ -69,9 +69,44 @@ Proof.
   destruct* H0 as [TM FM]; split2*.
 Qed.
 
+Lemma proper_instance_exchange K K1 K2 K' Ks Us :
+  ok (K & K1 & K2 & K') ->
+  proper_instance (K & K1 & K2 & K') Ks Us ->
+  proper_instance (K & K2 & K1 & K') Ks Us.
+Proof.
+destruct 2.
+constructor; auto.
+apply (list_forall2_imp _ H1).
+introv WK.
+rewrite concat_assoc.
+apply well_kinded_comm; [auto|].
+rewrite <- concat_assoc.
+apply* well_kinded_comm.
+Qed.
+
+Lemma wf_kind_comm K K1 K2 k :
+  wf_kind (K & K1 & K2) k ->
+  ok (K & K1 & K2) ->
+  wf_kind (K & K2 & K1) k.
+Proof.
+Admitted.
+
+Lemma kenv_ok_comm Q K K1 K2 :
+  kenv_ok Q (K & K1 & K2) -> kenv_ok Q (K & K2 & K1).
+Proof.
+destruct 1 as [Ok [AKT [QC WF]]].
+splits*.
+intros x k B.
+Admitted.
+
 Lemma typing_exchange : forall gc Q K K1 K2 K' E t T,
   [ Q ; K & K1 & K2 & K'; E | gc |= t ~: T ] ->
   [ Q ; K & K2 & K1 & K'; E | gc |= t ~: T ].
+Proof.
+  introv Typ. gen_eq (K & K1 & K2 & K') as H. gen K'.
+  induction Typ; introv EQ; subst; auto*.
+  apply proper_instance_exchange in H2.
+  apply* typing_var.
 Admitted.
 
 Lemma typing_weaken_kinds : forall gc Q K K' K'' E t T,
@@ -117,7 +152,9 @@ Proof.
   rewrite concat_empty, concat_assoc.
   eapply typing_rigid.
     rewrite <- concat_assoc, EQ.
-    admit.
+    apply* kenv_ok_comm.
+  intros R HR.
+  specialize (H1 R HR).
   admit.
   apply* typing_use.
       admit.
