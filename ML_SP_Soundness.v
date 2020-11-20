@@ -84,29 +84,88 @@ rewrite <- concat_assoc.
 apply* well_kinded_comm.
 Qed.
 
-Lemma wf_kind_comm K K1 K2 k :
-  wf_kind (K & K1 & K2) k ->
-  ok (K & K1 & K2) ->
-  wf_kind (K & K2 & K1) k.
+Lemma wf_kind_comm K K1 K2 K' k :
+  wf_kind (K & K1 & K2 & K') k ->
+  ok (K & K1 & K2 & K') ->
+  wf_kind (K & K2 & K1 & K') k.
 Proof.
-Admitted.
+intros WF Ok.
+inversions WF; constructor.
+introv Un Hin.
+destruct (H _ _ Un Hin) as [k [rvs [B RV]]].
+exists k; exists rvs; split; auto.
+binds_cases B; auto.
+Qed.
 
-Lemma kenv_ok_comm Q K K1 K2 :
-  kenv_ok Q (K & K1 & K2) -> kenv_ok Q (K & K2 & K1).
+Lemma In_comm {A} (x : A) K K1 K2 K' :
+  In x (K ++ K1 ++ K2 ++ K') ->
+  In x (K ++ K2 ++ K1 ++ K').
+Proof.
+  intros B.
+  apply in_app_or in B; destruct B as [B|B]; apply in_or_app; eauto.
+  right*.
+  rewrite app_assoc in B |- *.
+  apply in_app_or in B; destruct B as [B|B]; apply in_or_app; eauto.
+  left*.
+Qed.
+
+Lemma binds_comm {A : Set} x (k : A) K K1 K2 K' :
+  binds x k (K & K1 & K2 & K') ->
+  ok (K & K1 & K2 & K') ->
+  binds x k (K & K2 & K1 & K').
+Proof.
+intros B Ok.
+apply binds_in in B.
+apply* in_ok_binds.
+apply* (In_comm (x,k)).
+Qed.
+
+Lemma kenv_ok_comm Q K K1 K2 K' :
+  kenv_ok Q (K & K1 & K2 & K') -> kenv_ok Q (K & K2 & K1 & K').
 Proof.
 destruct 1 as [Ok [AKT [QC WF]]].
 splits*.
 intros x k B.
-Admitted.
+apply wf_kind_comm.
+  apply* WF.
+  apply* (In_comm (x,k)).
+auto.  
+Qed.
+
+Hint Immediate kenv_ok_comm proper_instance_exchange : core.
 
 Lemma typing_exchange : forall gc Q K K1 K2 K' E t T,
   [ Q ; K & K1 & K2 & K'; E | gc |= t ~: T ] ->
   [ Q ; K & K2 & K1 & K'; E | gc |= t ~: T ].
 Proof.
-  introv Typ. gen_eq (K & K1 & K2 & K') as H. gen K'.
+  introv Typ. gen_eq (K & K1 & K2 & K') as H. gen K K1 K2 K'.
   induction Typ; introv EQ; subst; auto*.
   apply proper_instance_exchange in H2.
   apply* typing_var.
+  eauto.
+  assert (Typ := typing_abs _ _ H H0 H1 H2 H3 H4).
+  inversions H.
+  apply_fresh* (@typing_abs gc Q) as y.
+  apply binds_comm. apply H0.
+  destruct* (typing_regular Typ).
+  apply_fresh* (@typing_let gc Q M) as y.
+  introv Fr.
+  rewrite concat_assoc.
+  apply* (H0 Xs).
+  rewrite* concat_assoc.
+  assert (Typ := typing_app gc T H H0 H1 H2 Typ1 Typ2).
+  apply* typing_app.
+  apply* (@binds_comm _ V (Some k, rvs)).
+  destruct* (typing_regular Typ).
+  apply* typing_cst. apply* proper_instance_exchange.
+  apply* typing_gc.
+  introv Fr.
+  rewrite concat_assoc.
+  apply* (H1 Xs).
+  rewrite* concat_assoc.
+  apply* typing_ann.
+  apply* proper_instance_exchange.
+  
 Admitted.
 
 Lemma typing_weaken_kinds : forall gc Q K K' E t T,
