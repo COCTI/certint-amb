@@ -819,8 +819,9 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
       proper_instance K Ks Us ->
       [ Q; K; E | gc |= (trm_ann T) ~: nth n Us typ_def ]
   | typing_rigid : forall Q L K Ks Us E t T,
+      kenv_ok Q K ->
       proper_instance K ((None, nil) :: Ks) Us ->
-      (forall R Xs, fresh L (length Us + 1) (R :: Xs) ->
+      (forall R Xs, fresh L (1 + length Us) (R :: Xs) ->
         [ qvar R :: Q; K & kinds_open_vars ((None, rvar_f R :: nil) :: Ks) Xs; E
         | gc_raise gc |= trm_open_rigid t (rvar_f R) ~: typ_open_vars T Xs ]) ->
       [ Q; K; E | gc |= trm_rigid t ~: typ_open T Us ]

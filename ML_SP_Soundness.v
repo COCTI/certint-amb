@@ -212,7 +212,7 @@ induction Typ; introv EQ; subst.
       destruct (split_env_middle EQ) as [K5 []]; subst.
         rewrite <- concat_assoc in EQ.
         apply concat_r_inj in EQ; subst.
-        rewrite concat_assoc, concat_assoc, concat_assoc.
+        do 3 rewrite concat_assoc.
         eapply typing_rigid; [| introv HR]; do 3 rewrite <- concat_assoc.
           apply* kenv_ok_comm.
           now repeat rewrite <- concat_assoc in H.
@@ -253,6 +253,9 @@ induction Typ; introv EQ; subst.
   apply binds_comm in H1; auto*.
 Qed.
 
+Lemma tree_subst_eq_refl S t : tree_subst_eq S t t.
+Proof. induction t; simpl; constructor; auto. Qed.
+
 Lemma typing_weaken_kinds : forall gc Q K K' E t T,
   [ Q ; K; E | gc |= t ~: T ] ->
   kenv_ok Q (K & K') ->
@@ -292,6 +295,31 @@ Proof.
   specialize (H1 R HR).
   rewrite <- concat_assoc.
   apply H1.
+  destruct H2 as [Ok [Ok1 [Ok2 Ok3]]].
+  splits*.
+    intros x kx Hkx.
+    apply qcoherent_add_qvar.
+    rewrite concat_assoc in Hkx.
+    apply in_concat_or in Hkx; destruct Hkx as [Hkx|Hkx].
+      apply* Ok2.
+      rewrite concat_assoc; apply in_or_concat; left*.
+    apply in_concat_or in Hkx; destruct Hkx as [Hkx|Hkx].
+      simpl in Hkx; destruct* Hkx. inversions H2.
+      constructor; simpl; intros.
+      destruct* H4; destruct* H5; subst.
+      now apply tree_subst_eq_refl.
+    apply* Ok2.
+    repeat rewrite concat_assoc; apply in_or_concat; right*.
+  intros x kx Hkx.
+  rewrite concat_assoc in Hkx, Ok3.
+  apply in_concat_or in Hkx; destruct Hkx as [Hkx|Hkx].
+    forward (Ok3 x kx) as Ok3'. apply in_or_concat; left*.
+    inversions Ok3'; constructor; intros.
+    destruct (H2 l a H3 H4) as [k' [rvs []]].
+    exists k'; exists rvs; splits*.
+    
+    apply* Ok
+  Print wf_kind.
   admit.
   apply* typing_use.
       apply* proper_instance_weaken.

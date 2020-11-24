@@ -1337,12 +1337,25 @@ Proof.
   rewrite H1.
   now rewrite H2.
   (* typing_rigid *)
-  pick_fresh y. destruct* (H1 y).
-  pick_fresh y. destruct* (H1 y) as [_ [_ []]].
+  pick_freshes (1 + length Us) Xs.
+  destruct Xs as [|R Xs]; try contradiction.
+  destruct* (H2 R Xs).
+  pick_freshes (1 + length Us) Xs.
+  destruct Xs as [|R Xs]; try contradiction.
+  destruct* (H2 R Xs).
   constructor.
   apply* term_rigid_of_open.
-  pick_fresh y. destruct* (H1 y) as [_ [_ []]].
-  (* typing_rigid *)
+  pick_freshes (1 + length Us) Xs.
+  destruct Xs as [|R Xs]; try contradiction.
+  destruct* (H2 R Xs) as [_ [_ []]].
+  apply* typ_open_other_type.
+  generalize (fresh_length _ _ _ Fr); simpl; intro Hlen.
+  injection Hlen; intro Hlen'.
+  unfold typ_fvars.
+  rewrite map_length, <- Hlen'.
+  splits*.
+  destruct* H0 as [[] _].
+  (* typing_eq *)
   destruct IHtyping as [[]]; splits*.
 Qed.
 
