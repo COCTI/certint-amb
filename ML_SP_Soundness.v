@@ -218,6 +218,18 @@ Qed.
 Lemma tree_subst_eq_refl S t : tree_subst_eq S t t.
 Proof. induction t; simpl; constructor; auto. Qed.
 
+Lemma qcoherent_add_qeq T1 T2 Q k :
+  qcoherent Q k -> qcoherent (qeq T1 T2 :: Q) k.
+Proof.
+destruct 1.
+- constructor; introv QS; apply H.
+  inversions* QS.
+- apply* qc_arrow; introv QS; apply* (H0 S).
+  inversions* QS.
+- apply* qc_eq; introv QS; apply* (H0 S).
+  inversions* QS.
+Qed.
+
 Lemma typing_weaken_kinds : forall gc Q K K' E t T,
   [ Q ; K; E | gc |= t ~: T ] ->
   kenv_ok Q (K & K') ->
@@ -295,18 +307,7 @@ induction* Typ; intros.
   destruct H2 as [Ok [Ok1 [Ok2 Ok3]]].
   splits*.
   intros x k Hxk.
-  destruct* (Ok2 _ _ Hxk).
-  + constructor; introv QS; apply H2.
-    unfold qsat in QS.
-    inversions* QS.
-  + apply* qc_arrow.
-    introv QS; apply* (H3 S).
-    unfold qsat in QS.
-    inversions* QS.
-  + apply* qc_eq.
-    introv QS; apply* (H3 S).
-    unfold qsat in QS.
-    inversions* QS.
+  apply* qcoherent_add_qeq.
 Qed.
 
 Lemma typing_weaken_kinds' : forall gc K K' E t T,
