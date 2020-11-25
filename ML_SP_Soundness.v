@@ -339,26 +339,48 @@ Qed.
 
 Hint Resolve All_kind_types_subst : core.
 
+Lemma entails_wf_kind K k k' : entails k k' -> wf_kind K k -> wf_kind K k'.    
+Proof.
+intros Ekk' WF.
+destruct WF; destruct* k' as [[k'|] rvs]; try solve [cbv in Ekk'; auto*].
+constructor.
+intros.
+unfold entails,entails_ckind in Ekk'; simpl in Ekk'.
+destruct Ekk' as [[EnC EnR] EnRV].
+destruct* (H l a) as [? [? []]].
+apply (Cstr.entails_unique EnC H0).
+Qed.
+
 Lemma kenv_ok_subst Q K K' K'' S :
   env_prop type S ->
+  env_prop (qcoherent Q) (map (kind_subst S) K'') ->
   disjoint (dom S) (fv_in kind_fv K \u dom K) ->
   well_subst (K & K' & K'') (K & map (kind_subst S) K'') S ->
   kenv_ok Q (K & K' & K'') -> kenv_ok Q (K & map (kind_subst S) K'').
 Proof.
-  intros HS Dis WS [Ok [Ok1 [Ok2 Ok3]]].
-  splits*; apply* env_prop_concat.
-  - intro; intros. destruct* (in_map_inv _ _ _ _ H) as [b [Hb B]]; subst*.
-  - admit.
-  - intros x k B.
-    unfold well_subst in WS.
-    forward~ (WS x k) as WK.
-    destruct* k as [[ck|] rvs].
-    assert (Hx : x \in dom K) by apply* in_dom.
-    rewrite typ_subst_fresh in WK by auto*.
-    rewrite kind_subst_fresh in WK.
-      inversions WK.
-      Search wf_kind entails.
-Abort.
+intros HS QC Dis WS [Ok [Ok1 [Ok2 Ok3]]].
+splits*; apply* env_prop_concat.
+- intro; intros. destruct* (in_map_inv _ _ _ _ H) as [b [Hb B]]; subst*.
+- intros x k B.
+  unfold well_subst in WS.
+  forward~ (WS x k) as WK.
+  destruct* k as [[ck|] rvs].
+  assert (Hx : x \in dom K) by apply* in_dom.
+  rewrite typ_subst_fresh in WK by auto*.
+  rewrite kind_subst_fresh in WK.
+    inversions WK.
+    apply* (entails_wf_kind H1 H4).
+  assert (FVk := fv_in_spec kind_fv K _ _ B).
+  simpl in FVk.
+  disjoint_solve.
+- intros x k B.
+  destruct* (in_map_inv _ _ _ _ B) as [k' [Hb B']]; subst*.
+  forward~ (WS x k') as WK.
+  destruct k' as [ck' rvs'].
+  inversions WK.
+  destruct ck'; try discriminate. constructor.
+  apply* (entails_wf_kind H1 H4).
+Qed.
 
 Lemma env_ok_subst : forall E E' S,
   env_prop type S ->
@@ -371,7 +393,7 @@ Proof.
   subst*.
 Qed.
 
-Hint Resolve env_ok_subst : core.
+Hint Resolve kenv_ok_subst env_ok_subst : core.
 
 (* ********************************************************************** *)
 (** Type substitution preserves typing *)
@@ -387,29 +409,33 @@ Proof.
   inversions HR; now esplit.
 Qed.
 
-(*
-Lemma well_subst_binds K K' S V k X :
-  well_subst K K' S -> binds V (Some k) K ->
+Lemma well_subst_binds K K' S V k rvs X :
+  well_subst K K' S -> binds V (Some k, rvs) K ->
   typ_subst S (typ_fvar V) = typ_fvar X ->
-  exists k', binds X (Some k') K' /\ entails k' (ckind_map (typ_subst S) k).
+  exists k', exists rvs',
+    binds X (Some k', rvs') K' /\ entails_ckind k' (ckind_map (typ_subst S) k).
 Proof.
   intros WS HB HX; poses WK (WS _ _ HB).
-  rewrite HX in WK; inversions WK; exists* k'.
+  rewrite HX in WK; inversions WK.
+  unfold entails in H1.
+  destruct k' as [[k'|] rvs']; simpl in H1.
+    exists* k'.
+  destruct* H1.
 Qed.
-*)
 
 Lemma typing_typ_subst : forall gc Q F K'' S K K' E t T,
   disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) ->
   disjoint (dom K') (fv_in kind_fv (map (kind_subst S) K'')) ->
   env_prop type S ->
+  env_prop (qcoherent Q) (map (kind_subst S) K'') ->
   well_subst (K & K' & K'') (K & map (kind_subst S) K'') S ->
   [Q; K & K' & K''; E & F |gc|= t ~: T] ->
   [Q; K & map (kind_subst S) K''; E & (map (sch_subst S) F) |gc|=
     t ~: (typ_subst S T)].
 Proof.
-  introv. intros Dis Dis' TS WS Typ.
+  introv. intros Dis Dis' TS QC WS Typ.
   gen_eq (K & K' & K'') as GK; gen_eq (E & F) as G; gen K''; gen F.
-  induction Typ; introv Dis' WS EQ EQ'; subst.
+  induction Typ; introv Dis' QC WS EQ EQ'; subst.
   (* Var *)
   rewrite~ sch_subst_open. apply* typing_var.
     binds_cases H1.
