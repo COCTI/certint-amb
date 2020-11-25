@@ -447,9 +447,9 @@ Proof.
     apply* proper_instance_subst.
   (* Abs *)
   destruct (typ_subst_fvar V TS) as [X HX].
-  destruct (well_subst_binds WS H0 HX) as [k' [HB [HE HR]]].
+  destruct (well_subst_binds WS H0 HX) as [k' [rvs' [HB [HE HR]]]].
   rewrite HX.
-  eapply (@typing_abs gc L).
+  eapply (@typing_abs gc Q L).
     now apply (typ_subst_type TS H).
     exact HB.
     destruct k; simpl in *; subst.
@@ -462,7 +462,7 @@ Proof.
     replace (Sch (typ_subst S U) nil) with (sch_subst S (Sch U nil)) by auto.
     now apply_ih_map_bind H5.
   (* Let *)
-  apply_fresh* (@typing_let gc (sch_subst S M)
+  apply_fresh* (@typing_let gc Q (sch_subst S M)
                             (L1 \u dom S \u dom K \u dom K'')) as y.
    clear H H1 H2. clear L2 T2 t2 Dis.
    simpl. intros Ys Fr.
@@ -471,7 +471,8 @@ Proof.
    rewrite concat_assoc. rewrite <- map_concat.
    rewrite map_length in Fr.
    apply* H0; clear H0.
-     apply* well_subst_fresh.
+     admit.
+     (* apply* well_subst_fresh. *)
    rewrite* concat_assoc.
    apply_ih_map_bind* H2.
   (* App *)
