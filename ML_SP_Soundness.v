@@ -294,15 +294,6 @@ induction* Typ; intros.
   introv B; apply* qcoherent_add_qeq.
 Qed.
 
-Lemma typing_weaken_kinds' : forall gc K K' E t T,
-  kenv_ok (K & K') ->
-  K ; E |gc|= t ~: T -> K & K' ; E |gc|= t ~: T.
-Proof.
-  intros.
-  replace (K & K') with (K & K' & empty) by simpl*.
-  apply* typing_weaken_kinds.
-Qed.
-
 Lemma proper_instance_subst : forall K K' K'' Ks Us S,
   env_prop type S ->
   proper_instance (K & K' & K'') Ks Us ->
