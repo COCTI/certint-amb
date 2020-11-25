@@ -239,20 +239,18 @@ introv Typ.
 induction* Typ; intros.
 - apply* typing_var. apply* proper_instance_weaken.
 - apply_fresh* (@typing_let gc Q M (L1 \u dom(K&K'))) as y.
-    intros. clear H1 H2.
-    rewrite <- (concat_empty (K & _ & _)).
-    apply typing_exchange.
-    apply* H0; clear H0. rewrite* concat_assoc.
-    forward~ (H Xs) as Typ.
-    destruct* (typing_regular Typ) as [[Rok [RK1 [RK2 RK3]]] _].
-    destruct* H3 as [Ok [ROk1 [ROk2 ROk3]]].
-    rewrite <- concat_assoc.
-    splits*.
-    apply env_prop_concat.
-      intros x k B.
-      apply* wf_kind_extend.
-    intros x k B.
-    apply* wf_kind_weaken.
+  intros. clear H1 H2.
+  rewrite <- (concat_empty (K & _ & _)).
+  apply typing_exchange.
+  apply* H0; clear H0. rewrite* concat_assoc.
+  forward~ (H Xs) as Typ.
+  destruct* (typing_regular Typ) as [[Rok [RK1 [RK2 RK3]]] _].
+  destruct* H3 as [Ok [ROk1 [ROk2 ROk3]]].
+  rewrite <- concat_assoc.
+  splits*.
+  apply env_prop_concat; intros x k B.
+    apply* wf_kind_extend.
+  apply* wf_kind_weaken.
 - apply* typing_cst. apply* proper_instance_weaken.
 - apply_fresh* (@typing_gc gc Q Ks) as y.
   introv Fr.
@@ -260,12 +258,11 @@ induction* Typ; intros.
   apply typing_exchange.
   apply* (H1 Xs); clear H1.
   forward~ (H0 Xs) as Typ; clear H0.
-  destruct (typing_regular Typ) as [Kok _].
-  destruct Kok as [Ok [Ok1 [Ok2 Ok3]]].
+  destruct (typing_regular Typ) as [[Ok [Ok1 [Ok2 Ok3]]] _].
   destruct H2 as [Ok' [Ok1' [Ok2' Ok3']]].
   assert (Ok'': ok (K' & kinds_open_vars Ks Xs)) by apply* ok_kinds_open_vars.
   splits*.
-  intros x kx Hkx; apply in_concat_or in Hkx; destruct* Hkx.
+  apply* env_prop_concat; intros* x k B; auto*.
 - apply* typing_ann. apply* proper_instance_weaken.
 - apply_fresh* (@typing_rigid gc Q) as Xs.
     apply* proper_instance_weaken.
@@ -274,8 +271,7 @@ induction* Typ; intros.
   apply typing_exchange.
   apply* (H2 R Xs).
   forward~ (H1 R Xs) as Typ.
-  destruct (typing_regular Typ) as [Kok _].
-  destruct Kok as [Ok [Ok1 [Ok2 Ok3]]].
+  destruct (typing_regular Typ) as [[Ok [Ok1 [Ok2 Ok3]]] _].
   destruct H3 as [Ok' [Ok1' [Ok2' Ok3']]].
   assert (Ok'': ok (K' & kinds_open_vars ((None, rvar_f R :: nil) :: Ks) Xs)).
     apply* ok_kinds_open_vars.
@@ -288,15 +284,14 @@ induction* Typ; intros.
     apply qcoherent_add_qvar.
     apply in_concat_or in Hkx; destruct* Hkx as [Hkx|Hkx].
     apply* (@qcoherent_remove_qvar R).
-  + intros x kx Hkx; apply in_concat_or in Hkx; destruct* Hkx.
+  + apply env_prop_concat; intros x k B; auto*.
 - apply* typing_use.
       apply* proper_instance_weaken.
     destruct* H2 as [_ [_ []]].
   apply IHTyp.
   destruct H2 as [Ok [Ok1 [Ok2 Ok3]]].
   splits*.
-  intros x k Hxk.
-  apply* qcoherent_add_qeq.
+  introv B; apply* qcoherent_add_qeq.
 Qed.
 
 Lemma typing_weaken_kinds' : forall gc K K' E t T,
