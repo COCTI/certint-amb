@@ -265,8 +265,7 @@ induction* Typ; intros.
   destruct H2 as [Ok' [Ok1' [Ok2' Ok3']]].
   assert (Ok'': ok (K' & kinds_open_vars Ks Xs)) by apply* ok_kinds_open_vars.
   splits*.
-  intros x kx Hkx.
-  apply in_concat_or in Hkx; destruct* Hkx.
+  intros x kx Hkx; apply in_concat_or in Hkx; destruct* Hkx.
 - apply* typing_ann. apply* proper_instance_weaken.
 - apply_fresh* (@typing_rigid gc Q) as Xs.
     apply* proper_instance_weaken.
@@ -289,17 +288,7 @@ induction* Typ; intros.
     apply qcoherent_add_qvar.
     apply in_concat_or in Hkx; destruct* Hkx as [Hkx|Hkx].
     apply* (@qcoherent_remove_qvar R).
-  + intros x kx Hkx.
-    apply in_concat_or in Hkx; destruct Hkx as [Hkx|Hkx].
-      forward (Ok3' x kx) as Ok3''. apply in_or_concat; left*.
-      inversions Ok3''; constructor; intros.
-      destruct (H3 l a H4 H5) as [k' [rvs []]].
-      exists k'; exists rvs; splits*.
-      binds_cases H6; auto.
-    assert (Ok3'' := Ok3 x kx Hkx). 
-    inversions Ok3''; constructor; intros.
-    destruct (H3 l a H4 H5) as [k' [rvs []]].
-    exists k'; exists rvs; splits*.
+  + intros x kx Hkx; apply in_concat_or in Hkx; destruct* Hkx.
 - apply* typing_use.
       apply* proper_instance_weaken.
     destruct* H2 as [_ [_ []]].
