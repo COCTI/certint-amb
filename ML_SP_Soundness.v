@@ -203,11 +203,13 @@ induction Typ; introv EQ; subst.
   rewrite* concat_assoc.
 - apply* typing_ann.
   apply* proper_instance_exchange.
-- apply* typing_rigid.
+- assert (Typ := typing_rigid _ _ _ H H0).
+  apply* typing_rigid.
     apply* proper_instance_exchange.
+    destruct* (typing_regular Typ).
   introv Fr.
   rewrite concat_assoc.
-  apply* (H2 R Xs).
+  apply* (H1 R Xs).
   now rewrite concat_assoc.
 - apply* typing_use. apply* proper_instance_exchange.
   destruct* (typing_regular Typ).
@@ -269,14 +271,14 @@ induction* Typ; intros.
   introv Fr.
   rewrite <- (concat_empty (K & _ & _)).
   apply typing_exchange.
-  apply* (H2 R Xs).
-  forward~ (H1 R Xs) as Typ.
+  apply* (H1 R Xs).
+  forward~ (H0 R Xs) as Typ.
   destruct (typing_regular Typ) as [[Ok [Ok1 [Ok2 Ok3]]] _].
-  destruct H3 as [Ok' [Ok1' [Ok2' Ok3']]].
+  destruct H2 as [Ok' [Ok1' [Ok2' Ok3']]].
   assert (Ok'': ok (K' & kinds_open_vars ((None, rvar_f R :: nil) :: Ks) Xs)).
     apply* ok_kinds_open_vars.
     simpl in Fr; destruct Fr as [_ Fr].
-    destruct H0 as [[Len _] _].
+    destruct H as [[Len _] _].
     simpl in Len |- *.
     rewrite* Len.
   splits*.

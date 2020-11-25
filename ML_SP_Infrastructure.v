@@ -1339,22 +1339,45 @@ Proof.
   (* typing_rigid *)
   pick_freshes (1 + length Us) Xs.
   destruct Xs as [|R Xs]; try contradiction.
-  destruct* (H2 R Xs).
+  destruct* (H1 R Xs) as [[Ok [Ok1 [Ok2 Ok3]]] _].
+  splits*.
+    intros x k B.
+    apply* (@qcoherent_remove_qvar R).
+  intros x k B.
+  forward~ (Ok3 x k) as WF.
+  inversions* WF; constructor.
+  intros.
+  destruct (H2 l a H3 H4) as [ck' [rvs [Ba Hrv]]]; clear H2.
+  exists ck'; exists rvs; splits*.
+  binds_cases Ba; auto.
+  apply binds_in, in_combine_l in B1.
+  assert (Ha' : a \in fv_in kind_fv K).
+    apply (fv_in_spec kind_fv K _ _ B).
+    unfold kind_fv, kind_types; simpl.
+    revert H4; clear.
+    induction (kind_rel ck); simpl*; intros.
+    destruct H4; subst; simpl*.
+  simpl in Fr; destruct Fr as [_ Fr].
+  elim (in_fresh _ _ Fr B1).
+  auto.
   pick_freshes (1 + length Us) Xs.
   destruct Xs as [|R Xs]; try contradiction.
-  destruct* (H2 R Xs).
+  destruct* (H1 R Xs).
+  pick_freshes (1 + length Us) Xs.
+  destruct Xs as [|R Xs]; try contradiction.
+  destruct* (H1 R Xs).
   constructor.
   apply* term_rigid_of_open.
   pick_freshes (1 + length Us) Xs.
   destruct Xs as [|R Xs]; try contradiction.
-  destruct* (H2 R Xs) as [_ [_ []]].
+  destruct* (H1 R Xs) as [_ [_ []]].
   apply* typ_open_other_type.
   generalize (fresh_length _ _ _ Fr); simpl; intro Hlen.
   injection Hlen; intro Hlen'.
   unfold typ_fvars.
   rewrite map_length, <- Hlen'.
   splits*.
-  destruct* H0 as [[] _].
+  destruct* H as [[] _].
   (* typing_eq *)
   destruct IHtyping as [[]]; splits*.
 Qed.
