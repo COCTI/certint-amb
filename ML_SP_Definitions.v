@@ -456,17 +456,115 @@ Definition kind_map f (K:kind) : kind :=
 
 Definition kind_open K Vs := kind_map (fun T => typ_open T Vs) K.
 
+(** Computing free variables of a type. *)
+
+Definition typ_fv (T : typ) : vars :=
+  match T with
+  | typ_bvar i      => {}
+  | typ_fvar x      => {{x}}
+(*   | typ_arrow T1 T2 => (typ_fv T1) \u (typ_fv T2) *)
+  end.
+
+(** Computing free variables of a list of terms. *)
+
+Definition typ_fv_list :=
+  List.fold_right (fun t acc => typ_fv t \u acc) {}.
+
+(** Computing free variables of a kind. *)
+
+Definition kind_fv k :=
+  typ_fv_list (kind_types k).
+
+Definition kind_fv_list :=
+  List.fold_right (fun t acc => kind_fv t \u acc) {}.
+
+(** Computing free variables of a type scheme. *)
+
+Definition sch_fv M := 
+  typ_fv (sch_type M) \u kind_fv_list (sch_kinds M).
+
+(** Computing free type variables of the values of an environment. *)
+
+Definition env_fv := 
+  fv_in sch_fv.
+
+(** Coherence *)
+
+Inductive qitem :=
+  | qvar : var -> qitem
+  | qeq : tree -> tree -> qitem.
+
+Definition qenv := list qitem.
+
+Inductive qsat_item (S : env tree) : qitem -> Prop :=
+| qsat_qvar : forall x, qsat_item S (qvar x)
+| qsat_qeq : forall T1 T2, tree_subst_eq S T1 T2 -> qsat_item S (qeq T1 T2).
+
+Definition qsat Q S := list_forall (qsat_item S) Q.
+
+Inductive qcoherent (Q : qenv) : kind -> Prop :=
+  | qc_var : forall rvs,
+      (forall rv1 rv2 S, qsat Q S -> In rv1 rvs -> In rv2 rvs ->
+          tree_subst_eq S (tr_rvar rv1) (tr_rvar rv2)) ->
+      qcoherent Q (None, rvs)
+  | qc_arrow : forall k rvs,
+      kind_cstr k = Cstr.arrow ->
+      (forall S, qsat Q S ->
+         exists T1 T2, forall rv,
+             In rv rvs -> tree_subst_eq S (tr_rvar rv) (tr_arrow T1 T2)) ->
+      qcoherent Q (Some k, rvs)
+  | qc_eq : forall k rvs,
+      kind_cstr k = Cstr.eq ->
+      (forall S, qsat Q S ->
+         exists T1 T2, forall rv,
+             In rv rvs -> tree_subst_eq S (tr_rvar rv) (tr_eq T1 T2)) ->
+      qcoherent Q (Some k, rvs).
+
+(** Definition of kinding environments *)
+
+Definition kenv := env kind.
+
+Inductive is_prefix : rvar -> rvar -> Prop :=
+| prefix_eq : forall r, is_prefix r r
+| prefix_attr : forall r s attr, is_prefix r s ->
+                            is_prefix r (rvar_attr s attr).
+
+Inductive wf_kind : kenv -> kind -> Prop :=
+| wf_empty : forall K r, wf_kind K (None, r)
+| wf_attrs : forall K (ck : ckind) (r : list rvar),
+    (forall l a,
+        Cstr.unique (kind_cstr ck) l = true ->
+        In (l, typ_fvar a) (kind_rel ck) ->
+        (exists k rvs, binds a (k, rvs) K /\
+          (forall rv, In rv r ->
+            (exists rv', In rv' rvs /\ is_prefix rv' (rvar_attr rv l))))) ->
+    wf_kind K (Some ck, r).
+
+Definition kenv_ok (Q : qenv) K :=
+  ok K /\ env_prop (All_kind_types type) K /\ env_prop (qcoherent Q) K
+  /\ env_prop (wf_kind K) K.
+
+Definition kinds_open Ks Us :=
+  List.map (fun k:kind => kind_open k Us) Ks.
+
+Definition kinds_open_vars Ks Xs :=
+  List.combine Xs (kinds_open Ks (typ_fvars Xs)).
+
 (** Body of a scheme *)
 
-Definition typ_body T Ks :=
+Definition typ_body Q K T Ks :=
   forall Xs, length Ks = length Xs ->
     type (typ_open_vars T Xs) /\
-    list_forall (All_kind_types (fun T' => type (typ_open_vars T' Xs))) Ks.
+    list_forall (All_kind_types (fun T' => type (typ_open_vars T' Xs))) Ks /\
+    list_forall (qcoherent Q) Ks /\
+    (fresh (dom K \u kind_fv_list Ks) (length Ks) Xs ->
+     list_forall (wf_kind (K & kinds_open_vars Ks Xs))
+                 (kinds_open Ks (typ_fvars Xs))).
 
 (** Definition of a well-formed scheme *)
 
-Definition scheme M :=
-   typ_body (sch_type M) (sch_kinds M) /\ list_forall (fun _ => True) (sch_kinds M).
+Definition scheme Q K M :=
+   typ_body Q K (sch_type M) (sch_kinds M).
 
 (* ********************************************************************** *)
 (** ** Description of terms *)
@@ -605,60 +703,6 @@ Definition const_app c vl := fold_left trm_app vl (trm_cst c).
 (* ********************************************************************** *)
 (** ** Description of typing *)
 
-(** Definition of kinding environments *)
-
-Inductive qitem :=
-  | qvar : var -> qitem
-  | qeq : tree -> tree -> qitem.
-
-Definition qenv := list qitem.
-
-Inductive qsat_item (S : env tree) : qitem -> Prop :=
-| qsat_qvar : forall x, qsat_item S (qvar x)
-| qsat_qeq : forall T1 T2, tree_subst_eq S T1 T2 -> qsat_item S (qeq T1 T2).
-
-Definition qsat Q S := list_forall (qsat_item S) Q.
-
-Inductive qcoherent (Q : qenv) : kind -> Prop :=
-  | qc_var : forall rvs,
-      (forall rv1 rv2 S, qsat Q S -> In rv1 rvs -> In rv2 rvs ->
-          tree_subst_eq S (tr_rvar rv1) (tr_rvar rv2)) ->
-      qcoherent Q (None, rvs)
-  | qc_arrow : forall k rvs,
-      kind_cstr k = Cstr.arrow ->
-      (forall S, qsat Q S ->
-         exists T1 T2, forall rv,
-             In rv rvs -> tree_subst_eq S (tr_rvar rv) (tr_arrow T1 T2)) ->
-      qcoherent Q (Some k, rvs)
-  | qc_eq : forall k rvs,
-      kind_cstr k = Cstr.eq ->
-      (forall S, qsat Q S ->
-         exists T1 T2, forall rv,
-             In rv rvs -> tree_subst_eq S (tr_rvar rv) (tr_eq T1 T2)) ->
-      qcoherent Q (Some k, rvs).
-
-Definition kenv := env kind.
-
-Inductive is_prefix : rvar -> rvar -> Prop :=
-| prefix_eq : forall r, is_prefix r r
-| prefix_attr : forall r s attr, is_prefix r s ->
-                            is_prefix r (rvar_attr s attr).
-
-Inductive wf_kind : kenv -> kind -> Prop :=
-| wf_empty : forall K r, wf_kind K (None, r)
-| wf_attrs : forall K (ck : ckind) (r : list rvar),
-    (forall l a,
-        Cstr.unique (kind_cstr ck) l = true ->
-        In (l, typ_fvar a) (kind_rel ck) ->
-        (exists k rvs, binds a (k, rvs) K /\
-          (forall rv, In rv r ->
-            (exists rv', In rv' rvs /\ is_prefix rv' (rvar_attr rv l))))) ->
-    wf_kind K (Some ck, r).
-
-Definition kenv_ok (Q : qenv) K :=
-  ok K /\ env_prop (All_kind_types type) K /\ env_prop (qcoherent Q) K
-  /\ env_prop (wf_kind K) K.
-
 (** Proper instantiation *)
 
 Inductive well_kinded : kenv -> kind -> typ -> Prop :=
@@ -672,53 +716,15 @@ Inductive well_kinded : kenv -> kind -> typ -> Prop :=
 
 Hint Constructors well_kinded : core.
 
-Definition kinds_open Ks Us :=
-  List.map (fun k:kind => kind_open k Us) Ks.
-
 Definition proper_instance K Ks Us :=
   types (length Ks) Us /\
   list_forall2 (well_kinded K) (kinds_open Ks Us) Us.
-
-Definition kinds_open_vars Ks Xs :=
-  List.combine Xs (kinds_open Ks (typ_fvars Xs)).
 
 (** Definition of typing environments *)
 
 Definition env := env sch.
 
-Definition env_ok (E:env) := ok E /\ env_prop scheme E.
-
-(** Computing free variables of a type. *)
-
-Definition typ_fv (T : typ) : vars :=
-  match T with
-  | typ_bvar i      => {}
-  | typ_fvar x      => {{x}}
-(*   | typ_arrow T1 T2 => (typ_fv T1) \u (typ_fv T2) *)
-  end.
-
-(** Computing free variables of a list of terms. *)
-
-Definition typ_fv_list :=
-  List.fold_right (fun t acc => typ_fv t \u acc) {}.
-
-(** Computing free variables of a kind. *)
-
-Definition kind_fv k :=
-  typ_fv_list (kind_types k).
-
-Definition kind_fv_list :=
-  List.fold_right (fun t acc => kind_fv t \u acc) {}.
-
-(** Computing free variables of a type scheme. *)
-
-Definition sch_fv M := 
-  typ_fv (sch_type M) \u kind_fv_list (sch_kinds M).
-
-(** Computing free type variables of the values of an environment. *)
-
-Definition env_fv := 
-  fv_in sch_fv.
+Definition env_ok Q K (E:env) := ok E /\ env_prop (scheme Q K) E.
 
 (** Grammar of values *)
 
@@ -742,7 +748,7 @@ Definition value t := exists n, valu n t.
 Module Type DeltaIntf.
   Parameter type : Const.const -> sch.
   Parameter closed : forall c, sch_fv (type c) = {}.
-  Parameter scheme : forall c, scheme (type c).
+  Parameter scheme : forall c, scheme nil empty (type c).
   Parameter reduce : forall c tl,
     list_for_n value (S(Const.arity c)) tl -> trm.
   Parameter term : forall c tl vl,
@@ -774,7 +780,7 @@ Reserved Notation "[ Q ; K ; E | gc |= t ~: T ]" (at level 69).
 Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
   | typing_var : forall Q K E x M Us,
       kenv_ok Q K ->
-      env_ok E -> 
+      env_ok Q K E -> 
       binds x M E -> 
       proper_instance K (sch_kinds M) Us ->
       [ Q; K; E | gc |= (trm_fvar x) ~: (M ^^ Us) ]
@@ -804,7 +810,7 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
       [ Q; K; E | gc |= (trm_app t1 t2) ~: T ]
   | typing_cst : forall Q K E Us c,
       kenv_ok Q K ->
-      env_ok E ->
+      env_ok Q K E ->
       proper_instance K (sch_kinds (Delta.type c)) Us ->
       [ Q; K; E | gc |= (trm_cst c) ~: (Delta.type c ^^ Us) ]
   | typing_gc : forall Q Ks L K E t T,
@@ -814,7 +820,7 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
       [ Q; K; E | gc |= t ~: T ]
   | typing_ann : forall Q (T : tree) n Ks K E Us,
       kenv_ok Q K ->
-      env_ok E ->
+      env_ok Q K E ->
       graph_of_tree_type (annotation_tree (T,nil)) = (n, Ks) ->
       proper_instance K Ks Us ->
       [ Q; K; E | gc |= (trm_ann T) ~: nth n Us typ_def ]
@@ -833,7 +839,7 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
       [ Q; K; E | gc |= t ~: nth n Us typ_def ]
   | typing_eq : forall Q K E x k rs T,
       kenv_ok Q K ->
-      env_ok E ->
+      env_ok Q K E ->
       binds x (Some k, rs) K ->
       In (Cstr.eq_fst, T) (kind_rel k) ->
       In (Cstr.eq_snd, T) (kind_rel k) ->
