@@ -836,7 +836,6 @@ Lemma well_kinded_comm : forall K K' K'',
 Proof.
   introv OK; introv WK. gen_eq (K & K'' & K') as H. gen K''.
   induction WK; introv Ok EQ; subst.
-    apply wk_any.
   apply* (@wk_kind k').
   apply* binds_comm.
 Qed.
@@ -866,15 +865,8 @@ Lemma well_kinded_subst: forall S K K' k T,
 Proof.
   intros.
   induction H0.
-    constructor.
   generalize (H x _ H0); intro HW.
   inversions HW; clear HW.
-    destruct* k' as [[ck'|] rvs']; try discriminate.
-    apply H.
-    simpl in *; subst.
-    inversions H1; simpl in *.
-    destruct* k as [[k|] []]; try contradiction.
-    elim (H4 r); now auto.
   simpl.
   unfold var_subst in *.
   case_eq (get x S); introv Hget; rewrite Hget in H4.
@@ -1115,6 +1107,12 @@ Proof.
     destruct a; inversion* H1.
 Qed.
     
+Lemma map_id {A} l : List.map (@id A) l = l.
+Proof. induction l; simpls; auto. rewrite* IHl. Qed.
+
+Lemma var_subst_fresh S x : x # S -> var_subst S x = x.
+Proof. intros; unfold var_subst; rewrite* get_notin_dom. Qed.
+
 Lemma sch_subst_type Q K K' S M :
   well_subst K K' S ->
   scheme Q K M -> scheme Q K' (sch_subst S M).
@@ -1138,6 +1136,90 @@ Proof.
     apply* qcoherent_subst.
   - unfold well_subst in WS.
     unfold kinds_open in *.
+    destruct WF as [L WF].
+    exists (L \u dom K \u dom K' \u fv_in kind_fv K \u fv_in kind_fv K'
+              \u dom S \u fv_in (fun x:var => {{x}}) S).
+    intros Fr.
+    assert (HXs: List.map (var_subst S) Xs = Xs).
+      rewrite <- (map_ext_in id).
+        now rewrite map_id.
+      intros a Ha.
+      pose (in_mkset _ _ Ha).
+      rewrite* var_subst_fresh.
+    rewrite HXs in *.
+    forward~ WF as WF'.
+      rewrite map_length in Fr; auto.
+    apply list_forall_in; intros k Hk.
+    destruct* k as [[k|] rvs].
+    constructor.
+    introv HU Hl.
+    rewrite map_map in Hk.
+    destruct (proj1 (in_map_iff _ _ _) Hk) as [k' [Hko Hk']].
+    forward~ (list_forall_out WF' (kind_open k' (typ_fvars Xs))) as WFk'.
+      refine (in_map _ _ _ Hk').
+    destruct k' as [[k'|] rvs']; try discriminate.
+    inversions WFk'.
+    assert (Hl'0: exists T', exists a',
+                 In (l, T') (kind_rel k')
+                 /\ typ_open_vars T' Xs = typ_fvar a'
+                 /\ typ_subst S (typ_fvar a') = typ_fvar a).
+      inversions Hko.
+      revert Hl.
+      unfold ckind_map at 2; destruct ckind_map_spec; simpl.
+      destruct a0 as [_ Hx].
+      unfold ckind_map; destruct ckind_map_spec; simpl.
+      destruct a0 as [_ Hx0].
+      rewrite Hx0, Hx; clear Hx Hx0 x x0.
+      unfold map_snd.
+      rewrite map_map; simpl.
+      intros Hl.
+      destruct (proj1 (in_map_iff _ _ _) Hl) as [[l' T'] [Hkl Hkl']].
+      simpl in Hkl; inversions Hkl; clear Hkl.
+      assert (HT' := typ_subst_open_vars S Xs T').
+      forward~ HT' as HT''; clear HT'.
+      unfold typ_open_vars in HT''; rewrite HT'' in *.
+      revert H2.
+      case_eq (typ_open T' (typ_fvars Xs)); introv HOT'; try discriminate.
+      intros _.
+      exists T'. exists v.
+      splits*.
+    destruct Hl'0 as [T' [a' [HlT' [Ha' Haa']]]].
+    forward~ (H1 l a') as WFE; clear H1.
+        unfold ckind_map; destruct ckind_map_spec; simpl.
+        destruct a0 as [Hx _].
+        rewrite <- Hx.
+        inversions Hko.
+        revert HU.
+        unfold ckind_map at 2; destruct ckind_map_spec; simpl.
+        destruct a0 as [Hx0 _].
+        unfold ckind_map; destruct ckind_map_spec; simpl.
+        destruct a0 as [Hx1 _].
+        now rewrite <- Hx1, <- Hx0.
+      unfold ckind_map; destruct ckind_map_spec; simpl.
+      destruct a0 as [_ Hx].
+      rewrite Hx.
+      inversions Hko; clear Hko.
+      rewrite <- Ha'.
+      unfold typ_open_vars, map_snd.
+      apply (in_map (fun p=>(fst p, typ_open (snd p) (typ_fvars Xs))) _ (l,T')).
+      auto.
+    destruct WFE as [k'' [rvs'' [B FA]]].
+    binds_cases B.
+      assert (WK := WS _ _ B0).
+      inversions WK.
+      simpl in Haa'; inversions Haa'; clear Haa'.
+      destruct k'0 as [k'0 rvs'0].
+      exists k'0; exists rvs'0.
+      splits*.
+      intros rv Hrv.
+      inversions Hko.
+      destruct (FA _ Hrv) as [rv' [Hrv' Hpf]].
+      exists rv'; splits*.
+      destruct H1 as [_ EnRV].
+      simpl in EnRV.
+      auto.
+    exists (fst (kind_subst S (k'',rvs''))). exists rvs''.
+    admit.
 Admitted.
 
 Hint Resolve sch_subst_type : core.

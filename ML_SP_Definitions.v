@@ -557,9 +557,9 @@ Definition typ_body Q K T Ks :=
     type (typ_open_vars T Xs) /\
     list_forall (All_kind_types (fun T' => type (typ_open_vars T' Xs))) Ks /\
     list_forall (qcoherent Q) Ks /\
-    (fresh (dom K \u kind_fv_list Ks) (length Ks) Xs ->
-     list_forall (wf_kind (K & kinds_open_vars Ks Xs))
-                 (kinds_open Ks (typ_fvars Xs))).
+    exists L, fresh L (length Ks) Xs ->
+              list_forall (wf_kind (K & kinds_open_vars Ks Xs))
+                          (kinds_open Ks (typ_fvars Xs)).
 
 (** Definition of a well-formed scheme *)
 
@@ -706,8 +706,8 @@ Definition const_app c vl := fold_left trm_app vl (trm_cst c).
 (** Proper instantiation *)
 
 Inductive well_kinded : kenv -> kind -> typ -> Prop :=
-  | wk_any : forall K T,
-      well_kinded K (None, nil) T
+  (*| wk_any : forall K T,
+      well_kinded K (None, nil) T*)
   | wk_kind : forall k' K k x,
       binds x k' K ->
       entails k' k ->
