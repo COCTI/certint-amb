@@ -1219,8 +1219,19 @@ Proof.
       simpl in EnRV.
       auto.
     exists (fst (kind_subst S (k'',rvs''))). exists rvs''.
-    admit.
-Admitted.
+    assert (Ha'Xs : a' \in mkset Xs).
+      puts (binds_dom B1).
+      rewrite dom_kinds_open_vars in H; auto.
+    rewrite typ_subst_fresh in Haa' by auto.
+    inversions Haa'.
+    split.
+      apply binds_prepend.
+      rewrite <- kinds_subst_open_vars by auto.
+      apply* (@binds_map _ a (k'',rvs'') (kind_subst S)).
+    intros.
+    inversions Hko.
+    apply* FA.
+Qed.
 
 Hint Resolve sch_subst_type : core.
 
