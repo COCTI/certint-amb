@@ -1185,6 +1185,16 @@ Proof.
   apply* FA.
 Qed.
 
+Lemma vars_subst_fresh S n Xs :
+  fresh (dom S) n Xs -> List.map (var_subst S) Xs = Xs.
+Proof.
+  intros Fr.
+  rewrite <- (map_ext_in id); intros.
+    now rewrite map_id.
+  pose (in_mkset _ _ H).
+  rewrite* var_subst_fresh.
+Qed.
+
 Lemma sch_subst_type Q K K' S M :
   well_subst K K' S ->
   scheme Q K M -> scheme Q K' (sch_subst S M).
@@ -1192,7 +1202,7 @@ Proof.
   destruct M as [T Ks].
   unfold scheme; simpls; intros WS SC.
   introv Len.
-  destruct (SC (List.map (var_subst S) Xs)) as [TP [KT [QC WF]]].
+  destruct (SC (List.map (var_subst S) Xs)) as [TP [KT [QC [L WF]]]].
     now rewrite map_length in *.
   splits.
   - apply* type_open_vars_subst.
@@ -1208,16 +1218,9 @@ Proof.
     apply* qcoherent_subst.
   - unfold kinds_open in *.
     rewrite map_length in *.
-    destruct WF as [L WF].
     exists (L \u dom K' \u dom S).
     intros Fr.
-    assert (HXs: List.map (var_subst S) Xs = Xs).
-      rewrite <- (map_ext_in id).
-        now rewrite map_id.
-      intros a Ha.
-      pose (in_mkset _ _ Ha).
-      rewrite* var_subst_fresh.
-    rewrite HXs in *; clear HXs.
+    rewrite (vars_subst_fresh S (length Ks) Xs) in * by auto.
     forward~ WF as WF'; clear WF.
     rewrite map_map.
     apply* wf_kind_open_subst.
