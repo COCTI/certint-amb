@@ -1125,58 +1125,42 @@ Lemma wf_kind_open_subst  K K' S Ks Xs L k rvs :
 Proof.
   intros WS Fr WF Hk.
   constructor.
-  introv HU Hl.
+  introv.
   rewrite map_map in Hk.
   destruct (proj1 (in_map_iff _ _ _) Hk) as [k' [Hko Hk']].
-  forward~ (list_forall_out WF (kind_open k' (typ_fvars Xs))) as WFk'.
+  forward~ (list_forall_out WF (kind_open k' (typ_fvars Xs))) as WFk'; clear WF.
     refine (in_map _ _ _ Hk').
   destruct k' as [[k'|] rvs']; try discriminate.
-  inversions WFk'.
-  assert (Hl'0: exists T', exists a',
+  inversions Hko; clear Hko.
+  unfold ckind_map at 2 4; destruct ckind_map_spec as [k1 [Hc1 Hr1]]; simpl.
+  unfold ckind_map; destruct ckind_map_spec as [k2 [Hc2 Hr2]]; simpl.
+  rewrite <- Hc2, <- Hc1, Hr2, Hr1; clear Hc2 Hc1 Hr2 Hr1 k1 k2.
+  unfold map_snd; rewrite map_map; simpl.
+  fold (map_snd (fun T => typ_open(typ_subst S T)(typ_fvars Xs)) (kind_rel k')).
+  intros HU Hl.
+  assert (Ha': exists T', exists a',
                In (l, T') (kind_rel k')
                /\ typ_open_vars T' Xs = typ_fvar a'
                /\ typ_subst S (typ_fvar a') = typ_fvar a).
-    inversions Hko.
-    revert Hl.
-    unfold ckind_map at 2; destruct ckind_map_spec; simpl.
-    destruct a0 as [_ Hx].
-    unfold ckind_map; destruct ckind_map_spec; simpl.
-    destruct a0 as [_ Hx0].
-    rewrite Hx0, Hx; clear Hx Hx0 x x0.
-    unfold map_snd.
-    rewrite map_map; simpl.
-    intros Hl.
     destruct (proj1 (in_map_iff _ _ _) Hl) as [[l' T'] [Hkl Hkl']].
     simpl in Hkl; inversions Hkl; clear Hkl.
     assert (HT' := typ_subst_open_vars S Xs T').
     forward~ HT' as HT''; clear HT'.
     unfold typ_open_vars in HT''; rewrite HT'' in *.
-    revert H2.
+    revert H1.
     case_eq (typ_open T' (typ_fvars Xs)); introv HOT'; try discriminate.
     intros _.
-    exists T'. exists v.
+    exists T'; exists v.
     splits*.
-  destruct Hl'0 as [T' [a' [HlT' [Ha' Haa']]]].
-  forward~ (H1 l a') as WFE; clear H1.
-      unfold ckind_map; destruct ckind_map_spec; simpl.
-      destruct a0 as [Hx _].
-      rewrite <- Hx.
-      inversions Hko.
-      revert HU.
-      unfold ckind_map at 2; destruct ckind_map_spec; simpl.
-      destruct a0 as [Hx0 _].
-      unfold ckind_map; destruct ckind_map_spec; simpl.
-      destruct a0 as [Hx1 _].
-      now rewrite <- Hx1, <- Hx0.
-    unfold ckind_map; destruct ckind_map_spec; simpl.
-    destruct a0 as [_ Hx].
-    rewrite Hx.
-    inversions Hko; clear Hko.
-    rewrite <- Ha'.
+  destruct Ha' as [T' [a' [HlT' [Ha' Haa']]]].
+  inversions WFk'; clear WFk'.
+  forward~ (H1 l a') as [k'' [rvs'' [B FA]]]; clear H1.
+      unfold ckind_map; destruct ckind_map_spec as [k1 [Hc1 Hr1]]; simpl.
+      now rewrite <- Hc1.
+    unfold ckind_map; destruct ckind_map_spec as [k1 [Hc1 Hr1]]; simpl.
+    rewrite Hr1, <- Ha'.
     unfold typ_open_vars, map_snd.
-    apply (in_map (fun p=>(fst p, typ_open (snd p) (typ_fvars Xs))) _ (l,T')).
-    auto.
-  destruct WFE as [k'' [rvs'' [B FA]]].
+    now apply(in_map (fun p =>(fst p, typ_open(snd p)(typ_fvars Xs))) _ (l,T')).
   binds_cases B.
     assert (WK := WS _ _ B0).
     inversions WK.
@@ -1185,16 +1169,14 @@ Proof.
     exists k'0; exists rvs'0.
     splits*.
     intros rv Hrv.
-    inversions Hko.
     destruct (FA _ Hrv) as [rv' [Hrv' Hpf]].
     exists rv'; splits*.
     destruct H1 as [_ EnRV].
-    simpl in EnRV.
-    auto.
-  exists (fst (kind_subst S (k'',rvs''))). exists rvs''.
+    now apply EnRV.
+  exists (fst (kind_subst S (k'',rvs''))); exists rvs''.
   assert (Ha'Xs : a' \in mkset Xs).
     puts (binds_dom B1).
-    rewrite dom_kinds_open_vars in H; auto.
+    now rewrite dom_kinds_open_vars in H by auto.
   rewrite typ_subst_fresh in Haa' by auto.
   inversions Haa'.
   split.
@@ -1202,7 +1184,6 @@ Proof.
     rewrite <- kinds_subst_open_vars by auto.
     apply* (@binds_map _ a (k'',rvs'') (kind_subst S)).
   intros.
-  inversions Hko.
   apply* FA.
 Qed.
 
