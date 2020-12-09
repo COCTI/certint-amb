@@ -1113,25 +1113,23 @@ Proof. induction l; simpls; auto. rewrite* IHl. Qed.
 Lemma var_subst_fresh S x : x # S -> var_subst S x = x.
 Proof. intros; unfold var_subst; rewrite* get_notin_dom. Qed.
 
-Lemma wf_kind_open_subst  K K' S Ks Xs L k rvs :
+Lemma wf_kind_open_subst  K K' S Ks Xs L :
   well_subst K K' S ->
   fresh (L \u dom K' \u dom S) (length Ks) Xs ->
   list_forall (wf_kind (K & kinds_open_vars Ks Xs))
               (List.map (fun k => kind_open k (typ_fvars Xs)) Ks) ->
-  In (Some k, rvs)
-     (List.map (fun k => kind_open k (typ_fvars Xs))
-               (List.map (kind_subst S) Ks)) ->
-  wf_kind (K' & kinds_open_vars (List.map (kind_subst S) Ks) Xs) (Some k, rvs).
+  list_forall (wf_kind (K' & kinds_open_vars (List.map (kind_subst S) Ks) Xs))
+              (List.map (fun k => kind_open(kind_subst S k)(typ_fvars Xs)) Ks).
 Proof.
-  intros WS Fr WF Hk.
-  constructor.
-  introv.
-  rewrite map_map in Hk.
+  intros WS Fr WF.
+  apply list_forall_in; intros k Hk.
   destruct (proj1 (in_map_iff _ _ _) Hk) as [k' [Hko Hk']].
   forward~ (list_forall_out WF (kind_open k' (typ_fvars Xs))) as WFk'; clear WF.
     refine (in_map _ _ _ Hk').
+  destruct* k as [[k|] rvs].
   destruct k' as [[k'|] rvs']; try discriminate.
   inversions Hko; clear Hko.
+  constructor; introv.
   unfold ckind_map at 2 4; destruct ckind_map_spec as [k1 [Hc1 Hr1]]; simpl.
   unfold ckind_map; destruct ckind_map_spec as [k2 [Hc2 Hr2]]; simpl.
   rewrite <- Hc2, <- Hc1, Hr2, Hr1; clear Hc2 Hc1 Hr2 Hr1 k1 k2.
@@ -1221,8 +1219,7 @@ Proof.
       rewrite* var_subst_fresh.
     rewrite HXs in *; clear HXs.
     forward~ WF as WF'; clear WF.
-    apply list_forall_in; intros k Hk.
-    destruct* k as [[k|] rvs].
+    rewrite map_map.
     apply* wf_kind_open_subst.
 Qed.
 
