@@ -553,10 +553,10 @@ Definition kinds_open_vars Ks Xs :=
 (** Body of a scheme *)
 
 Definition typ_body Q K T Ks :=
+  list_forall (qcoherent Q) Ks /\
   forall Xs, length Ks = length Xs ->
     type (typ_open_vars T Xs) /\
     list_forall (All_kind_types (fun T' => type (typ_open_vars T' Xs))) Ks /\
-    list_forall (qcoherent Q) Ks /\
     exists L, fresh L (length Ks) Xs ->
               list_forall (wf_kind (K & kinds_open_vars Ks Xs))
                           (kinds_open Ks (typ_fvars Xs)).

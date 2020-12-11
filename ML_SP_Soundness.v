@@ -39,25 +39,80 @@ Qed.
 
 Hint Resolve ok_kinds_open_vars : core.
 
+Lemma scheme_weaken Q K K' M :
+  ok (K & K') -> scheme Q K M -> scheme Q (K & K') M.
+Proof.
+  intros Ok [QC SC]; split; auto; intros Xs Len.
+  destruct (SC _ Len) as [? [? [L ?]]].
+  splits*.
+  exists (L \u dom (K & K')); intros Fr.
+  forward~ H1.
+  apply list_forall_imp; intros k.
+  apply* wf_kind_weaken.
+Qed.
+
+Lemma env_ok_weaken Q K K' E :
+  ok (K & K') -> env_ok Q K E -> env_ok Q (K & K') E.
+Proof.
+  intros OkK [Ok P].
+  split; auto; intros X M B.
+  apply* scheme_weaken.
+Qed.
+
+Lemma env_ok_add_qitem q Q K E :
+  env_ok Q K E -> env_ok (q :: Q) K E.
+Proof.
+  intros [Ok P].
+  split; auto; intros X M B.
+  destruct (P _ _ B); split; auto.
+  revert H; apply list_forall_imp; intros.
+  apply* qcoherent_add_qitem.
+Qed.  
+
+Hint Resolve scheme_weaken env_ok_weaken env_ok_add_qitem : core.
+
 (* ********************************************************************** *)
 (** Typing is preserved by weakening *)
 
 Lemma typing_weaken : forall gc G E F Q K t T,
    [Q ; K ; (E & G) |gc|= t ~: T] ->
-   env_ok (E & F & G) ->
+   env_ok Q K (E & F & G) ->
    [Q; K ; (E & F & G) |gc|= t ~: T].
 Proof.
-  introv Typ. gen_eq (E & G) as H. gen G.
-  induction Typ; introv EQ Ok; subst; auto*.
-  apply* typing_var. apply* binds_weaken.
-  inversions H.
+introv Typ. gen_eq (E & G) as H. gen G.
+induction Typ; introv EQ Ok; subst; auto*.
+- apply* typing_var. apply* binds_weaken.
+- inversions H.
   apply_fresh* (@typing_abs gc Q) as y.
   apply_ih_bind* H5.
   forward~ (H4 y) as R.
-  destruct* (typing_regular R) as [_ [R' _]].
-  apply_fresh* (@typing_let gc Q M L1) as y. apply_ih_bind* H2.
-    forward~ (H1 y) as R.
-    destruct* (typing_regular R) as [_ [R' _]].
+  destruct Ok as [Ok P].
+  destruct* (typing_regular R) as [_ [[Ok' P'] _]].
+  split; auto.
+- apply_fresh* (@typing_let gc Q M L1) as y.
+    introv Fr. destruct (typing_regular (H _ Fr)).
+    apply* H0.
+  apply_ih_bind* H2.
+  forward~ (H1 y) as Typ.
+  destruct* (typing_regular Typ) as [_ [[_ R'] _]].
+  destruct Ok as [Ok R].
+  split; auto.
+- apply_fresh (@typing_gc gc Q Ks) as Xs; auto.
+  introv Fr.
+  apply* H1.
+  forward~ (H0 Xs) as Typ.
+  destruct* (typing_regular Typ).
+- apply_fresh* (@typing_rigid gc Q) as y.
+  introv Fr.
+  apply* H3.
+  simpl in Fr; destruct Fr as [FrR Fr].
+  destruct H1 as [[Len FA1] FA2].
+  rewrite <- Len in Fr.
+  simpl in Fr.
+  auto*.
+- apply* typing_use.
+  intros X M B.
+  destruct* (proj2 Ok X M B). 
 Qed.
 
 Lemma proper_instance_weaken : forall K K' Ks Us,
@@ -132,7 +187,36 @@ apply wf_kind_comm.
 auto.  
 Qed.
 
-Hint Immediate kenv_ok_comm proper_instance_exchange : core.
+Lemma scheme_comm Q K K1 K2 K' M :
+  ok (K & K1 & K2 & K') ->
+  scheme Q (K & K1 & K2 & K') M -> scheme Q (K & K2 & K1 & K') M.
+Proof.
+  intros Ok [QC SC]; split; auto; intros Xs Len.
+  destruct (SC _ Len) as [? [? [L ?]]].
+  splits*.
+  exists (L \u dom (K & K2 & K1 & K')); intros Fr.
+  forward~ H1.
+  apply list_forall_imp; intros k FA.
+  rewrite concat_assoc in FA.
+  rewrite concat_assoc.
+  apply wf_kind_comm; auto.
+  rewrite <- concat_assoc.
+  apply* ok_kinds_open_vars.
+  repeat rewrite dom_concat in *.
+  auto.
+Qed.
+
+Lemma env_ok_comm Q K K1 K2 K' E :
+  ok (K & K1 & K2 & K') ->  
+  env_ok Q (K & K1 & K2 & K') E -> env_ok Q (K & K2 & K1 & K') E.
+Proof.
+  intros OkK [Ok P].
+  split; auto; intros X M B.
+  generalize (P _ _ B).
+  apply* scheme_comm.
+Qed.
+
+Hint Resolve env_ok_comm kenv_ok_comm : core.
 
 Lemma split_middle {A} (a : A) K K' K1 K2 :
   K ++ (a::nil) ++ K' = K1 ++ K2 ->
@@ -159,7 +243,6 @@ Proof. induction K; simpl; auto; intros; apply IHK; now injection H. Qed.
 
 Lemma app_r_inj {A} (K K1 K2 : list A) : K1 ++ K = K2 ++ K -> K1 = K2.
 Proof.
-Search rev.
 rewrite <- (rev_involutive (K1 ++ K)).
 intros H.
 apply rev_eq_app in H.
@@ -201,13 +284,11 @@ induction Typ; introv EQ; subst.
   rewrite concat_assoc.
   apply* (H1 Xs).
   rewrite* concat_assoc.
-- apply* typing_ann.
-  apply* proper_instance_exchange.
-- apply* typing_rigid.
-    apply* proper_instance_exchange.
+- apply* typing_ann. apply* proper_instance_exchange.
+- apply* (@typing_rigid gc Q). apply* proper_instance_exchange.
   introv Fr.
   rewrite concat_assoc.
-  apply* (H2 R Xs).
+  apply* (H3 R Xs).
   now rewrite concat_assoc.
 - apply* typing_use. apply* proper_instance_exchange.
   destruct* (typing_regular Typ).
@@ -217,18 +298,6 @@ Qed.
 
 Lemma tree_subst_eq_refl S t : tree_subst_eq S t t.
 Proof. induction t; simpl; constructor; auto. Qed.
-
-Lemma qcoherent_add_qeq T1 T2 Q k :
-  qcoherent Q k -> qcoherent (qeq T1 T2 :: Q) k.
-Proof.
-destruct 1.
-- constructor; introv QS; apply H.
-  inversions* QS.
-- apply* qc_arrow; introv QS; apply* (H0 S).
-  inversions* QS.
-- apply* qc_eq; introv QS; apply* (H0 S).
-  inversions* QS.
-Qed.
 
 Lemma typing_weaken_kinds : forall gc Q K K' E t T,
   [ Q ; K; E | gc |= t ~: T ] ->
@@ -269,39 +338,38 @@ induction* Typ; intros.
   introv Fr.
   rewrite <- (concat_empty (K & _ & _)).
   apply typing_exchange.
-  apply* (H2 R Xs).
-  forward~ (H1 R Xs) as Typ.
+  apply* (H3 R Xs).
+  forward~ (H2 R Xs) as Typ.
   destruct (typing_regular Typ) as [[Ok [Ok1 [Ok2 Ok3]]] _].
-  destruct H3 as [Ok' [Ok1' [Ok2' Ok3']]].
+  destruct H4 as [Ok' [Ok1' [Ok2' Ok3']]].
   assert (Ok'': ok (K' & kinds_open_vars ((None, rvar_f R :: nil) :: Ks) Xs)).
     apply* ok_kinds_open_vars.
     simpl in Fr; destruct Fr as [_ Fr].
-    destruct H0 as [[Len _] _].
+    destruct H1 as [[Len _] _].
     simpl in Len |- *.
     rewrite* Len.
   splits*.
   + intros x kx Hkx.
-    apply qcoherent_add_qvar.
+    apply qcoherent_add_qitem.
     apply in_concat_or in Hkx; destruct* Hkx as [Hkx|Hkx].
     apply* (@qcoherent_remove_qvar R).
   + apply env_prop_concat; intros x k B; auto*.
 - apply* typing_use.
       apply* proper_instance_weaken.
-    destruct* H2 as [_ [_ []]].
+    destruct* H3 as [_ [_ []]].
   apply IHTyp.
-  destruct H2 as [Ok [Ok1 [Ok2 Ok3]]].
+  destruct H3 as [Ok [Ok1 [Ok2 Ok3]]].
   splits*.
-  introv B; apply* qcoherent_add_qeq.
+  introv B; apply* qcoherent_add_qitem.
 Qed.
 
 Lemma proper_instance_subst : forall K K' K'' Ks Us S,
-  env_prop type S ->
   proper_instance (K & K' & K'') Ks Us ->
   well_subst (K & K' & K'') (K & map (kind_subst S) K'') S ->
   proper_instance (K & map (kind_subst S) K'') (List.map (kind_subst S) Ks)
     (List.map (typ_subst S) Us).
 Proof.
-  introv TS PI WS.
+  introv PI WS.
   destruct* PI.
   split. rewrite map_length. apply* typ_subst_type_list.
   rewrite* <- kinds_subst_open.
@@ -331,7 +399,7 @@ Qed.
 
 Lemma All_kind_types_subst : forall k S,
   All_kind_types type k ->
-  env_prop type S -> All_kind_types type (kind_subst S k).
+  All_kind_types type (kind_subst S k).
 Proof.
   intros; unfold kind_subst; apply All_kind_types_map.
   apply* All_kind_types_imp.
@@ -352,13 +420,12 @@ apply (Cstr.entails_unique EnC H0).
 Qed.
 
 Lemma kenv_ok_subst Q K K' K'' S :
-  env_prop type S ->
   env_prop (qcoherent Q) (map (kind_subst S) K'') ->
   disjoint (dom S) (fv_in kind_fv K \u dom K) ->
   well_subst (K & K' & K'') (K & map (kind_subst S) K'') S ->
   kenv_ok Q (K & K' & K'') -> kenv_ok Q (K & map (kind_subst S) K'').
 Proof.
-intros HS QC Dis WS [Ok [Ok1 [Ok2 Ok3]]].
+intros QC Dis WS [Ok [Ok1 [Ok2 Ok3]]].
 splits*; apply* env_prop_concat.
 - intro; intros. destruct* (in_map_inv _ _ _ _ H) as [b [Hb B]]; subst*.
 - intros x k B.
@@ -378,10 +445,12 @@ splits*; apply* env_prop_concat.
   forward~ (WS x k') as WK.
   destruct k' as [ck' rvs'].
   inversions WK.
-  destruct ck'; try discriminate. constructor.
-  apply* (entails_wf_kind H1 H4).
+  destruct ck'.
+    apply* (entails_wf_kind H1 H4).
+  constructor.
 Qed.
 
+(*
 Lemma env_ok_subst : forall E E' S,
   env_prop type S ->
   env_ok (E & E') -> env_ok (E & map (sch_subst S) E').
@@ -392,22 +461,15 @@ Proof.
   destruct (in_map_inv _ _ _ _ H0) as [b [Hb B]].
   subst*.
 Qed.
+*)
 
-Hint Resolve kenv_ok_subst env_ok_subst : core.
+Hint Resolve kenv_ok_subst (*env_ok_subst*) : core.
 
 (* ********************************************************************** *)
 (** Type substitution preserves typing *)
 
 Lemma kind_rel_map f k : kind_rel (ckind_map f k) = map_snd f (kind_rel k).
 Proof. now destruct k. Qed.
-
-Lemma typ_subst_fvar S V :
-  env_prop type S -> exists X, typ_subst S (typ_fvar V) = typ_fvar X.
-Proof.
-  intros; set (R := typ_subst S (typ_fvar V)).
-  assert (HR : type R) by apply* typ_subst_type.
-  inversions HR; now esplit.
-Qed.
 
 Lemma well_subst_binds K K' S V k rvs X :
   well_subst K K' S -> binds V (Some k, rvs) K ->
@@ -426,14 +488,13 @@ Qed.
 Lemma typing_typ_subst : forall gc Q F K'' S K K' E t T,
   disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) ->
   disjoint (dom K') (fv_in kind_fv (map (kind_subst S) K'')) ->
-  env_prop type S ->
   env_prop (qcoherent Q) (map (kind_subst S) K'') ->
   well_subst (K & K' & K'') (K & map (kind_subst S) K'') S ->
   [Q; K & K' & K''; E & F |gc|= t ~: T] ->
   [Q; K & map (kind_subst S) K''; E & (map (sch_subst S) F) |gc|=
     t ~: (typ_subst S T)].
 Proof.
-  introv. intros Dis Dis' TS QC WS Typ.
+  introv Dis Dis' QC WS Typ.
   gen_eq (K & K' & K'') as GK; gen_eq (E & F) as G; gen K''; gen F.
   induction Typ; introv Dis' QC WS EQ EQ'; subst.
   (* Var *)

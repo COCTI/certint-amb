@@ -657,7 +657,7 @@ Proof.
   introv TB Len. pick_freshes (length Ks) Xs.
   rewrite* (@typ_subst_intro Xs).
   apply* typ_subst_type.
-  destruct* (TB Xs).
+  destruct* (proj2 TB Xs).
 Qed.
 
 
@@ -1200,9 +1200,13 @@ Lemma sch_subst_type Q K K' S M :
   scheme Q K M -> scheme Q K' (sch_subst S M).
 Proof.
   destruct M as [T Ks].
-  unfold scheme; simpls; intros WS SC.
+  unfold scheme; simpls; intros WS [QC SC].
+  split.
+    apply* list_forall_map.
+    intros k Hk Qk.
+    apply* qcoherent_subst.
   introv Len.
-  destruct (SC (List.map (var_subst S) Xs)) as [TP [KT [QC [L WF]]]].
+  destruct (SC (List.map (var_subst S) Xs)) as [TP [KT [L WF]]].
     now rewrite map_length in *.
   splits.
   - apply* type_open_vars_subst.
@@ -1213,9 +1217,6 @@ Proof.
     apply All_kind_types_imp.
     intros U HU.
     apply* type_open_vars_subst.
-  - apply* list_forall_map.
-    intros k Hk Qk.
-    apply* qcoherent_subst.
   - unfold kinds_open in *.
     rewrite map_length in *.
     exists (L \u dom K' \u dom S).
@@ -1328,10 +1329,10 @@ Proof.
   induction 1; subst Q'; solve [constructor; auto*].
 Qed.
 
-Lemma qcoherent_add_qvar x Q k :
-  qcoherent Q k -> qcoherent (qvar x :: Q) k.
+Lemma qcoherent_add_qitem q Q k :
+  qcoherent Q k -> qcoherent (q :: Q) k.
 Proof. induction 1; constructor; auto; introv QS; inversions* QS. Qed.
-Hint Resolve qcoherent_add_qvar.
+Hint Resolve qcoherent_add_qitem.
 
 Lemma trm_rigid_rec_open n r t x :
   trm_rigid_rec n r t ^ x = trm_rigid_rec n r (t ^ x).
@@ -1455,8 +1456,8 @@ Proof.
   destruct IHtyping as [_ [[]]].
   split; auto.
   intros x M HM.
-  intros Xs HXs.
-  destruct* (H5 _ _ HM Xs).
+  destruct* (H5 _ _ HM).
+  split; auto.
 Admitted.
 
 (** The value predicate only holds on locally-closed terms. *)
