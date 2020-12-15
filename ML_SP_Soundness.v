@@ -544,22 +544,22 @@ Proof.
    rewrite* concat_assoc.
    apply_ih_map_bind* H2.
   (* App *)
-  destruct (typ_subst_fvar V TS) as [X HX].
-  destruct (well_subst_binds WS H HX) as [k' [HB [HE HR]]].
-  rewrite HX in IHTyp1.
+  destruct (well_subst_binds WS H) as [k' [HB [HE HR]]].
   apply* (@typing_app gc).
-    destruct k; simpl in *; subst.
-    now apply Cstr.entails_arrow.
+      destruct k; simpl in *; subst.
+      apply Cstr.entails_arrow.
+      apply HR; rewrite kind_rel_map.
     apply HR; rewrite kind_rel_map.
-    now apply in_map_snd.
-    apply HR; rewrite kind_rel_map.
-    now apply (in_map_snd (typ_subst S) _ T).
+    now apply (in_map_snd (typ_subst S) _ S0).
+  apply HR; rewrite kind_rel_map.
+  now apply (in_map_snd (typ_subst S) _ T).
   (* Cst *)
   rewrite* sch_subst_open.
   assert (disjoint (dom S) (sch_fv (Delta.type c))).
     intro x. rewrite* Delta.closed.
   rewrite* sch_subst_fresh.
   apply* typing_cst.
+    admit.
   rewrite* <- (sch_subst_fresh S H2).
   destruct (Delta.type c) as [T Ks]; simpl.
   apply* proper_instance_subst.
