@@ -420,14 +420,19 @@ apply (Cstr.entails_unique EnC H0).
 Qed.
 
 Lemma kenv_ok_subst Q K K' K'' S :
-  env_prop (qcoherent Q) (map (kind_subst S) K'') ->
   disjoint (dom S) (fv_in kind_fv K \u dom K) ->
   well_subst (K & K' & K'') (K & map (kind_subst S) K'') S ->
   kenv_ok Q (K & K' & K'') -> kenv_ok Q (K & map (kind_subst S) K'').
 Proof.
-intros QC Dis WS [Ok [Ok1 [Ok2 Ok3]]].
+intros Dis WS [Ok [Ok1 [Ok2 Ok3]]].
 splits*; apply* env_prop_concat.
 - intro; intros. destruct* (in_map_inv _ _ _ _ H) as [b [Hb B]]; subst*.
+- intros x k B.
+  destruct (in_map_inv _ _ _ _ B) as [k' [Hk B']].
+  rewrite <- Hk.
+  apply qcoherent_subst.
+  apply (Ok2 x k').
+  apply* in_or_concat.
 - intros x k B.
   unfold well_subst in WS.
   forward~ (WS x k) as WK.
@@ -471,14 +476,14 @@ Hint Resolve kenv_ok_subst (*env_ok_subst*) : core.
 Lemma kind_rel_map f k : kind_rel (ckind_map f k) = map_snd f (kind_rel k).
 Proof. now destruct k. Qed.
 
-Lemma well_subst_binds K K' S V k rvs X :
+Lemma well_subst_binds K K' S V k rvs :
   well_subst K K' S -> binds V (Some k, rvs) K ->
-  typ_subst S (typ_fvar V) = typ_fvar X ->
   exists k', exists rvs',
-    binds X (Some k', rvs') K' /\ entails_ckind k' (ckind_map (typ_subst S) k).
+    binds (var_subst S V) (Some k', rvs') K' /\
+    entails_ckind k' (ckind_map (typ_subst S) k).
 Proof.
-  intros WS HB HX; poses WK (WS _ _ HB).
-  rewrite HX in WK; inversions WK.
+  intros WS HB; poses WK (WS _ _ HB).
+  simpl in WK; inversions WK.
   unfold entails in H1.
   destruct k' as [[k'|] rvs']; simpl in H1.
     exists* k'.
@@ -487,18 +492,19 @@ Qed.
 
 Lemma typing_typ_subst : forall gc Q F K'' S K K' E t T,
   disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) ->
-  disjoint (dom K') (fv_in kind_fv (map (kind_subst S) K'')) ->
-  env_prop (qcoherent Q) (map (kind_subst S) K'') ->
+  dom K' << dom S -> disjoint (dom K') (fv_in (fun v:var => {{v}}) S) ->
+  (*env_prop (qcoherent Q) (map (kind_subst S) K'') ->*)
   well_subst (K & K' & K'') (K & map (kind_subst S) K'') S ->
   [Q; K & K' & K''; E & F |gc|= t ~: T] ->
   [Q; K & map (kind_subst S) K''; E & (map (sch_subst S) F) |gc|=
     t ~: (typ_subst S T)].
 Proof.
-  introv Dis Dis' QC WS Typ.
+  introv Dis DomK' Dis' WS Typ.
   gen_eq (K & K' & K'') as GK; gen_eq (E & F) as G; gen K''; gen F.
-  induction Typ; introv Dis' QC WS EQ EQ'; subst.
+  induction Typ; introv WS EQ EQ'; subst.
   (* Var *)
   rewrite~ sch_subst_open. apply* typing_var.
+      admit.
     binds_cases H1.
       apply* binds_concat_fresh.
       rewrite* sch_subst_fresh.
@@ -507,33 +513,34 @@ Proof.
     destruct M as [T Ks]. simpl.
     apply* proper_instance_subst.
   (* Abs *)
-  destruct (typ_subst_fvar V TS) as [X HX].
-  destruct (well_subst_binds WS H0 HX) as [k' [rvs' [HB [HE HR]]]].
-  rewrite HX.
+  simpl.
+  destruct (well_subst_binds WS H0) as [k' [rvs' [HB [HE HR]]]].
+  inversions H.
   eapply (@typing_abs gc Q L).
-    now apply (typ_subst_type TS H).
+    now apply (type_fvar (var_subst S X)).
     exact HB.
     destruct k; simpl in *; subst.
     now apply Cstr.entails_arrow.
     apply HR; rewrite kind_rel_map.
-    now apply in_map_snd.
+    now apply (in_map_snd (typ_subst S) Cstr.arrow_dom (typ_fvar X)).
     apply HR; rewrite kind_rel_map.
     now apply (in_map_snd (typ_subst S) _ T).
     intros.
-    replace (Sch (typ_subst S U) nil) with (sch_subst S (Sch U nil)) by auto.
+    replace (Sch (typ_fvar (var_subst S X)) nil)
+      with (sch_subst S (Sch (typ_fvar X) nil)) by auto.
     now apply_ih_map_bind H5.
   (* Let *)
   apply_fresh* (@typing_let gc Q (sch_subst S M)
                             (L1 \u dom S \u dom K \u dom K'')) as y.
-   clear H H1 H2. clear L2 T2 t2 Dis.
+   clear H1 H2. clear L2 T2 t2.
    simpl. intros Ys Fr.
    rewrite* <- sch_subst_open_vars.
    rewrite* <- kinds_subst_open_vars.
    rewrite concat_assoc. rewrite <- map_concat.
    rewrite map_length in Fr.
    apply* H0; clear H0.
+     (*apply* well_subst_fresh.*)
      admit.
-     (* apply* well_subst_fresh. *)
    rewrite* concat_assoc.
    apply_ih_map_bind* H2.
   (* App *)
