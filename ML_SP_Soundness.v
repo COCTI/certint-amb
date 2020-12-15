@@ -564,13 +564,14 @@ Proof.
   destruct (Delta.type c) as [T Ks]; simpl.
   apply* proper_instance_subst.
   (* GC *)
-  apply* (@typing_gc gc (List.map (kind_subst S) Ks)
+  apply* (@typing_gc gc Q (List.map (kind_subst S) Ks)
                      (L \u dom S \u dom K \u dom K'')).
    rewrite map_length; intros.
    rewrite* <- kinds_subst_open_vars.
    rewrite concat_assoc. rewrite <- map_concat.
    apply* (H1 Xs); clear H1.
-     apply* well_subst_fresh.
+     (* apply* well_subst_fresh. *)
+     admit.
    rewrite* concat_assoc.
 Qed.
 
