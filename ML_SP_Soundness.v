@@ -523,6 +523,9 @@ Proof.
   destruct* H1.
 Qed.
 
+Lemma kind_subst_none S rvs : kind_subst S (None, rvs) = ((None, rvs) : kind).
+Proof. now unfold kind_subst, kind_map. Qed.
+
 Lemma graph_of_tree_subst ofs tr S :
   let Ks := snd (graph_of_tree ofs tr) in
   List.map (kind_subst S) Ks = Ks.
@@ -677,6 +680,27 @@ induction Typ; introv WS EQ EQ'; subst.
     rewrite H1; simpl; intros.
     now rewrite H3.
   + apply* proper_instance_subst.
+- (* Rigid *)
+  rewrite typ_subst_open.
+  apply (@typing_rigid gc Q (L \u dom S) _ (List.map (kind_subst S) Ks)); auto*.
+    apply (proper_instance_subst _ _ _ H1); auto.
+  simpl; introv [HR Fr].
+  set (kov := kinds_open_vars _ Xs).
+  assert (kov = 
+     map (kind_subst S) (kinds_open_vars ((None, rvar_f R :: nil) :: Ks) Xs)).
+    rewrite* kinds_subst_open_vars.
+  rewrite H4.
+  rewrite concat_assoc, <- map_concat, typ_subst_open_vars.
+  rewrite map_length in Fr.
+  apply* (H3 R Xs); auto.
+  + forward~ (H2 R Xs) as Typ.
+    destruct (typing_regular Typ).
+    apply* well_subst_fresh.
+    destruct H1 as [[] _]; simpl in *.
+    rewrite* H1.
+  + rewrite* concat_assoc.
+  + auto.
+- (* Use *)
 Abort.
 
 Lemma typing_typ_substs : forall gc K' S K E t T,
