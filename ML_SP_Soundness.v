@@ -85,23 +85,15 @@ induction Typ; introv EQ Ok; subst; auto*.
 - inversions H.
   apply_fresh* (@typing_abs gc Q) as y.
   apply_ih_bind* H5.
-  forward~ (H4 y) as R.
-  destruct Ok as [Ok P].
-  destruct* (typing_regular R) as [_ [[Ok' P'] _]].
-  split; auto.
+  forward~ (H4 y).
 - apply_fresh* (@typing_let gc Q M L1) as y.
-    introv Fr. destruct (typing_regular (H _ Fr)).
-    apply* H0.
+    introv Fr. use (H _ Fr).
   apply_ih_bind* H2.
-  forward~ (H1 y) as Typ.
-  destruct* (typing_regular Typ) as [_ [[_ R'] _]].
-  destruct Ok as [Ok R].
-  split; auto.
+  forward~ (H1 y).
 - apply_fresh (@typing_gc gc Q Ks) as Xs; auto.
   introv Fr.
   apply* H1.
-  forward~ (H0 Xs) as Typ.
-  destruct* (typing_regular Typ).
+  forward~ (H0 Xs).
 - apply_fresh* (@typing_rigid gc Q) as y.
   introv Fr.
   apply* H3.
@@ -268,7 +260,7 @@ induction Typ; introv EQ; subst.
   inversions H.
   apply_fresh* (@typing_abs gc Q) as y.
   apply binds_comm. apply H0.
-  destruct* (typing_regular Typ).
+  now kenv_ok_hyps.
 - apply_fresh* (@typing_let gc Q M) as y.
   introv Fr.
   rewrite concat_assoc.
@@ -277,7 +269,7 @@ induction Typ; introv EQ; subst.
 - assert (Typ := typing_app gc T H H0 H1 H2 Typ1 Typ2).
   apply* typing_app.
   apply* (@binds_comm _ V (Some k, rvs)).
-  destruct* (typing_regular Typ).
+  now kenv_ok_hyps.
 - apply* typing_cst. apply* proper_instance_exchange.
 - apply* typing_gc.
   introv Fr.
@@ -291,7 +283,6 @@ induction Typ; introv EQ; subst.
   apply* (H3 R Xs).
   now rewrite concat_assoc.
 - apply* typing_use. apply* proper_instance_exchange.
-  destruct* (typing_regular Typ).
 - apply* typing_eq.
   apply binds_comm in H1; auto*.
 Qed.
@@ -313,8 +304,8 @@ induction* Typ; intros.
   apply typing_exchange.
   apply* H0; clear H0. rewrite* concat_assoc.
   forward~ (H Xs) as Typ.
-  destruct* (typing_regular Typ) as [[Rok [RK1 [RK2 RK3]]] _].
-  destruct* H3 as [Ok [ROk1 [ROk2 ROk3]]].
+  destruct (typing_regular Typ) as [[Rok [RK1 [RK2 RK3]]] _].
+  destruct H3 as [Ok [ROk1 [ROk2 ROk3]]].
   rewrite <- concat_assoc.
   splits*.
   apply env_prop_concat; intros x k B.
@@ -328,10 +319,10 @@ induction* Typ; intros.
   apply* (H1 Xs); clear H1.
   forward~ (H0 Xs) as Typ; clear H0.
   destruct (typing_regular Typ) as [[Ok [Ok1 [Ok2 Ok3]]] _].
-  destruct H2 as [Ok' [Ok1' [Ok2' Ok3']]].
   assert (Ok'': ok (K' & kinds_open_vars Ks Xs)) by apply* ok_kinds_open_vars.
   splits*.
-  apply* env_prop_concat; intros* x k B; auto*.
+  apply env_prop_concat; intros x k B. apply* wf_kind_extend.
+  apply* wf_kind_weaken. apply* (kenv_ok_wf_kind H2 x).
 - apply* typing_ann. apply* proper_instance_weaken.
 - apply_fresh* (@typing_rigid gc Q) as Xs.
     apply* proper_instance_weaken.
@@ -353,11 +344,11 @@ induction* Typ; intros.
     apply qcoherent_add_qitem.
     apply in_concat_or in Hkx; destruct* Hkx as [Hkx|Hkx].
     apply* (@qcoherent_remove_qvar R).
-  + apply env_prop_concat; intros x k B; auto*.
+  + apply env_prop_concat; intros x k B. apply* wf_kind_extend.
+    apply* wf_kind_weaken.
 - apply* typing_use.
-      apply* proper_instance_weaken.
-    destruct* H3 as [_ [_ []]].
-  apply IHTyp.
+    apply* proper_instance_weaken.
+  apply* IHTyp.
   destruct H3 as [Ok [Ok1 [Ok2 Ok3]]].
   splits*.
   introv B; apply* qcoherent_add_qitem.
@@ -646,8 +637,7 @@ induction Typ; introv WS EQ EQ'; subst.
    rewrite map_length in Fr.
    apply* H0; clear H0.
      forward~ (H Ys) as Typ.
-     destruct (typing_regular Typ).
-     apply* well_subst_fresh.
+     apply* (@well_subst_fresh Q).
    rewrite* concat_assoc.
   apply_ih_map_bind* H2.
 - (* App *)
@@ -677,8 +667,7 @@ induction Typ; introv WS EQ EQ'; subst.
    rewrite concat_assoc. rewrite <- map_concat.
    apply* (H1 Xs); clear H1.
      forward~ (H0 Xs) as Typ.
-     destruct (typing_regular Typ).
-     apply* well_subst_fresh.
+     apply* (@well_subst_fresh Q).
   rewrite* concat_assoc.
 - (* Ann *)
   rewrite <- map_nth.
@@ -688,7 +677,7 @@ induction Typ; introv WS EQ EQ'; subst.
     rewrite H1; simpl; intros.
     now rewrite H3.
   + apply* proper_instance_subst.
-Qed.
+Abort.
 
 Lemma typing_typ_substs : forall gc K' S K E t T,
   disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) ->

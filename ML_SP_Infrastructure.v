@@ -90,22 +90,23 @@ Qed.
 
 Ltac env_ok_hyps :=
   repeat match goal with
-  | H: env_ok _ |- _ => destruct H
+  | H: env_ok _ _ _ |- _ => destruct H
   end.
 
 Ltac kenv_ok_hyps :=
   repeat match goal with
-  | H: kenv_ok _ |- _ => destruct H
+  | H: kenv_ok _ _ |- _ => destruct H as [? [? []]]
   end.
 
 Ltac env_ok_solve :=
   env_ok_hyps; split; [ok_solve | env_prop_solve].
 
 Ltac kenv_ok_solve :=
-  kenv_ok_hyps; split; [ok_solve | env_prop_solve].
+  kenv_ok_hyps; split4;
+  [ok_solve | env_prop_solve | env_prop_solve | env_prop_solve].
 
-Hint Extern 2 (env_ok _) => solve [env_ok_solve] : core.
-Hint Extern 2 (kenv_ok _) => solve [kenv_ok_solve] : core.
+Hint Extern 2 (env_ok _ _ _) => solve [env_ok_solve] : core.
+Hint Extern 2 (kenv_ok _ _) => solve [kenv_ok_solve] : core.
 
 (* ====================================================================== *)
 (** * Additional Definitions used in the Proofs *)
@@ -1256,10 +1257,13 @@ Hint Resolve sch_open_types : core.
 
 Definition kenv_ok_is_ok Q K (H : kenv_ok Q K) : ok K := proj1 H.
 Definition env_ok_is_ok Q K E (H:env_ok Q K E) := proj1 H.
-Definition kenv_ok_env_prop Q K (H : kenv_ok Q K) := proj2 H.
-Definition env_ok_env_prop Q K E (H:env_ok Q K E) := proj2 H.
+Definition kenv_ok_type Q K (H : kenv_ok Q K) := proj32 H.
+Definition kenv_ok_qcoherent Q K (H : kenv_ok Q K) := proj43 H.
+Definition kenv_ok_wf_kind Q K (H : kenv_ok Q K) := proj44 H.
+Definition env_ok_scheme Q K E (H:env_ok Q K E) := proj2 H.
 
-Hint Immediate kenv_ok_is_ok env_ok_is_ok kenv_ok_env_prop env_ok_env_prop : core.
+Hint Immediate kenv_ok_is_ok env_ok_is_ok kenv_ok_type kenv_ok_qcoherent : core.
+Hint Immediate kenv_ok_wf_kind env_ok_scheme : core.
 
 Ltac env_hyps T :=
   match T with
@@ -1385,16 +1389,16 @@ Proof.
   pick_fresh y. destruct* H2.
   (* typing_abs *)
   pick_fresh y. apply* (H5 y).
-  pick_fresh y. destruct* (H5 y) as [_ [[Eok EokA] _]]. split; auto.
+  pick_fresh y. destruct* (H5 y) as [_ [[] _]].
   apply (@term_abs L); intros y Hy. destruct* (H5 y) as [_ [_ [HT _]]].
   (* typing_let *)
   pick_fresh y. apply* (H2 y).
-  pick_fresh y. destruct* (H2 y) as [_ [[Eok EokA] _]]. split; auto.
+  pick_fresh y. destruct* (H2 y) as [_ [[] _]].
   apply_fresh* term_let as y.
     pick_freshes (sch_arity M) Xs.
-    forward~ (H0 Xs) as [_ [_ [G _]]].
-  forward~ (H2 y) as [_ [_ [G _]]].
-  pick_fresh y. forward~ (H2 y) as [_ [_ [_ G]]].
+    forward~ (H0 Xs) as [_ [_ []]].
+  forward~ (H2 y) as [_ [_ []]].
+  pick_fresh y. forward~ (H2 y) as [_ [_ []]].
   (* typing_app *)
   destruct IHtyping1 as [[OkK [TK QK]] _].
   specialize (env_prop_binds H TK).
@@ -1452,12 +1456,12 @@ Proof.
   splits*.
   destruct* H1 as [[] _].
   (* typing_use *)
-  destruct IHtyping as [[]]; splits*.
   destruct IHtyping as [_ [[]]].
   split; auto.
   intros x M HM.
   destruct* (H5 _ _ HM).
   split; auto.
+  apply* list_forall_imp.
 Admitted.
 
 (** The value predicate only holds on locally-closed terms. *)
@@ -1497,26 +1501,27 @@ Qed.
 
 Ltac kenv_ok_hyps ::=
   repeat match goal with
-  | H: typing ?Q ?K _ _ _ |- _ => destruct (proj41 (typing_regular H)); clear H
-  | H: kenv_ok ?Q ?K |- _ => destruct H
+  | H: typing _ _ _ _ _ _ |- _ =>
+    destruct (proj41 (typing_regular H)) as [? [? []]]; clear H
+  | H: kenv_ok ?Q ?K |- _ => destruct H as [? [? []]]
   end.
 
 Ltac env_ok_hyps ::=
   repeat match goal with
-  | H: typing ?Q ?K ?E _ _ |- _ => destruct (proj42 (typing_regular H)); clear H
+  | H: typing _ _ _ _ _ _ |- _ => destruct (proj42 (typing_regular H)); clear H
   | H: env_ok ?Q ?K ?E |- _ => destruct H
   end.
 
 Hint Extern 1 (term ?t) =>
   match goal with
-  | H: typing _ _ _ t _ |- _ => apply (proj43 (typing_regular H))
+  | H: typing _ _ _ _ t _ |- _ => apply (proj43 (typing_regular H))
   | H: red t _ |- _ => apply (proj1 (red_regular H))
   | H: red _ t |- _ => apply (proj2 (red_regular H))
   | H: value t |- _ => apply (value_regular H)
   end : core.
 
 Hint Extern 1 (type ?T) => match goal with
-  | H: typing _ _ _ _ T |- _ => apply (proj44 (typing_regular H))
+  | H: typing _ _ _ _ _ T |- _ => apply (proj44 (typing_regular H))
   end : core.
 
 End MkJudgInfra.
