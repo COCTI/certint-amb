@@ -375,27 +375,63 @@ Proof.
   rewrite* <- kinds_subst_open.
 Qed.
 
-(*
-Lemma well_subst_fresh : forall K K' K'' S Ys Ks,
+Lemma fresh_ok_combine {A:Set} K Xs (Vs : list A) :
+  ok (K & combine Xs Vs) ->
+  length Vs = length Xs -> fresh (dom K) (length Vs) Xs.
+Proof.
+  revert Vs; induction Xs; destruct Vs; simpl; intros; try discriminate; auto.
+  inversions H.
+  inversions H0.
+  splits*.
+  forward~ (IHXs Vs) as Fr.
+  apply* disjoint_fresh.
+Qed.
+
+Lemma fresh_kinds_open_vars K Xs Ks :
+  ok (K & kinds_open_vars Ks Xs) ->
+  length Ks = length Xs -> fresh (dom K) (length Ks) Xs.
+Proof.
+  intros Ok Len.
+  unfold kinds_open_vars, kinds_open in Ok.
+  forward~ (fresh_ok_combine _ _ _ Ok).
+  rewrite* map_length.
+Qed.
+
+Lemma well_subst_fresh Q K K' K'' S Ys Ks :
   well_subst (K & K' & K'') (K & map (kind_subst S) K'') S ->
-  fresh (dom S \u dom K \u dom K'') (length Ks) Ys ->
+  fresh (dom S) (length Ks) Ys ->
+  kenv_ok Q (K & K' & K'' & kinds_open_vars Ks Ys) ->
   well_subst (K & K' & K'' & kinds_open_vars Ks Ys)
     (K & map (kind_subst S) (K'' & kinds_open_vars Ks Ys)) S.
 Proof.
-  introv WS Fr.
-  assert (KxYs: disjoint (dom K \u dom K'')
-                         (dom (kinds_open_vars Ks Ys))) by auto.
+  intros WS Fr [Kok Kwf].
+  forward~ (fresh_kinds_open_vars _ _ _ Kok) as Fr'.
+  repeat rewrite dom_concat in Fr'.
   intro x; intros.
   rewrite map_concat. rewrite <- concat_assoc.
-  destruct* (binds_concat_inv H) as [[N B]|B]; clear H.
-    apply* well_kinded_extend.
-    admit.
-  destruct k; try constructor.
-  simpl. rewrite get_notin_dom by auto.
+  destruct (binds_concat_inv H) as [[N B]|B]; clear H.
+    apply well_kinded_extend.
+      rewrite concat_assoc, <-map_concat.
+      apply* ok_map.
+    apply* WS.
+  simpl.
   puts (binds_map (kind_subst S) B).
-  apply* wk_kind.
+  rewrite var_subst_fresh by auto.
+  apply (@wk_kind (kind_subst S k)).
+      apply* binds_prepend.
+    apply entails_refl.
+  forward (wf_kind_open_subst Ks Ys {} WS) as WF.
+      rewrite dom_concat, dom_map; auto.
+    destruct (env_prop_concat_inv _ _ (proj33 Kwf)).
+    apply (env_prop_list_forall Ys). apply H1.
+      ok_solve.
+    rewrite* map_length.
+  rewrite kinds_subst_open_vars in H |- * by auto.
+  apply (list_forall_out WF).
+  use (binds_combine _ _ H).
+  unfold kinds_open in H0.
+  now rewrite list_map_comp in H0.
 Qed.
-*)
 
 Lemma All_kind_types_subst : forall k S,
   All_kind_types type k ->
@@ -455,20 +491,26 @@ splits*; apply* env_prop_concat.
   constructor.
 Qed.
 
-(*
-Lemma env_ok_subst : forall E E' S,
-  env_prop type S ->
-  env_ok (E & E') -> env_ok (E & map (sch_subst S) E').
+Lemma env_ok_subst Q K K' K'' E F S :
+  well_subst (K & K' & K'') (K & map (kind_subst S) K'') S ->
+  disjoint (dom S) (fv_in sch_fv E) ->
+  env_ok Q (K & K' & K'') (E & F) ->
+  env_ok Q (K & map (kind_subst S) K'') (E & map (sch_subst S) F).
 Proof.
-  introv HS H.
-  env_ok_solve. auto.
-  intro; intros.
-  destruct (in_map_inv _ _ _ _ H0) as [b [Hb B]].
-  subst*.
+  intros WS Dis Eok.
+  split; auto*.
+  intros x M B.
+  destruct (in_concat_or _ _ _ B).
+    destruct (in_map_inv _ _ _ _ H) as [M' []]; subst; clear B H.
+    forward~ (proj2 Eok x M') as HS'.
+    apply* sch_subst_type.
+  forward~ (proj2 Eok x M) as HS'.
+  rewrite <- (sch_subst_fresh S).
+    apply* sch_subst_type.
+  use (fv_in_spec sch_fv E _ _ H).
 Qed.
-*)
 
-Hint Resolve kenv_ok_subst (*env_ok_subst*) : core.
+Hint Resolve kenv_ok_subst env_ok_subst : core.
 
 (* ********************************************************************** *)
 (** Type substitution preserves typing *)
@@ -490,6 +532,71 @@ Proof.
   destruct* H1.
 Qed.
 
+Lemma graph_of_tree_subst ofs tr S :
+  let Ks := snd (graph_of_tree ofs tr) in
+  List.map (kind_subst S) Ks = Ks.
+Proof.
+  revert ofs; induction tr; simpl; intros; auto.
+  - specialize (IHtr1 (ofs+1)); revert IHtr1.
+    case_eq (graph_of_tree (ofs + 1) tr1); simpl; introv Htr1 IHtr1.
+    specialize (IHtr2 (ofs+length l+1)); revert IHtr2.
+    case_eq (graph_of_tree (ofs + length l + 1) tr2); simpl; introv Htr2 IHtr2.
+    rewrite map_app, IHtr1, IHtr2.
+    unfold kind_subst, kind_map.
+    f_equal.
+    f_equal.
+    now apply kind_pi.
+  - specialize (IHtr1 (ofs+1)); revert IHtr1.
+    case_eq (graph_of_tree (ofs + 1) tr1); simpl; introv Htr1 IHtr1.
+    specialize (IHtr2 (ofs+length l+1)); revert IHtr2.
+    case_eq (graph_of_tree (ofs + length l + 1) tr2); simpl; introv Htr2 IHtr2.
+    rewrite map_app, IHtr1, IHtr2.
+    unfold kind_subst, kind_map.
+    f_equal.
+    f_equal.
+    now apply kind_pi.
+Qed.
+
+Lemma graph_of_kinds_subst ofs TKs S :
+  let (Ks, Ks') := graph_of_kinds ofs TKs in
+  List.map (kind_subst S) Ks = Ks /\ List.map (kind_subst S) Ks' = Ks'.
+Proof.
+  revert ofs.
+  induction TKs; simpl; intros; auto.
+  destruct a as [[[]|] rvs].
+    set (ofs' := ofs + _).
+    specialize (IHTKs ofs'); revert IHTKs.
+    case_eq (graph_of_kinds ofs' TKs); introv HG; intros [E1 E2].
+    splits*.
+    rewrite map_app, E2.
+    f_equal.
+    assert (List.map (kind_subst S) nil = nil) by auto.
+    revert H; generalize (@nil kind).
+    clear; induction l; simpl; intros; auto.
+    generalize (graph_of_tree_subst (ofs + length l0) (snd a) S).
+    case_eq (graph_of_tree (ofs + length l0) (snd a)); simpl; intros.
+    apply IHl.
+    now rewrite map_app, H, H1.
+  specialize (IHTKs ofs); revert IHTKs.
+  case_eq (graph_of_kinds ofs TKs); simpl; introv HG; intros [E1 E2].
+  unfold kind_subst at 1, kind_map; simpl.
+  now rewrite E1, E2.
+Qed.
+
+Lemma graph_of_tree_type_subst tr S :
+  let Ks := snd (graph_of_tree_type tr) in
+  List.map (kind_subst S) Ks = Ks.
+Proof.
+  simpl.
+  unfold graph_of_tree_type.
+  destruct tr as [T Ks].
+  generalize (graph_of_kinds_subst (length Ks) Ks S).
+  case_eq (graph_of_kinds (length Ks) Ks); simpl; introv HG; intros [E1 E2].
+  generalize (graph_of_tree_subst (length l + length l0) T S).
+  case_eq (graph_of_tree (length l + length l0) T); simpl; introv HT E.
+  now rewrite map_app, map_app, E1, E2, E.
+Qed.
+
 Lemma typing_typ_subst : forall gc Q F K'' S K K' E t T,
   disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) ->
   dom K' << dom S -> disjoint (dom K') (fv_in (fun v:var => {{v}}) S) ->
@@ -499,12 +606,11 @@ Lemma typing_typ_subst : forall gc Q F K'' S K K' E t T,
   [Q; K & map (kind_subst S) K''; E & (map (sch_subst S) F) |gc|=
     t ~: (typ_subst S T)].
 Proof.
-  introv Dis DomK' Dis' WS Typ.
-  gen_eq (K & K' & K'') as GK; gen_eq (E & F) as G; gen K''; gen F.
-  induction Typ; introv WS EQ EQ'; subst.
-  (* Var *)
+introv Dis DomK' Dis' WS Typ.
+gen_eq (K & K' & K'') as GK; gen_eq (E & F) as G; gen K''; gen F.
+induction Typ; introv WS EQ EQ'; subst.
+- (* Var *)
   rewrite~ sch_subst_open. apply* typing_var.
-      admit.
     binds_cases H1.
       apply* binds_concat_fresh.
       rewrite* sch_subst_fresh.
@@ -512,24 +618,24 @@ Proof.
      auto*.
     destruct M as [T Ks]. simpl.
     apply* proper_instance_subst.
-  (* Abs *)
+- (* Abs *)
   simpl.
   destruct (well_subst_binds WS H0) as [k' [rvs' [HB [HE HR]]]].
   inversions H.
   eapply (@typing_abs gc Q L).
-    now apply (type_fvar (var_subst S X)).
-    exact HB.
-    destruct k; simpl in *; subst.
+  + now apply (type_fvar (var_subst S X)).
+  + exact HB.
+  + destruct k; simpl in *; subst.
     now apply Cstr.entails_arrow.
-    apply HR; rewrite kind_rel_map.
+  + apply HR; rewrite kind_rel_map.
     now apply (in_map_snd (typ_subst S) Cstr.arrow_dom (typ_fvar X)).
-    apply HR; rewrite kind_rel_map.
+  + apply HR; rewrite kind_rel_map.
     now apply (in_map_snd (typ_subst S) _ T).
-    intros.
+  + intros.
     replace (Sch (typ_fvar (var_subst S X)) nil)
       with (sch_subst S (Sch (typ_fvar X) nil)) by auto.
     now apply_ih_map_bind H5.
-  (* Let *)
+- (* Let *)
   apply_fresh* (@typing_let gc Q (sch_subst S M)
                             (L1 \u dom S \u dom K \u dom K'')) as y.
    clear H1 H2. clear L2 T2 t2.
@@ -539,40 +645,49 @@ Proof.
    rewrite concat_assoc. rewrite <- map_concat.
    rewrite map_length in Fr.
    apply* H0; clear H0.
-     (*apply* well_subst_fresh.*)
-     admit.
+     forward~ (H Ys) as Typ.
+     destruct (typing_regular Typ).
+     apply* well_subst_fresh.
    rewrite* concat_assoc.
-   apply_ih_map_bind* H2.
-  (* App *)
+  apply_ih_map_bind* H2.
+- (* App *)
   destruct (well_subst_binds WS H) as [k' [HB [HE HR]]].
   apply* (@typing_app gc).
-      destruct k; simpl in *; subst.
-      apply Cstr.entails_arrow.
-      apply HR; rewrite kind_rel_map.
+  + destruct k; simpl in *; subst.
+    apply Cstr.entails_arrow.
     apply HR; rewrite kind_rel_map.
+  + apply HR; rewrite kind_rel_map.
     now apply (in_map_snd (typ_subst S) _ S0).
-  apply HR; rewrite kind_rel_map.
-  now apply (in_map_snd (typ_subst S) _ T).
-  (* Cst *)
+  + apply HR; rewrite kind_rel_map.
+    now apply (in_map_snd (typ_subst S) _ T).
+- (* Cst *)
   rewrite* sch_subst_open.
   assert (disjoint (dom S) (sch_fv (Delta.type c))).
     intro x. rewrite* Delta.closed.
   rewrite* sch_subst_fresh.
   apply* typing_cst.
-    admit.
   rewrite* <- (sch_subst_fresh S H2).
   destruct (Delta.type c) as [T Ks]; simpl.
   apply* proper_instance_subst.
-  (* GC *)
+- (* GC *)
   apply* (@typing_gc gc Q (List.map (kind_subst S) Ks)
                      (L \u dom S \u dom K \u dom K'')).
    rewrite map_length; intros.
    rewrite* <- kinds_subst_open_vars.
    rewrite concat_assoc. rewrite <- map_concat.
    apply* (H1 Xs); clear H1.
-     (* apply* well_subst_fresh. *)
-     admit.
-   rewrite* concat_assoc.
+     forward~ (H0 Xs) as Typ.
+     destruct (typing_regular Typ).
+     apply* well_subst_fresh.
+  rewrite* concat_assoc.
+- (* Ann *)
+  rewrite <- map_nth.
+  simpl.
+  apply (@typing_ann gc Q _ _ (List.map (kind_subst S) Ks)); auto*.
+  + generalize (graph_of_tree_type_subst (annotation_tree (T,nil)) S).
+    rewrite H1; simpl; intros.
+    now rewrite H3.
+  + apply* proper_instance_subst.
 Qed.
 
 Lemma typing_typ_substs : forall gc K' S K E t T,

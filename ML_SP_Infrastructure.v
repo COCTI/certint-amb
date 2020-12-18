@@ -1497,14 +1497,14 @@ Qed.
 
 Ltac kenv_ok_hyps ::=
   repeat match goal with
-  | H: typing _ ?K _ _ _ |- _ => destruct (proj41 (typing_regular H)); clear H
-  | H: kenv_ok ?K |- _ => destruct H
+  | H: typing ?Q ?K _ _ _ |- _ => destruct (proj41 (typing_regular H)); clear H
+  | H: kenv_ok ?Q ?K |- _ => destruct H
   end.
 
 Ltac env_ok_hyps ::=
   repeat match goal with
-  | H: typing _ _ ?E _ _ |- _ => destruct (proj42 (typing_regular H)); clear H
-  | H: env_ok ?E |- _ => destruct H
+  | H: typing ?Q ?K ?E _ _ |- _ => destruct (proj42 (typing_regular H)); clear H
+  | H: env_ok ?Q ?K ?E |- _ => destruct H
   end.
 
 Hint Extern 1 (term ?t) =>
