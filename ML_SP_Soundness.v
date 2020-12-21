@@ -594,7 +594,6 @@ Qed.
 Lemma typing_typ_subst : forall gc Q F K'' S K K' E t T,
   disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) ->
   dom K' << dom S -> disjoint (dom K') (fv_in (fun v:var => {{v}}) S) ->
-  (*env_prop (qcoherent Q) (map (kind_subst S) K'') ->*)
   well_subst (K & K' & K'') (K & map (kind_subst S) K'') S ->
   [Q; K & K' & K''; E & F |gc|= t ~: T] ->
   [Q; K & map (kind_subst S) K''; E & (map (sch_subst S) F) |gc|=
@@ -695,13 +694,46 @@ induction Typ; introv WS EQ EQ'; subst.
   apply* (H3 R Xs); auto.
   + forward~ (H2 R Xs) as Typ.
     destruct (typing_regular Typ).
-    apply* well_subst_fresh.
+    apply (well_subst_fresh (Q:=qvar R :: Q)); auto.
     destruct H1 as [[] _]; simpl in *.
     rewrite* H1.
   + rewrite* concat_assoc.
   + auto.
 - (* Use *)
-Abort.
+  Search typ_subst nth.
+  assert (nth n Us typ_def = typ_open (typ_bvar n) Us) by reflexivity.
+  rewrite H3, typ_subst_open; simpl.
+  apply (typing_use gc H).
+  + set (gt := graph_of_tree_type _) in H.
+    replace Ks with (snd gt) by now rewrite H.
+    subst gt.
+    rewrite <- (graph_of_tree_type_subst (tr_eq T1 T2, nil) S).
+    apply* proper_instance_subst.
+    now rewrite H.
+  + apply kenv_ok_qcoherent.
+    apply* kenv_ok_subst.
+  + intros x M B.
+    cut (scheme Q (K & map (kind_subst S) K'') M).
+      now intros [].
+    revert x M B.
+    apply* env_ok_subst.
+    use (typing_use gc H H0 H1 H2 Typ).
+  + puts (typ_subst_open S (typ_bvar n) Us).
+    simpl in H4; rewrite <- H4.
+    apply* (IHTyp F K'').
+- (* Eq *)
+  assert (WK := WS _ _ H1).
+  inversions WK.
+  unfold kind_subst, kind_map in H6.
+  destruct H6; simpl in H4, H6.
+  destruct k' as [[k'|] rvs']; try contradiction.
+  simpl in H4; destruct H4 as [_ Erel].
+  assert (Rk : kind_rel (ckind_map (typ_subst S) k)
+               = map_snd (typ_subst S) (kind_rel k)).
+    unfold ckind_map; destruct ckind_map_spec as [km [Hkm Hkm']]; simpl; auto.
+  apply* typing_eq; apply Erel; rewrite Rk;
+    now apply (in_map_snd (typ_subst S) _ T).
+Qed.
 
 Lemma typing_typ_substs : forall gc K' S K E t T,
   disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) ->
