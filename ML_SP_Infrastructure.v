@@ -264,6 +264,32 @@ Proof.
   rewrite IHts1. rewrite* union_assoc.
 Qed.
 
+(* ====================================================================== *)
+(** ** Properties of kinds *)
+
+Lemma kind_cstr_map f k : kind_cstr (ckind_map f k) = kind_cstr k.
+Proof. unfold ckind_map; destruct ckind_map_spec; simpls*. Qed.
+
+Lemma kind_rel_map f k : kind_rel (ckind_map f k) = map_snd f (kind_rel k).
+Proof. unfold ckind_map; destruct ckind_map_spec; simpls*. Qed.
+
+Lemma ckind_pi : forall k k',
+  kind_cstr k = kind_cstr k' ->
+  kind_rel k = kind_rel k' ->
+  k = k'.
+Proof.
+  intros [kc kv kr kh] [kc' kv' kr' kh']; simpl; intros.
+  subst.
+  rewrite (proof_irrelevance _ kv kv').
+  rewrite (proof_irrelevance _ kh kh').
+  auto.
+Qed.
+
+Lemma kind_pi : forall k k',
+  kind_cstr k = kind_cstr k' ->
+  kind_rel k = kind_rel k' ->
+  Some k = Some k'.
+Proof. intros; rewrite* (ckind_pi k k'). Qed.
 
 (* ====================================================================== *)
 (** * Properties of terms *)
@@ -450,26 +476,6 @@ Lemma typ_subst_fresh : forall S T,
 Proof.
   intros. induction T; simpls; f_equal*.
   unfold var_subst; rewrite* get_notin_dom.
-Qed.
-
-Lemma ckind_pi : forall k k',
-  kind_cstr k = kind_cstr k' ->
-  kind_rel k = kind_rel k' ->
-  k = k'.
-Proof.
-  intros [kc kv kr kh] [kc' kv' kr' kh']; simpl; intros.
-  subst.
-  rewrite (proof_irrelevance _ kv kv').
-  rewrite (proof_irrelevance _ kh kh').
-  auto.
-Qed.
-
-Lemma kind_pi : forall k k',
-  kind_cstr k = kind_cstr k' ->
-  kind_rel k = kind_rel k' ->
-  Some k = Some k'.
-Proof.
-  intros. rewrite* (ckind_pi k k').
 Qed.
 
 Lemma kind_subst_fresh : forall S k,
@@ -1101,11 +1107,9 @@ Proof.
   induction 1.
   - constructor. auto.
   - constructor; simpls*.
-    unfold ckind_map; destruct ckind_map_spec; simpl.
-    destruct a; inversion* H1.
+    now rewrite kind_cstr_map.
   - apply qc_eq; simpls*.
-    unfold ckind_map; destruct ckind_map_spec; simpl.
-    destruct a; inversion* H1.
+    now rewrite kind_cstr_map.
 Qed.
     
 Lemma map_id {A} l : List.map (@id A) l = l.
@@ -1131,9 +1135,7 @@ Proof.
   destruct k' as [[k'|] rvs']; try discriminate.
   inversions Hko; clear Hko.
   constructor; introv.
-  unfold ckind_map at 2 4; destruct ckind_map_spec as [k1 [Hc1 Hr1]]; simpl.
-  unfold ckind_map; destruct ckind_map_spec as [k2 [Hc2 Hr2]]; simpl.
-  rewrite <- Hc2, <- Hc1, Hr2, Hr1; clear Hc2 Hc1 Hr2 Hr1 k1 k2.
+  repeat rewrite kind_cstr_map, kind_rel_map.
   unfold map_snd; rewrite map_map; simpl.
   fold (map_snd (fun T => typ_open(typ_subst S T)(typ_fvars Xs)) (kind_rel k')).
   intros HU Hl.
@@ -1154,10 +1156,9 @@ Proof.
   destruct Ha' as [T' [a' [HlT' [Ha' Haa']]]].
   inversions WFk'; clear WFk'.
   forward~ (H1 l a') as [k'' [rvs'' [B FA]]]; clear H1.
-      unfold ckind_map; destruct ckind_map_spec as [k1 [Hc1 Hr1]]; simpl.
-      now rewrite <- Hc1.
-    unfold ckind_map; destruct ckind_map_spec as [k1 [Hc1 Hr1]]; simpl.
-    rewrite Hr1, <- Ha'.
+      now rewrite kind_cstr_map.
+    rewrite kind_rel_map.
+    rewrite <- Ha'.
     unfold typ_open_vars, map_snd.
     now apply(in_map (fun p =>(fst p, typ_open(snd p)(typ_fvars Xs))) _ (l,T')).
   binds_cases B.

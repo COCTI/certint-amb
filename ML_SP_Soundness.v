@@ -728,10 +728,7 @@ induction Typ; introv WS EQ EQ'; subst.
   destruct H6; simpl in H4, H6.
   destruct k' as [[k'|] rvs']; try contradiction.
   simpl in H4; destruct H4 as [_ Erel].
-  assert (Rk : kind_rel (ckind_map (typ_subst S) k)
-               = map_snd (typ_subst S) (kind_rel k)).
-    unfold ckind_map; destruct ckind_map_spec as [km [Hkm Hkm']]; simpl; auto.
-  apply* typing_eq; apply Erel; rewrite Rk;
+  apply* typing_eq; apply Erel; rewrite kind_rel_map;
     now apply (in_map_snd (typ_subst S) _ T).
 Qed.
 
