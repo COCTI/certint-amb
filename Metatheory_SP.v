@@ -22,7 +22,10 @@ Ltac case_rewrite H t :=
 
 Hint Resolve in_or_app : core.
 
-Lemma in_app_mid : forall (A:Set) (x a:A) l1 l2,
+Section Lists.
+Variable A : Type.
+
+Lemma in_app_mid (x a : A) l1 l2 :
   In x (l1 ++ a :: l2) -> a = x \/ In x (l1 ++ l2).
 Proof.
   intros.
@@ -35,8 +38,45 @@ Lemma InA_In : forall v L, SetoidList.InA E.eq v L -> In v L.
 Qed.
 
 Lemma cons_append : forall (A:Set) (a:A) l, a :: l = (a :: nil) ++ l.
-Proof. auto.
+Proof. auto. Qed.
+
+Lemma split_middle (a : A) K K' K1 K2 :
+  K ++ (a::nil) ++ K' = K1 ++ K2 ->
+  exists K3, K' = K3 ++ K2 \/ K = K1 ++ K3.
+Proof.
+  revert K; induction K1 as [|b K1 IH]; intros; simpl in *.
+    exists* K.
+  destruct K as [|c K]; simpl in *; inversions H.
+    exists* K1.
+  destruct* (IH K) as [K3 [EQ|EQ]]; subst.
+  exists* K3.
 Qed.
+
+Lemma app_l_inj (K K1 K2 : list A) : K ++ K1 = K ++ K2 -> K1 = K2.
+Proof. induction K; simpl; auto; intros; apply IHK; now injection H. Qed.
+
+Lemma app_r_inj (K K1 K2 : list A) : K1 ++ K = K2 ++ K -> K1 = K2.
+Proof.
+  rewrite <- (rev_involutive (K1 ++ K)).
+  intros H.
+  apply rev_eq_app in H.
+  rewrite rev_app_distr in H.
+  rewrite <- (rev_involutive K1), <- (rev_involutive K2); f_equal.
+  now apply app_l_inj in H.
+Qed.
+
+Lemma In_exchange (x : A) K K1 K2 K' :
+  In x (K ++ K1 ++ K2 ++ K') ->
+  In x (K ++ K2 ++ K1 ++ K').
+Proof.
+  intros B.
+  apply in_app_or in B; destruct B as [B|B]; apply in_or_app; eauto.
+  right*.
+  rewrite app_assoc in B |- *.
+  apply in_app_or in B; destruct B as [B|B]; apply in_or_app; eauto.
+  left*.
+Qed.
+End Lists.
 
 Section Nth.
   Variables (A : Set) (d : A).
@@ -882,6 +922,20 @@ Section Env.
     intuition.
   Qed.
 
+  Lemma split_env_middle {x} {a : A} {K K' K1 K2} :
+    K & x ~ a & K' = K1 & K2 ->
+    exists K3, K' = K3 & K2 \/ K = K1 & K3.
+  Proof.
+    introv H; apply split_middle in H.
+    destruct H as [K3 []]; exists* K3.
+  Qed.
+
+  Lemma concat_l_inj (K K1 K2 : Env.env A) : K & K1 = K & K2 -> K1 = K2.
+  Proof. apply app_r_inj. Qed.
+
+  Lemma concat_r_inj (K K1 K2 : Env.env A) : K1 & K = K2 & K -> K1 = K2.
+  Proof. apply app_l_inj. Qed.
+
 Section Map.
   Variable f : A -> A.
 
@@ -1123,6 +1177,18 @@ Proof.
   rewrite* dom_combine.
   apply in_mkset.
   apply* in_dom_combine.
+Qed.
+
+Lemma binds_exchange {A:Set} x (k : A) K K1 K2 K' :
+  binds x k (K & K1 & K2 & K') ->
+  ok (K & K1 & K2 & K') ->
+  binds x k (K & K2 & K1 & K').
+Proof.
+  intros B Ok.
+  apply binds_in in B.
+  apply* in_ok_binds.
+  apply* (In_exchange (x,k)).
+  ok_solve; repeat (rewrite dom_concat in *; auto).
 Qed.
 
 (** Results on fresh *)

@@ -79,6 +79,7 @@ Inductive typ : Set :=
 (** Types are inhabited, giving us a default value. *)
 
 Definition typ_def := typ_bvar 0.
+Definition var_def := var_generate {}.
 
 (** Constraint domain *)
 

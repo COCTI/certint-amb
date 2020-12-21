@@ -46,14 +46,6 @@ Fixpoint dom (E : env) : vars :=
   | (x, _) :: E' => {{x}} \u (dom E')
   end.
 
-(** [map] applies a function to all the values mapped by the environment. *)
-
-Fixpoint map (f : A -> A) (E : env) {struct E} : env :=
-  match E with
-  | nil => nil
-  | (x, V) :: E' => (x, f V) :: map f E'
-  end.
-
 (** [get] locates a binding in an environment. *)
 
 Fixpoint get (x : var) (E : env) {struct E} : option A :=
@@ -64,6 +56,13 @@ Fixpoint get (x : var) (E : env) {struct E} : option A :=
 
 End Definitions.
 
+(** [map] applies a function to all the values mapped by the environment. *)
+
+Fixpoint map {A B : Set} (f : A -> B) (E : env A) {struct E} : env B :=
+  match E with
+  | nil => nil
+  | (x, V) :: E' => (x, f V) :: map f E'
+  end.
 
 (* ********************************************************************** *)
 (** ** Notations *)
@@ -160,7 +159,7 @@ Qed.
 
 (** Map commutes with substitution. *)
 
-Lemma map_concat : forall f E F,
+Lemma map_concat {B : Set} (f : A -> B) E F :
   map f (E & F) = (map f E) & (map f F).
 Proof.
   induction F as [|(x,a)]; simpl; congruence.
@@ -232,7 +231,7 @@ Qed.
 
 (** Map preserves the domain. *)
 
-Lemma dom_map : forall f E,
+Lemma dom_map {B : Set} (f : A -> B) E :
   dom (map f E) = dom E.
 Proof.
   induction E as [|(x,a)]; simpl; congruence.
@@ -445,7 +444,7 @@ Qed.
 
 (** Interaction of binds and map *)
 
-Lemma binds_map : forall x a f E,
+Lemma binds_map {B : Set} x a (f : A -> B) E :
   binds x a E -> binds x (f a) (map f E).
 Proof.
   unfold binds. induction E as [|(y,b)]; simpl; intros Map.

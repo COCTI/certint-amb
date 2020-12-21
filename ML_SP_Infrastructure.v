@@ -158,6 +158,12 @@ Fixpoint qenv_fv (Q : qenv) : vars :=
   | q :: Q' => (qitem_fv q) \u (qenv_fv Q')
   end.
 
+Definition var_fv (x : var) : vars := {{x}}.
+
+Definition fv_list {A : Set} (fv : A -> vars) (As : list A) : vars :=
+  List.fold_right (fun a L => fv a \u L) {} As.
+
+
 (* ********************************************************************** *)
 (** ** Substitution for free names *)
 
@@ -183,6 +189,9 @@ Definition kind_subst S := kind_map (typ_subst S).
 
 Definition sch_subst S M := 
   Sch (typ_subst S (sch_type M)) (List.map (kind_subst S) (sch_kinds M)).
+
+Lemma kind_subst_none S rvs : kind_subst S (None, rvs) = (None, rvs).
+Proof. now unfold kind_subst, kind_map. Qed.
 
 (** Substitution for name in a term. *)
 
@@ -222,7 +231,9 @@ Ltac gather_vars :=
   let J := gather_vars_with (fun x : kenv => fv_in kind_fv x) in
   let K := gather_vars_with (fun x : list kind => kind_fv_list x) in
   let L := gather_vars_with (fun x : qenv => qenv_fv x) in
-  constr:(A \u B \u C \u D \u E \u F \u G \u H \u I \u J \u K).
+  let N := gather_vars_with (fun x : subs => fv_in var_fv x) in
+  let O := gather_vars_with (fun x : list var => fv_list var_fv x) in
+  constr:(A \u B \u C \u D \u E \u F \u G \u H \u I \u J \u K \u L \u N \u O).
 
 Tactic Notation "pick_fresh" ident(x) :=
   let L := gather_vars in (pick_fresh_gen L x).
@@ -264,14 +275,21 @@ Proof.
   rewrite IHts1. rewrite* union_assoc.
 Qed.
 
+Lemma fv_in_combine Xs Vs :
+  length Vs = length Xs -> fv_in var_fv (combine Xs Vs) = fv_list var_fv Vs.
+Proof.
+  revert Vs; induction Xs; destruct Vs; simpls*; intros; try discriminate.
+  injection H; intros; rewrite* IHXs.
+Qed.
+
 (* ====================================================================== *)
 (** ** Properties of kinds *)
 
 Lemma kind_cstr_map f k : kind_cstr (ckind_map f k) = kind_cstr k.
-Proof. unfold ckind_map; destruct ckind_map_spec; simpls*. Qed.
+Proof. now destruct k. Qed.
 
 Lemma kind_rel_map f k : kind_rel (ckind_map f k) = map_snd f (kind_rel k).
-Proof. unfold ckind_map; destruct ckind_map_spec; simpls*. Qed.
+Proof. now destruct k. Qed.
 
 Lemma ckind_pi : forall k k',
   kind_cstr k = kind_cstr k' ->
@@ -551,12 +569,9 @@ Proof.
   rewrite* IHkr.
 Qed.
 
-Lemma map_combine : forall (A:Set) (f:A->A) Xs Ys,
+Lemma map_combine {A B : Set} (f : A->B) Xs Ys :
   map f (combine Xs Ys) = combine Xs (List.map f Ys).
-Proof.
-  induction Xs; destruct Ys; simpl*.
-  rewrite* IHXs.
-Qed.
+Proof. revert Ys; induction Xs; destruct Ys; simpl*. rewrite* IHXs. Qed.
 
 Lemma kinds_subst_open_vars S Ks Xs :
   fresh (dom S) (length Xs) Xs ->
@@ -571,6 +586,28 @@ Proof.
   induction* Ks.
   simpls. rewrite IHKs.
   rewrite* kind_subst_open_vars.
+Qed.
+
+Lemma fresh_ok_combine {A:Set} K Xs (Vs : list A) :
+  ok (K & combine Xs Vs) ->
+  length Vs = length Xs -> fresh (dom K) (length Vs) Xs.
+Proof.
+  revert Vs; induction Xs; destruct Vs; simpl; intros; try discriminate; auto.
+  inversions H.
+  inversions H0.
+  splits*.
+  forward~ (IHXs Vs) as Fr.
+  apply* disjoint_fresh.
+Qed.
+
+Lemma fresh_kinds_open_vars K Xs Ks :
+  ok (K & kinds_open_vars Ks Xs) ->
+  length Ks = length Xs -> fresh (dom K) (length Ks) Xs.
+Proof.
+  intros Ok Len.
+  unfold kinds_open_vars, kinds_open in Ok.
+  forward~ (fresh_ok_combine _ _ _ Ok).
+  rewrite* map_length.
 Qed.
 
 (** Opening up an abstraction of body t with a term u is the same as opening
@@ -811,6 +848,20 @@ Proof.
 Qed.
 Hint Resolve wf_kind_extend : core.
 
+Lemma entails_wf_kind K k k' : entails k k' -> wf_kind K k -> wf_kind K k'.    
+Proof.
+  intros Ekk' WF.
+  destruct WF; destruct* k' as [[k'|] rvs]; try solve [cbv in Ekk'; auto*].
+  constructor.
+  intros.
+  unfold entails,entails_ckind in Ekk'; simpl in Ekk'.
+  destruct Ekk' as [[EnC EnR] EnRV].
+  destruct* (H l a) as [? [? []]].
+  apply (Cstr.entails_unique EnC H0).
+Qed.
+
+Search fresh.
+
 Lemma well_kinded_extend : forall K K' x T,
   ok (K & K') -> well_kinded K x T -> well_kinded (K & K') x T.
 Proof. induction 2; auto*. Qed.
@@ -1006,6 +1057,16 @@ Proof.
   simpl in *. inversions* H.
 Qed.
 
+Lemma All_kind_types_subst : forall k S,
+  All_kind_types type k ->
+  All_kind_types type (kind_subst S k).
+Proof.
+  intros; unfold kind_subst; apply All_kind_types_map.
+  apply* All_kind_types_imp.
+Qed.
+
+Hint Resolve All_kind_types_subst : core.
+
 Lemma incr_subst_fresh : forall a t S Xs,
   fresh {{a}} (length Xs) Xs ->
   List.map (typ_subst ((a, t) :: S)) (typ_fvars Xs) =
@@ -1182,7 +1243,7 @@ Proof.
   split.
     apply binds_prepend.
     rewrite <- kinds_subst_open_vars by auto.
-    apply* (@binds_map _ a (k'',rvs'') (kind_subst S)).
+    apply* (@binds_map _ _ a (k'',rvs'') (kind_subst S)).
   intros.
   apply* FA.
 Qed.
