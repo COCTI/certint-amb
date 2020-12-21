@@ -867,16 +867,6 @@ Lemma well_kinded_extend : forall K K' x T,
 Proof. induction 2; auto*. Qed.
 Hint Resolve well_kinded_extend : core.
 
-Lemma binds_comm : forall (A : Set) x (a : A) E F G,
-  ok (E & F & G) ->
-  binds x a (E & F & G) -> binds x a (E & G & F).
-Proof.
-  introv Ok B.
-  destruct* (binds_concat_inv B) as [[Hn B']|].
-  destruct* (binds_concat_inv B') as [[Hn' B'']|].
-Qed.
-Hint Immediate binds_comm : core.
-
 Lemma wf_kind_comm : forall K K' K'' k,
   ok (K & K' & K'') -> wf_kind (K & K' & K'') k -> wf_kind (K & K'' & K') k.
 Proof.
@@ -895,7 +885,7 @@ Proof.
   introv OK; introv WK. gen_eq (K & K'' & K') as H. gen K''.
   induction WK; introv Ok EQ; subst.
   apply* (@wk_kind k').
-  apply* binds_comm.
+  apply binds_comm; auto.
 Qed.
 
 Lemma well_kinded_weaken : forall K K' K'',

@@ -1191,6 +1191,15 @@ Proof.
   ok_solve; repeat (rewrite dom_concat in *; auto).
 Qed.
 
+Lemma binds_comm {A : Set} x (a : A) E F G :
+  ok (E & F & G) ->
+  binds x a (E & F & G) -> binds x a (E & G & F).
+Proof.
+  rewrite <- (concat_empty (_ & G)), <- (concat_empty (E & G & F)).
+  intros; now apply binds_exchange.
+Qed.
+Hint Immediate binds_comm : core.
+
 (** Results on fresh *)
 
 Lemma fresh_app : forall m Xs' n Xs L,
