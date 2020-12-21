@@ -732,15 +732,15 @@ induction Typ; introv WS EQ EQ'; subst.
     now apply (in_map_snd (typ_subst S) _ T).
 Qed.
 
-Lemma typing_typ_substs : forall gc K' S K E t T,
+Lemma typing_typ_substs : forall gc Q K' S K E t T,
   disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) ->
-  env_prop type S ->
+  dom K' << dom S -> disjoint (dom K') (fv_in (fun v:var => {{v}}) S) ->
   well_subst (K & K') K S ->
-  K & K'; E |gc|= t ~: T ->
-  K ; E |gc|= t ~: (typ_subst S T).
+  [ Q; K & K'; E |gc|= t ~: T ] ->
+  [ Q; K ; E |gc|= t ~: (typ_subst S T) ] .
 Proof.
   intros.
-  generalize (@typing_typ_subst gc empty empty); intro TTS.
+  generalize (@typing_typ_subst gc Q empty empty); intro TTS.
   simpl in TTS.
   apply* TTS.
 Qed.
