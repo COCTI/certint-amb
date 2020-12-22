@@ -21,11 +21,18 @@ Module JudgInfra := MkJudgInfra(Delta).
 Import JudgInfra.
 Import Judge.
 
-(*
-Lemma kenv_ok_concat : forall K1 K2,
-  kenv_ok K1 -> kenv_ok K2 -> disjoint (dom K1) (dom K2) -> kenv_ok (K1 & K2).
-Proof. auto. Qed.
-*)
+Lemma kenv_ok_concat Q K1 K2 K3 :
+  kenv_ok Q (K1 & K2) -> kenv_ok Q (K1 & K3) ->
+  disjoint (dom K2) (dom K3) -> kenv_ok Q (K1 & K2 & K3).
+Proof.
+  intros; splits*.
+  intros x k B.
+  destruct (in_app_or _ _ _ B).
+    apply* wf_kind_weaken.
+    apply* kenv_ok_wf_kind.
+  apply* wf_kind_extend.
+  apply* kenv_ok_wf_kind.
+Qed.
 
 Lemma ok_kinds_open_vars : forall K Ks Xs,
   ok K -> fresh (dom K) (length Ks) Xs ->
@@ -37,7 +44,7 @@ Proof.
   apply* ok_combine_fresh.
 Qed.
 
-Hint Resolve ok_kinds_open_vars : core.
+Hint Resolve kenv_ok_concat ok_kinds_open_vars : core.
 
 Lemma scheme_weaken Q K K' M :
   ok (K & K') -> scheme Q K M -> scheme Q (K & K') M.
@@ -254,12 +261,7 @@ induction* Typ; intros.
   rewrite <- (concat_empty (K & _ & _)).
   apply typing_exchange.
   apply* (H1 Xs); clear H1.
-  forward~ (H0 Xs) as Typ; clear H0.
-  destruct (typing_regular Typ) as [[Ok [Ok1 [Ok2 Ok3]]] _].
-  assert (Ok'': ok (K' & kinds_open_vars Ks Xs)) by apply* ok_kinds_open_vars.
-  splits*.
-  apply env_prop_concat; intros x k B. apply* wf_kind_extend.
-  apply* wf_kind_weaken. apply* (kenv_ok_wf_kind H2 x).
+  forward~ (H0 Xs).
 - apply* typing_ann. apply* proper_instance_weaken.
 - apply_fresh* (@typing_rigid gc Q) as Xs.
     apply* proper_instance_weaken.
@@ -638,11 +640,10 @@ Definition has_scheme_vars gc L Q (K:kenv) E t M := forall Xs,
   fresh L (sch_arity M) Xs ->
   [ Q; K & kinds_open_vars (sch_kinds M) Xs; E |gc|= t ~: (M ^ Xs) ].
 
-Definition has_scheme gc Q K E t M := forall Vs,
-  length Vs = sch_arity M ->
-  list_forall2 (well_kinded K) (kinds_open (sch_kinds M) (typ_fvars Vs))
-               (typ_fvars Vs) ->
-  [ Q; K ; E |gc|= t ~: (M ^ Vs) ].
+Definition has_scheme gc Q K E t M := forall Us,
+  types (sch_arity M) Us ->
+  list_forall2 (well_kinded K) (kinds_open (sch_kinds M) Us) Us ->
+  [ Q; K ; E |gc|= t ~: (M ^^ Us) ].
 
 (* ********************************************************************** *)
 (** Type schemes of terms can be instanciated *)
@@ -694,95 +695,113 @@ Proof.
   elim (get_contradicts _ _ _ _ Bk0 H0); auto.
 Qed.
 
+Lemma vars_of_types n Us :
+  types n Us -> exists Vs, length Vs = n /\ typ_fvars Vs = Us.
+Proof.
+  intros [Len FA].
+  revert n Len; induction FA; destruct n; try discriminate; simpl; intros.
+    exists* (@nil var).
+  inversions Len.
+  inversions H.
+  destruct* (IHFA (length L)) as [Xs []].
+  rewrite <- H0, <- H1.
+  exists* (X :: Xs).
+Qed.
+
 Lemma has_scheme_from_vars gc L Q K E t M :
   kenv_ok Q K ->
   has_scheme_vars gc L Q K E t M ->
   has_scheme gc Q K E t M.
 Proof.
-  intros Kok H Vs TV. unfold sch_open_vars.
+  intros Kok H Us TV. unfold sch_open.
   destruct M as [T Ks]; simpls.
   fold kind in K. fold kenv in K.
   pick_freshes (length Ks) Xs.
   rewrite (fresh_length _ _ _ Fr) in TV.
+  destruct (vars_of_types TV) as [Vs [Len]]; subst.
+  fold (typ_open_vars T Vs).
   rewrite~ (@typ_subst_intro Xs Vs T).
   unfolds has_scheme_vars sch_open_vars. simpls.
   intro WK.
   apply* (@typing_typ_substs gc Q (kinds_open_vars Ks Xs)).
     rewrite* dom_kinds_open_vars.
-    rewrite* fv_in_combine.
+    rewrite* fv_in_combine_vars.
+    rewrite* <- (typ_fv_typ_fvars Vs).
   apply* well_subst_open_vars.
-  rewrite* TV.
+  rewrite* Len.
 Qed.
 
 (* ********************************************************************** *)
 (** Typing is preserved by term substitution *)
 
-Lemma typing_trm_subst : forall gc F M K E t T z u,
-  K ; E & z ~ M & F |(gc,GcAny)|= t ~: T ->
-  (exists L:vars, has_scheme_vars (gc,GcAny) L K E u M) ->
+Lemma typing_trm_subst : forall gc F M Q K E t T z u,
+  [ Q ; K ; E & z ~ M & F |(gc,GcAny)|= t ~: T ] ->
+  (exists L:vars, has_scheme_vars (gc,GcAny) L Q K E u M) ->
   term u ->
-  K ; E & F |(gc,GcAny)|= (trm_subst z u t) ~: T.
+  [ Q ; K ; E & F |(gc,GcAny)|= (trm_subst z u t) ~: T ].
 Proof.
-  introv Typt. intros Typu Wu.
-  gen_eq (E & z ~ M & F) as G. gen_eq (gc, GcAny) as gc0. gen F.
-  induction Typt; introv EQ1 EQ2; subst; simpl trm_subst;
-    destruct Typu as [Lu Typu].
-  case_var.
+introv Typt. intros Typu Wu.
+gen_eq (E & z ~ M & F) as G. gen_eq (gc, GcAny) as gc0. gen F.
+induction Typt; introv EQ1 EQ2; subst; simpl trm_subst;
+  destruct Typu as [Lu Typu].
+- case_var.
     binds_get H1. apply_empty* (@typing_weaken (gc,GcAny)).
-      destruct H2; apply* (has_scheme_from_vars Typu).
+      destruct H2; apply* (has_scheme_from_vars H Typu).
       binds_cases H1; apply* typing_var.
-      inversions H.
-  apply_fresh* (@typing_abs (gc,GcAny)) as y.
-   rewrite* trm_subst_open_var.
-   apply_ih_bind* H5.
-  apply_fresh* (@typing_let (gc,GcAny) M0 L1) as y.
-   intros; apply* H0.
-     exists (Lu \u mkset Xs); intros Ys TypM.
-     forward~ (Typu Ys) as Typu'; clear Typu.
-     apply* typing_weaken_kinds.
-     forward~ (H Xs).
-   rewrite* trm_subst_open_var.
-   apply_ih_bind* H2.
-  assert (exists L : vars, has_scheme_vars (gc,GcAny) L K E u M). exists* Lu.
+- inversions H; clear H.
+  apply_fresh* (@typing_abs (gc,GcAny) Q) as y.
+  rewrite* trm_subst_open_var.
+  apply_ih_bind* H5.
+- apply_fresh* (@typing_let (gc,GcAny) Q M0 (L1 \u dom K)) as y.
+    intros; apply* H0.
+    exists (Lu \u mkset Xs); intros Ys TypM.
+    forward~ (Typu Ys) as Typu'; clear Typu.
+    rewrite <- (concat_empty (K & _ & _)); apply typing_exchange.
+    forward~ (H Xs) as Typt.
+    rewrite concat_empty; apply* typing_weaken_kinds.
+  rewrite* trm_subst_open_var.
+  apply_ih_bind* H2.
+- assert (exists L : vars, has_scheme_vars (gc,GcAny) L Q K E u M). exists* Lu.
   auto*.
-  auto*.
-  apply_fresh* (@typing_gc (gc,GcAny) Ks) as y.
-   intros Xs Fr.
-   apply* H1; clear H1.
-   exists (Lu \u dom K \u mkset Xs); intros Ys Fr'.
-   forward~ (Typu Ys) as Typu'; clear Typu.
-   apply* typing_weaken_kinds.
-   forward~ (H0 Xs).
-Qed.
+- auto*.
+- apply_fresh* (@typing_gc (gc,GcAny) Q Ks) as y.
+  intros Xs Fr.
+  apply* H1; clear H1.
+  exists (Lu \u dom K \u mkset Xs); intros Ys Fr'.
+  forward~ (Typu Ys) as Typu'; clear Typu.
+  rewrite <- (concat_empty (K & _ & _)); apply typing_exchange.
+  rewrite concat_empty; apply* typing_weaken_kinds.
+  forward~ (H0 Xs).
+Admitted.
 
 (* ********************************************************************** *)
 (** Canonical derivations *)
 
 (* less than 100 lines! *)
 
-Lemma typing_gc_any : forall gc K E t T,
-  K ; E |gc|= t ~: T -> K ; E |(true,GcAny)|= t ~: T.
+Lemma typing_gc_any gc Q K E t T :
+  [ Q ; K ; E |gc|= t ~: T ] -> [ Q ; K ; E |(true,GcAny)|= t ~: T ].
 Proof.
   induction 1; auto*.
   apply* typing_gc. simpl; auto.
 Qed.
 
-Lemma typing_gc_raise : forall gc K E t T,
-  K ; E |gc|= t ~: T -> K ; E |gc_raise gc|= t ~: T.
+Lemma typing_gc_raise Q gc K E t T :
+  [Q ; K ; E |gc|= t ~: T ] -> [Q ; K ; E |gc_raise gc|= t ~: T ].
 Proof.
   induction 1; destruct gc; destruct g; simpl; auto*.
   apply* typing_gc. simpl; auto.
 Qed.
 
-Definition typing_gc_let K E t T := K; E |(true,GcLet)|= t ~: T.
+Definition typing_gc_let Q K E t T := [Q ; K ; E |(true,GcLet)|= t ~: T ].
 
-Lemma typing_gc_ind : forall (P: kenv -> env -> trm -> typ -> Prop),
-  (forall K E t T, K; E |(false,GcLet)|= t ~: T -> P K E t T) ->
-  (forall Ks L K E t T,
+Lemma typing_gc_ind (P : qenv -> kenv -> env -> trm -> typ -> Prop) :
+  (forall Q K E t T, [ Q; K; E |(false,GcLet)|= t ~: T ] -> P Q K E t T) ->
+  (forall Ks L Q K E t T,
     (forall Xs : list var,
-      fresh L (length Ks) Xs -> P (K & kinds_open_vars Ks Xs) E t T) ->
-    P K E t T) ->
-  forall K E t T, typing_gc_let K E t T -> P K E t T.
+      fresh L (length Ks) Xs -> P Q (K & kinds_open_vars Ks Xs) E t T) ->
+    P Q K E t T) ->
+  forall Q K E t T, typing_gc_let Q K E t T -> P Q K E t T.
 Proof.
   intros.
   unfold typing_gc_let in H1.
@@ -791,47 +810,49 @@ Proof.
   apply* H0.
 Qed.
 
-Lemma typing_canonize : forall gc K E t T,
-  K ; E |gc|= t ~: T -> K ; E |(true,GcLet)|= t ~: T.
+Lemma typing_canonize gc Q K E t T :
+  [ Q ; K ; E |gc|= t ~: T ] -> [ Q ; K ; E |(true,GcLet)|= t ~: T ].
 Proof.
-  induction 1; auto*.
+induction 1; auto*.
   (* App *)
-  clear H3 H4.
+- clear H3 H4.
   gen H IHtyping1.
-  fold (typing_gc_let K E t2 S) in IHtyping2.
-  apply (proj2 (A:=kenv_ok K)).
+  fold (typing_gc_let Q K E t2 S) in IHtyping2.
+  apply (proj2 (A:=kenv_ok Q K)).
   induction IHtyping2 using typing_gc_ind.
     split2*; intros; subst.
     gen H H3. gen_eq (typ_fvar V) as S.
-    fold (typing_gc_let K E t1 S) in IHtyping1.
-    apply (proj2 (A:=kenv_ok K)).
+    fold (typing_gc_let Q K E t1 S) in IHtyping1.
+    apply (proj2 (A:=kenv_ok Q K)).
     induction IHtyping1 using typing_gc_ind.
       split2*; intros; subst.
       apply* typing_app.
     split.
       destruct (var_freshes L (length Ks)) as [Xs HXs].
       destruct* (H Xs HXs).
+      admit.
     intros; subst.
-    apply* (@typing_gc (true,GcLet) Ks L).
+    apply* (@typing_gc (true,GcLet) Q Ks L).
       simpl; auto.
     intros.
     destruct* (H Xs H3); clear H.
     apply* H7.
-    apply* typing_weaken_kinds'.
+    apply* typing_weaken_kinds.
   split.
     destruct (var_freshes L (length Ks)) as [Xs HXs].
     destruct* (H Xs).
+    admit.
   intros.
-  apply* (@typing_gc (true,GcLet) Ks (L \u dom K)).
+  apply* (@typing_gc (true,GcLet) Q Ks (L \u dom K)).
     simpl; auto.
   intros.
   destruct* (H Xs).
   apply* H6; clear H6.
-  apply* typing_weaken_kinds'.
+  apply* typing_weaken_kinds.
   (* GC *)
-  apply* typing_gc.
+- apply* typing_gc.
   simpl; auto.
-Qed.
+Admitted.
 
 (* End of canonical derivations *)
 

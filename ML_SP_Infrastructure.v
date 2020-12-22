@@ -160,10 +160,6 @@ Fixpoint qenv_fv (Q : qenv) : vars :=
 
 Definition var_fv (x : var) : vars := {{x}}.
 
-Definition fv_list {A : Set} (fv : A -> vars) (As : list A) : vars :=
-  List.fold_right (fun a L => fv a \u L) {} As.
-
-
 (* ********************************************************************** *)
 (** ** Substitution for free names *)
 
@@ -232,7 +228,7 @@ Ltac gather_vars :=
   let K := gather_vars_with (fun x : list kind => kind_fv_list x) in
   let L := gather_vars_with (fun x : qenv => qenv_fv x) in
   let N := gather_vars_with (fun x : subs => fv_in var_fv x) in
-  let O := gather_vars_with (fun x : list var => fv_list var_fv x) in
+  let O := gather_vars_with (fun x : list var => mkset x) in
   constr:(A \u B \u C \u D \u E \u F \u G \u H \u I \u J \u K \u L \u N \u O).
 
 Tactic Notation "pick_fresh" ident(x) :=
@@ -267,16 +263,8 @@ Hint Extern 1 (types _ _) => split; auto : core.
 (* ====================================================================== *)
 (** ** Properties of fv *)
 
-Lemma fv_list_map : forall ts1 ts2,
-  typ_fv_list (ts1 ++ ts2) = typ_fv_list ts1 \u typ_fv_list ts2.
-Proof.
-  induction ts1; simpl; intros. 
-  rewrite* union_empty_l.
-  rewrite IHts1. rewrite* union_assoc.
-Qed.
-
-Lemma fv_in_combine Xs Vs :
-  length Vs = length Xs -> fv_in var_fv (combine Xs Vs) = fv_list var_fv Vs.
+Lemma fv_in_combine_vars Xs Vs :
+  length Vs = length Xs -> fv_in var_fv (combine Xs Vs) = mkset Vs.
 Proof.
   revert Vs; induction Xs; destruct Vs; simpls*; intros; try discriminate.
   injection H; intros; rewrite* IHXs.
