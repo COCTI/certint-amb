@@ -466,6 +466,21 @@ Hint Resolve trm_open_term : core.
 (* ====================================================================== *)
 (** * Properties of types *)
 
+(** Extract vars from types *)
+
+Lemma vars_of_types n Us :
+  types n Us -> exists Vs, length Vs = n /\ typ_fvars Vs = Us.
+Proof.
+  intros [Len FA].
+  revert n Len; induction FA; destruct n; try discriminate; simpl; intros.
+    exists* (@nil var).
+  inversions Len.
+  inversions H.
+  destruct* (IHFA (length L)) as [Xs []].
+  rewrite <- H0, <- H1.
+  exists* (X :: Xs).
+Qed.
+
 (** Open on a type is the identity. *)
 
 Lemma typ_open_type : forall T Us,
@@ -847,8 +862,6 @@ Proof.
   destruct* (H l a) as [? [? []]].
   apply (Cstr.entails_unique EnC H0).
 Qed.
-
-Search fresh.
 
 Lemma well_kinded_extend : forall K K' x T,
   ok (K & K') -> well_kinded K x T -> well_kinded (K & K') x T.
@@ -1376,7 +1389,7 @@ Qed.
 Lemma qcoherent_add_qitem q Q k :
   qcoherent Q k -> qcoherent (q :: Q) k.
 Proof. induction 1; constructor; auto; introv QS; inversions* QS. Qed.
-Hint Resolve qcoherent_add_qitem.
+Hint Resolve qcoherent_add_qitem : core.
 
 Lemma trm_rigid_rec_open n r t x :
   trm_rigid_rec n r t ^ x = trm_rigid_rec n r (t ^ x).

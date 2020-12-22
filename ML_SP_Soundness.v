@@ -695,19 +695,6 @@ Proof.
   elim (get_contradicts _ _ _ _ Bk0 H0); auto.
 Qed.
 
-Lemma vars_of_types n Us :
-  types n Us -> exists Vs, length Vs = n /\ typ_fvars Vs = Us.
-Proof.
-  intros [Len FA].
-  revert n Len; induction FA; destruct n; try discriminate; simpl; intros.
-    exists* (@nil var).
-  inversions Len.
-  inversions H.
-  destruct* (IHFA (length L)) as [Xs []].
-  rewrite <- H0, <- H1.
-  exists* (X :: Xs).
-Qed.
-
 Lemma has_scheme_from_vars gc L Q K E t M :
   kenv_ok Q K ->
   has_scheme_vars gc L Q K E t M ->
