@@ -114,6 +114,30 @@ induction Typ; introv EQ Ok; subst; auto*.
   destruct* (proj2 Ok X M B). 
 Qed.
 
+Lemma kenv_ok_add_qitem Q q K :
+  kenv_ok Q K -> kenv_ok (q :: Q) K.
+Proof.
+  splits*. intros r; intros.
+  apply* qcoherent_add_qitem.
+  use (kenv_ok_qcoherent H).
+Qed.
+
+Hint Resolve kenv_ok_add_qitem : core.
+
+Lemma typing_weaken_qitem : forall gc E Q q K t T,
+   [Q ; K ; E |gc|= t ~: T] ->
+   [q :: Q; K ; E |gc|= t ~: T].
+Proof.
+  induction 1; auto*.
+  apply* typing_use.
+  - intros r; intros.
+    apply* qcoherent_add_qitem.
+  - intros x M Hb.
+    use (H2 x M Hb).
+    refine (list_forall_imp _ _ H4). auto*.
+  - admit.
+Admitted.
+  
 Lemma proper_instance_weaken : forall K K' Ks Us,
   ok (K & K') ->
   proper_instance K Ks Us ->
@@ -231,6 +255,15 @@ induction Typ; introv EQ; subst.
   apply binds_exchange in H1; auto*.
 Qed.
 
+Lemma typing_comm : forall gc Q K K1 K2 E t T,
+  [ Q ; K & K1 & K2 ; E | gc |= t ~: T ] ->
+  [ Q ; K & K2 & K1 ; E | gc |= t ~: T ].
+Proof.
+  intros.
+  rewrite <- (concat_empty (K & _ & _)).
+  apply* typing_exchange.
+Qed.
+  
 Lemma tree_subst_eq_refl S t : tree_subst_eq S t t.
 Proof. induction t; simpl; constructor; auto. Qed.
 
@@ -279,18 +312,10 @@ induction* Typ; intros.
     simpl in Len |- *.
     rewrite* Len.
   splits*.
-  + intros x kx Hkx.
-    apply qcoherent_add_qitem.
-    apply in_concat_or in Hkx; destruct* Hkx as [Hkx|Hkx].
-    apply* (@qcoherent_remove_qvar R).
-  + apply env_prop_concat; intros x k B. apply* wf_kind_extend.
-    apply* wf_kind_weaken.
+  apply env_prop_concat; intros x k B. apply* wf_kind_extend.
+  apply* wf_kind_weaken.
 - apply* typing_use.
-    apply* proper_instance_weaken.
-  apply* IHTyp.
-  destruct H3 as [Ok [Ok1 [Ok2 Ok3]]].
-  splits*.
-  introv B; apply* qcoherent_add_qitem.
+  apply* proper_instance_weaken.
 Qed.
 
 Lemma proper_instance_subst : forall K K' K'' Ks Us S,
@@ -759,6 +784,23 @@ induction Typt; introv EQ1 EQ2; subst; simpl trm_subst;
   rewrite <- (concat_empty (K & _ & _)); apply typing_exchange.
   rewrite concat_empty; apply* typing_weaken_kinds.
   forward~ (H0 Xs).
+- auto*.
+- apply* (@typing_rigid (gc, GcAny) Q (L \u Lu)). intros.
+  forward~ (H3 R Xs) as Typ.
+    exists (L \u Lu \u mkset Xs). intro Ys; intros.
+    apply* typing_comm. apply* typing_weaken_kinds.
+    forward~ (Typu Ys) as Typu'.
+    apply* kenv_ok_concat.
+    forward~ (H2 R Xs).
+    repeat rewrite* dom_kinds_open_vars.
+    destruct H1; simpl in *; destruct H4.
+    rewrite* <- (fresh_length _ _ _ H7).
+    admit.
+- apply* typing_use.
+  apply* IHTypt.
+  exists Lu. intros Xs Fr.
+  apply* typing_weaken_qitem.
+- auto*.
 Admitted.
 
 (* ********************************************************************** *)
@@ -847,9 +889,9 @@ Admitted.
 (** Extra hypotheses for main results *)
 
 Module Type SndHypIntf.
-  Parameter delta_typed : forall c tl vl K E gc T,
-    K ; E |(false,gc)|= const_app c tl ~: T ->
-    K ; E |(false,gc)|= @Delta.reduce c tl vl ~: T.
+  Parameter delta_typed : forall c tl vl Q K E gc T,
+    [ Q ; K ; E |(false,gc)|= const_app c tl ~: T ] ->
+    [ Q ; K ; E |(false,gc)|= @Delta.reduce c tl vl ~: T ].
 End SndHypIntf.
 
 Module Mk3(SH:SndHypIntf).
@@ -865,14 +907,14 @@ Proof.
   inversion H.
 Qed.
 
-Lemma typing_abs_inv : forall gc K E V k t1 t2 T1 T2,
-  binds V (Some k) K ->
+Lemma typing_abs_inv : forall gc Q K E V rvs k t1 t2 T1 T2,
+  binds V (Some k, rvs) K ->
   kind_cstr k = Cstr.arrow ->
   In (Cstr.arrow_dom, T1) (kind_rel k) ->
   In (Cstr.arrow_cod, T2) (kind_rel k) ->
-  K ; E |(gc,GcAny)|= trm_abs t1 ~: typ_fvar V ->
-  K ; E |(gc,GcAny)|= t2 ~: T1 ->
-  K ; E |(gc,GcAny)|= t1 ^^ t2 ~: T2.
+  [Q ; K ; E |(gc,GcAny)|= trm_abs t1 ~: typ_fvar V] ->
+  [Q ; K ; E |(gc,GcAny)|= t2 ~: T1] ->
+  [Q ; K ; E |(gc,GcAny)|= t1 ^^ t2 ~: T2].
 Proof.
   introv HB Hk Hdom Hcod. intros Typ1 Typ2.
   gen_eq (gc,GcAny) as gcs.
@@ -895,12 +937,13 @@ Proof.
     apply_empty* (@typing_trm_subst gc).
     exists {}. intro. unfold kinds_open_vars, sch_open_vars; simpl.
     destruct Xs; simpl*. rewrite* typ_open_vars_nil.
-  apply* (@typing_gc (gc,GcAny) Ks L).
+  apply* (@typing_gc (gc,GcAny) Q Ks L).
   intros.
   puts (H0 Xs H2); clear H0.
   apply* H1.
-  apply* typing_weaken_kinds'.
-Qed.
+  apply* typing_weaken_kinds.
+  admit.
+Admitted.
 
 Lemma preservation_result : preservation.
 Proof.
@@ -915,13 +958,13 @@ Proof.
    apply_empty* (@typing_trm_subst true).
    apply* H1.
   (* Let *)
-  apply* (@typing_let (true,GcAny) M L1).
+  apply* (@typing_let (true,GcAny) Q M L1).
   (* Beta *)
   apply* typing_abs_inv.
   (* Delta *)
-  assert (K;E |(true,GcAny)|= trm_app t1 t2 ~: T) by auto*.
+  assert ([Q;K;E |(true,GcAny)|= trm_app t1 t2 ~: T]) by auto*.
   use (typing_canonize H3).
-  fold (typing_gc_let K E (trm_app t1 t2) T) in H5.
+  fold (typing_gc_let Q K E (trm_app t1 t2) T) in H5.
   rewrite <- H4 in *.
   clear -H5.
   gen_eq (const_app c tl) as t1.
@@ -933,11 +976,23 @@ Proof.
   auto*.
   (* App2 *)
   auto*.
+  (* ApplyAnn1 *)
+  admit.
+  (* ApplyAnn2 *)
+  admit.
+  (* ApplyUse *)
+  admit.
+  (* ApplyRigid *)
+  admit.
   (* Delta/cst *)
   apply* (@typing_gc_any (false,GcAny)).
   apply* delta_typed.
   rewrite* H3.
-Qed.
+  (* Rigid *)
+  admit.
+  admit.
+  (*  *)
+Admitted.
 
 (* ********************************************************************** *)
 (** Progress: typed terms are values or can reduce *)
