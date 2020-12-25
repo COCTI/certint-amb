@@ -327,11 +327,29 @@ Qed.
 
 (** Substitution for a fresh name is identity. *)
 
-Lemma trm_shift_rigid_comm : forall k j t, term t -> k <= j ->
+Lemma rvar_shift_comm k j r : k <= j ->
+  rvar_shift k (rvar_shift j r) = rvar_shift (j + 1) (rvar_shift k r).
+Proof.
+  induction r; simpl; intros; try solve [f_equal*].
+  repeat (destruct Compare_dec.le_lt_dec; simpl); auto; elimtype False; lia.
+Qed.
+
+Lemma tree_shift_rigid_comm k j t : k <= j ->
+  tree_shift_rigid k (tree_shift_rigid j t) =
+  tree_shift_rigid (j + 1) (tree_shift_rigid k t).
+Proof.
+  revert k j; induction t; simpls; intros; f_equal*.
+  now apply rvar_shift_comm.
+Qed.
+
+Lemma trm_shift_rigid_comm k j t : k <= j ->
   trm_shift_rigid k (trm_shift_rigid j t) = trm_shift_rigid (j + 1) (trm_shift_rigid k t).
-Proof. 
-  intros. induction t; simpls; f_equal*.
-Admitted.
+Proof.
+revert k j; induction t; simpls; intros; auto; try solve [f_equal*].
+- f_equal*; now apply tree_shift_rigid_comm.
+- f_equal; auto with arith.
+- f_equal*; now apply tree_shift_rigid_comm.
+Qed.
 
 Lemma trm_subst_fresh : forall x t u, 
   x \notin trm_fv t ->  [x ~> u] t = t.

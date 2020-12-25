@@ -596,7 +596,7 @@ Fixpoint trm_shift_rigid k (t : trm) : trm :=
   | trm_app t1 t2 => trm_app (trm_shift_rigid k t1) (trm_shift_rigid k t2)
   | trm_use t1 T1 T2 t2 =>
     trm_use (trm_shift_rigid k t1) (tree_shift_rigid k T1)
-            (tree_shift_rigid k T1) (trm_shift_rigid k t2)
+            (tree_shift_rigid k T2) (trm_shift_rigid k t2)
   | trm_rigid t => trm_rigid (trm_shift_rigid (k+1) t)
   | trm_ann T => trm_ann (tree_shift_rigid k T)
   end.
