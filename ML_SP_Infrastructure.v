@@ -263,12 +263,64 @@ Hint Extern 1 (types _ _) => split; auto : core.
 (* ====================================================================== *)
 (** ** Properties of fv *)
 
+Lemma typ_fv_typ_fvars Ys : typ_fv_list (typ_fvars Ys) = mkset Ys.
+Proof. induction Ys; simpl*. rewrite* IHYs. Qed.
+
 Lemma fv_in_combine_vars Xs Vs :
   length Vs = length Xs -> fv_in var_fv (combine Xs Vs) = mkset Vs.
 Proof.
   revert Vs; induction Xs; destruct Vs; simpls*; intros; try discriminate.
   injection H; intros; rewrite* IHXs.
 Qed.
+
+Lemma in_typ_fv : forall t l,
+  In t l -> typ_fv t << typ_fv_list l.
+Proof.
+  induction l; simpl; intros H x Hx. elim H.
+  destruct* H.
+  subst; simpl*.
+Qed.
+
+Lemma in_kind_fv : forall k Ks,
+  In k Ks -> kind_fv k << kind_fv_list Ks.
+Proof.
+  induction Ks; simpl; intros; intros y Hy. elim H.
+  destruct H. subst*.
+  use (IHKs H _ Hy).
+Qed.
+
+Lemma typ_fv_open : forall Us T,
+  typ_fv (typ_open T Us) << typ_fv T \u typ_fv_list Us.
+Proof.
+  induction T; simpl*.
+  intros x Hx.
+  gen n; induction Us; destruct n; simpl; intros; auto.
+  use (IHUs n Hx).
+Qed.
+
+Lemma kind_fv_open : forall Us k,
+  kind_fv (kind_open k Us) << kind_fv k \u typ_fv_list Us.
+Proof.
+  destruct k as [[[kc kv kr kh]|] rvs]; unfold kind_fv, kind_types; simpl*.
+  rewrite list_snd_map_snd.
+  clear; induction kr; simpl*.
+  disjoint_solve.
+  use (typ_fv_open _ _ H).
+Qed.
+
+Lemma fv_in_kinds_open_vars Ks Xs :
+  fv_in kind_fv (kinds_open_vars Ks Xs) << kind_fv_list Ks \u mkset Xs.
+Proof.
+  unfold kinds_open_vars.
+  intros.
+  rewrite <- typ_fv_typ_fvars.
+  set (Us := typ_fvars Xs); clearbody Us.
+  gen Ks; induction Xs; destruct Ks; simpl*.
+  sets_solve.
+    use (kind_fv_open _ _ H).
+  use (IHXs Ks _ H).
+Qed.
+
 
 (* ====================================================================== *)
 (** ** Properties of kinds *)
@@ -1112,13 +1164,6 @@ Proof.
   simpls; auto*.
 Qed.
 
-Lemma typ_fv_typ_fvars : forall Ys,
-  typ_fv_list (typ_fvars Ys) = mkset Ys.
-Proof.
-  induction Ys; simpl*.
-  rewrite* IHYs.
-Qed.
-
 Lemma typ_fvars_app : forall Xs Ys,
   typ_fvars (Xs++Ys) = typ_fvars Xs ++ typ_fvars Ys.
 Proof.
@@ -1449,39 +1494,87 @@ Proof.
 Qed.
 
 Hint Resolve wf_kind_weaken : core.
+
+Lemma scheme_strengthen_kinds Q K K' M :
+  disjoint (dom K') (sch_fv M) ->
+  scheme Q (K & K') M -> scheme Q K M.
+Proof.
+  intros Dis [].
+  split; auto.
+  intros Xs Len.
+  destruct (H0 _ Len) as [? [? [L ?]]]; clear H0.
+  splits*.
+  exists (L \u dom K'); intros.
+  forward~ H3 as FA; clear H3.
+  apply list_forall_in; intros k B.
+  assert (WF := list_forall_out FA k B).
+  inversions* WF.
+  constructor; intros.
+  destruct* (H3 _ _ H4 H5) as [k [rvs [Ba RV]]]; clear H2 H3 H4.
+  exists k; exists rvs; splits*.
+  binds_cases Ba; auto.
+  elimtype False.
+  unfold kinds_open in B.
+  destruct (proj1 (in_map_iff _ _ _) B) as [k' [Hko Hk']].
+  assert (Ha : a \in kind_fv (Some ck, r)).
+    unfold kind_fv, kind_types; simpl.
+    assert (Ha := in_map snd _ _ H5).
+    simpl in Ha.
+    apply in_typ_fv in Ha.
+    apply Ha; simpl*.
+  rewrite <- (f_equal kind_fv Hko) in Ha.
+  apply kind_fv_open in Ha.
+  apply S.union_1 in Ha.
+  destruct Ha as [Ha|Ha].
+    apply in_kind_fv in Hk'.
+    apply Hk' in Ha.
+    apply (S.union_3 (typ_fv (sch_type M))) in Ha.
+    fold (sch_fv M) in Ha.
+    auto.
+  rewrite typ_fv_typ_fvars in Ha.
+  auto.
+Qed.
+
+Lemma env_ok_strengthen_kinds Q K K' E :
+  disjoint (dom K') (fv_in sch_fv E) ->
+  env_ok Q (K & K') E -> env_ok Q K E.
+Proof.
+  intros Dis []; split; auto; intros x M B.
+  apply* scheme_strengthen_kinds.
+  use (fv_in_spec sch_fv E _ _ B).
+Qed.
   
 Lemma typing_regular : forall gc Q K E e T,
   typing gc Q K E e T -> kenv_ok Q K /\ env_ok Q K E /\ term e /\ type T.
 Proof.
-  introv H.
-  induction* H; try (pick_freshes (length Ks) Xs; forward~ (H1 Xs)); split4*.
+introv H.
+induction* H; try (pick_freshes (length Ks) Xs; forward~ (H1 Xs)); split4*.
   (* typing_var *)
-  assert (scheme Q K M) by apply* env_prop_binds.
+- assert (scheme Q K M) by apply* env_prop_binds.
   pick_fresh y. destruct* H2.
   (* typing_abs *)
-  pick_fresh y. apply* (H5 y).
-  pick_fresh y. destruct* (H5 y) as [_ [[] _]].
-  apply (@term_abs L); intros y Hy. destruct* (H5 y) as [_ [_ [HT _]]].
+- pick_fresh y. apply* (H5 y).
+- pick_fresh y. destruct* (H5 y) as [_ [[] _]].
+- apply (@term_abs L); intros y Hy. destruct* (H5 y) as [_ [_ [HT _]]].
   (* typing_let *)
-  pick_fresh y. apply* (H2 y).
-  pick_fresh y. destruct* (H2 y) as [_ [[] _]].
-  apply_fresh* term_let as y.
+- pick_fresh y. apply* (H2 y).
+- pick_fresh y. destruct* (H2 y) as [_ [[] _]].
+- apply_fresh* term_let as y.
     pick_freshes (sch_arity M) Xs.
     forward~ (H0 Xs) as [_ [_ []]].
   forward~ (H2 y) as [_ [_ []]].
-  pick_fresh y. forward~ (H2 y) as [_ [_ []]].
+- pick_fresh y. forward~ (H2 y) as [_ [_ []]].
   (* typing_app *)
-  destruct IHtyping1 as [[OkK [TK QK]] _].
+- destruct IHtyping1 as [[OkK [TK QK]] _].
   specialize (env_prop_binds H TK).
   unfold All_kind_types; simpl.
   intros HL.
   apply (list_forall_out HL T).
   apply* (in_map snd (kind_rel k) _ H2).
   (* typing_cst *)
-  puts (Delta.scheme c).
-  destruct H1. auto*.
+- destruct H1. use (Delta.scheme c).
   (* typing_gc *)
-  destruct H2 as [[]]. splits*.
+- destruct H2 as [[]]. splits*.
   destruct H3 as [_ []].
   intros x k Hx.
   assert (Hwf : wf_kind (K & kinds_open_vars Ks Xs) k).
@@ -1501,22 +1594,24 @@ Proof.
     induction (kind_rel ck); simpl*; intros.
     destruct H8; subst; simpl*.
   disjoint_solve.
-  admit.
+- destruct (var_freshes (L \u fv_in sch_fv E) (length Ks)) as [Ys FrY].
+  destruct* (H1 Ys) as [_ [? _]].
+  apply* env_ok_strengthen_kinds.
+  rewrite* dom_kinds_open_vars.
   (* typing_ann *)
-  destruct H2 as [[]]. clear H4.
+- destruct H2 as [[]]. clear H4.
   apply* (list_forall_out H3). apply* nth_In.
   simpl annotation_tree in H1.
   generalize (graph_of_tree_type_n (tr_arrow T (bsubst_tree T))).
   fold tree_kind in H1.
-  rewrite H1.
-  now rewrite H2.
+  now rewrite H1, H2.
   (* typing_rigid *)
-  pick_freshes (1 + length Us) Xs.
+- pick_freshes (1 + length Us) Xs.
   destruct Xs as [|R Xs]; try contradiction.
   destruct* (H3 R Xs).
   constructor.
   apply* term_rigid_of_open.
-  pick_freshes (1 + length Us) Xs.
+- pick_freshes (1 + length Us) Xs.
   destruct Xs as [|R Xs]; try contradiction.
   destruct* (H3 R Xs) as [_ [_ []]].
   apply* typ_open_other_type.
@@ -1527,13 +1622,13 @@ Proof.
   splits*.
   destruct* H1 as [[] _].
   (* typing_use *)
-  destruct IHtyping as [_ [[]]].
+- destruct IHtyping as [_ [[]]].
   split; auto.
   intros x M HM.
   destruct* (H5 _ _ HM).
   split; auto.
   apply* list_forall_imp.
-Admitted.
+Qed.
 
 (** The value predicate only holds on locally-closed terms. *)
 

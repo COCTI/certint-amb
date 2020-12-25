@@ -1411,14 +1411,6 @@ Proof.
   simpl*.
 Qed.
 
-Lemma in_typ_fv : forall t l,
-  In t l -> typ_fv t << typ_fv_list l.
-Proof.
-  induction l; simpl; intros H x Hx. elim H.
-  destruct* H.
-  subst; simpl*.
-Qed.
-
 Lemma unify_kinds_fv : forall k k0 k1 l S,
   unify_kinds k k0 = Some (k1, l) ->
   kind_fv (kind_subst S k1) \u all_fv S l <<

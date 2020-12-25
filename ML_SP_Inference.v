@@ -1842,14 +1842,6 @@ Proof.
   use (IHKs H0).
 Qed.
 
-Lemma in_kind_fv : forall k Ks,
-  In k Ks -> kind_fv k << kind_fv_list Ks.
-Proof.
-  induction Ks; simpl; intros; intros y Hy. elim H.
-  destruct H. subst*.
-  use (IHKs H _ Hy).
-Qed.
-
 Lemma proper_instance_inf : forall K M Us Ys M' Vs,
   proper_instance K (sch_kinds M) Us ->
   proper_instance (K & kinds_open_vars (sch_kinds M) Ys) (sch_kinds M') Vs ->

@@ -356,40 +356,6 @@ Proof.
   apply (kinds_generalize_disjoint _ _ H Hy').
 Qed.
 
-(** Free variables *)
-
-Lemma typ_fv_open : forall Us T,
-  typ_fv (typ_open T Us) << typ_fv T \u typ_fv_list Us.
-Proof.
-  induction T; simpl*.
-  intros x Hx.
-  gen n; induction Us; destruct n; simpl; intros; auto.
-  use (IHUs n Hx).
-Qed.
-
-Lemma kind_fv_open : forall Us k,
-  kind_fv (kind_open k Us) << kind_fv k \u typ_fv_list Us.
-Proof.
-  destruct k as [[kc kv kr kh]|]; unfold kind_fv; simpl*.
-  rewrite list_snd_map_snd.
-  clear; induction kr; simpl*.
-  disjoint_solve.
-  use (typ_fv_open _ _ H).
-Qed.
-
-Lemma fv_in_kinds_open_vars : forall Ks Xs,
-  fv_in kind_fv (kinds_open_vars Ks Xs) << kind_fv_list Ks \u mkset Xs.
-Proof.
-  unfold kinds_open_vars.
-  intros.
-  rewrite <- typ_fv_typ_fvars.
-  set (Us := typ_fvars Xs); clearbody Us.
-  gen Ks; induction Xs; destruct Ks; simpl*.
-  sets_solve.
-    use (kind_fv_open _ _ H).
-  use (IHXs Ks _ H).
-Qed.
-
 (** A more general form of kinds weakening *)
 
 Lemma typing_kenv_incl : forall gc K E t T,
