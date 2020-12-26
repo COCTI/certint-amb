@@ -66,17 +66,21 @@ Proof.
   apply* scheme_weaken.
 Qed.
 
-Lemma env_ok_add_qitem q Q K E :
-  env_ok Q K E -> env_ok (q :: Q) K E.
+Lemma env_ok_add_qitem Q q Q' K E :
+  env_ok (Q ++ Q') K E -> env_ok (Q ++ q :: Q') K E.
 Proof.
   intros [Ok P].
   split; auto; intros X M B.
   destruct (P _ _ B); split; auto.
   revert H; apply list_forall_imp; intros.
   apply* qcoherent_add_qitem.
-Qed.  
+Qed.
 
-Hint Resolve scheme_weaken env_ok_weaken env_ok_add_qitem : core.
+Lemma env_ok_add_qitem' q Q K E : env_ok Q K E -> env_ok (q :: Q) K E.
+Proof. apply (env_ok_add_qitem nil). Qed.
+
+Hint Resolve scheme_weaken env_ok_weaken
+     env_ok_add_qitem env_ok_add_qitem' : core.
 
 (* ********************************************************************** *)
 (** Typing is preserved by weakening *)
@@ -114,29 +118,33 @@ induction Typ; introv EQ Ok; subst; auto*.
   destruct* (proj2 Ok X M B). 
 Qed.
 
-Lemma kenv_ok_add_qitem Q q K :
-  kenv_ok Q K -> kenv_ok (q :: Q) K.
+Lemma kenv_ok_add_qitem Q q Q' K :
+  kenv_ok (Q ++ Q') K -> kenv_ok (Q ++ q :: Q') K.
 Proof.
   splits*. intros r; intros.
   apply* qcoherent_add_qitem.
   use (kenv_ok_qcoherent H).
 Qed.
 
-Hint Resolve kenv_ok_add_qitem : core.
+Lemma kenv_ok_add_qitem' q Q K : kenv_ok Q K -> kenv_ok (q :: Q) K.
+Proof. apply (kenv_ok_add_qitem nil). Qed.
 
-Lemma typing_weaken_qitem : forall gc E Q q K t T,
-   [Q ; K ; E |gc|= t ~: T] ->
-   [q :: Q; K ; E |gc|= t ~: T].
+Hint Resolve kenv_ok_add_qitem kenv_ok_add_qitem' : core.
+
+Lemma typing_weaken_qitem gc E Q Q' q K t T :
+   [Q ++ Q' ; K ; E |gc|= t ~: T] ->
+   [Q ++ q :: Q'; K ; E |gc|= t ~: T].
 Proof.
-  induction 1; auto*.
+  intros Typ; gen_eq (Q ++ Q') as Q0.
+  revert Q Q'; induction Typ; intros; subst; auto*.
   apply* typing_use.
   - intros r; intros.
     apply* qcoherent_add_qitem.
   - intros x M Hb.
     use (H2 x M Hb).
-    refine (list_forall_imp _ _ H4). auto*.
-  - admit.
-Admitted.
+    refine (list_forall_imp _ _ H3). auto*.
+  - apply* (IHTyp (qeq T1 T2 :: Q0) Q').
+Qed.
   
 Lemma proper_instance_weaken : forall K K' Ks Us,
   ok (K & K') ->
@@ -799,7 +807,7 @@ induction Typt; introv EQ1 EQ2; subst; simpl trm_subst;
 - apply* typing_use.
   apply* IHTypt.
   exists Lu. intros Xs Fr.
-  apply* typing_weaken_qitem.
+  apply (typing_weaken_qitem nil); auto.
 - auto*.
 Admitted.
 

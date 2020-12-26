@@ -1449,9 +1449,16 @@ Proof.
   induction 1; subst Q'; solve [constructor; auto*].
 Qed.
 
-Lemma qcoherent_add_qitem q Q k :
-  qcoherent Q k -> qcoherent (q :: Q) k.
-Proof. induction 1; constructor; auto; introv QS; inversions* QS. Qed.
+Lemma qsat_add_item Q q Q' S : qsat (Q ++ q :: Q') S -> qsat (Q ++ Q') S.
+Proof. induction Q; simpl; intros; inversions* H; constructor; auto*. Qed.
+
+Lemma qcoherent_add_qitem Q q Q' k :
+  qcoherent (Q ++ Q') k -> qcoherent (Q ++ q :: Q') k.
+Proof.
+  intros QC; gen_eq (Q ++ Q') as Q0; gen Q.
+  induction QC; intros; subst;
+  constructor; auto; introv QS; apply qsat_add_item in QS; auto*.
+Qed.
 Hint Resolve qcoherent_add_qitem : core.
 
 Lemma trm_rigid_rec_open n r t x :
@@ -1470,8 +1477,8 @@ Proof.
   remember (trm_open_rigid t r) as t'. 
   intros Term; revert t Heqt'.
   unfold trm_open_rigid; generalize 0.
-  induction Term; destruct t; simpl*; intros; try discriminate; inversions Heqt';
-    econstructor; intros; auto*.
+  induction Term; destruct t; simpl*; intros; try discriminate;
+    inversions Heqt'; econstructor; intros; auto*.
   - specialize (H _ H1).
     apply (H0 _ H1 n).
     apply trm_rigid_rec_open.
