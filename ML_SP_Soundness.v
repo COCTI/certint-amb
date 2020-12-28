@@ -832,7 +832,9 @@ Lemma typing_gc_ind (P : qenv -> kenv -> env -> trm -> typ -> Prop) :
   (forall Q K E t T, [ Q; K; E |(false,GcLet)|= t ~: T ] -> P Q K E t T) ->
   (forall Ks L Q K E t T,
     (forall Xs : list var,
-      fresh L (length Ks) Xs -> P Q (K & kinds_open_vars Ks Xs) E t T) ->
+      fresh L (length Ks) Xs ->
+      kenv_ok Q (K & kinds_open_vars Ks Xs) /\
+      P Q (K & kinds_open_vars Ks Xs) E t T) ->
     P Q K E t T) ->
   forall Q K E t T, typing_gc_let Q K E t T -> P Q K E t T.
 Proof.
@@ -840,7 +842,8 @@ Proof.
   unfold typing_gc_let in H1.
   gen_eq (true,GcLet) as gc.
   induction H1; intros; subst; try solve [apply* H].
-  apply* H0.
+  apply* H0. split; [| apply* H3].
+  forward~ (H2 Xs).
 Qed.
 
 Lemma typing_canonize gc Q K E t T :
@@ -941,12 +944,39 @@ Proof.
     apply_empty* (@typing_trm_subst gc).
     exists {}. intro. unfold kinds_open_vars, sch_open_vars; simpl.
     destruct Xs; simpl*. rewrite* typ_open_vars_nil.
-  apply* (@typing_gc (gc,GcAny) Q Ks L).
+  apply (@typing_gc (gc,GcAny) Q Ks L). simpl*.
   intros.
   puts (H0 Xs H2); clear H0.
   apply* H1.
   apply* typing_weaken_kinds.
 Qed.
+
+Section set_nth.
+Variable A : Type.
+Fixpoint set_nth (n : nat) (x : A) l def :=
+  match n with
+  | 0 => x :: tl l
+  | S n => hd def l :: set_nth n x (tl l) def
+  end.
+
+Lemma set_nth_same n x l def def' : nth n (set_nth n x l def) def' = x.
+Proof. revert l; induction n; simpl*. Qed.
+
+Lemma set_nth_other n' x l def n :
+  n' <> n -> nth n (set_nth n' x l def) def = nth n l def.
+Proof.
+revert n l; induction n'; destruct l; destruct n; simpl; intros; auto;
+  try contradiction.
+- now destruct n.
+- rewrite IHn'. now destruct n. intro N; elim H; now rewrite N.
+Qed.
+
+Lemma length_set_nth n x l def : length l <= length (set_nth n x l def).
+Proof.
+  revert n; induction l; simpl; intros; auto with arith.
+  destruct n; simpl; auto with arith.
+Qed.
+End set_nth.
 
 Lemma preservation_result : preservation.
 Proof.
@@ -975,24 +1005,104 @@ Proof.
     apply* typing_gc_any.
     apply* delta_typed.
   apply* typing_gc. simpl*.
+  intros; destruct* (H Xs).
   (* App1 *)
   auto*.
   (* App2 *)
   auto*.
   (* ApplyAnn1 *)
-  apply (@typing_let _ Q (Sch S nil) (dom K) (dom E)); auto.
-    simpl; introv Fr.
-  unfold kinds_open_vars, kinds_open, sch_open_vars, typ_open_vars; simpl.
-  rewrite combine_nil; simpl.
   apply typing_canonize in Typ1.
   gen_eq (trm_app (trm_ann (tr_arrow T0 U)) (trm_abs t)) as t1.
   gen_eq (typ_fvar V) as T1.
   fold (typing_gc_let Q K E t1 T1) in Typ1.
+  clear IHTyp1 IHTyp2.
   induction Typ1 using typing_gc_ind; intros; subst.
     inversions H3; try discriminate; simpl in *.
     inversions H15; try discriminate.
+    assert (exists m1, exists m2, exists m3, exists m4, exists m5, exists m6,
+            nth n Ks (None,nil) = (Some (arrow_kind m1 m2),nil) /\
+            nth m1 Ks (None,nil) = (Some (arrow_kind m3 m4),nil) /\
+            nth m2 Ks (None,nil) = (Some (arrow_kind m5 m6),nil)).
+      admit.
+    destruct H4 as [m1 [m2 [m3 [m4 [m5 [m6 [Hn [Hm1 Hm2]]]]]]]].
+    apply (@typing_let _ Q (Sch (nth m3 Us typ_def) nil) (dom K) (dom E)); auto.
+      simpl; introv Fr.
+      destruct Xs; try contradiction; simpl.
+      unfold sch_open_vars; simpl.
+      case_eq (graph_of_tree_type (annotation_tree (T0,nil)));
+        intros m7 Ks' GT'.
+      assert (exists m8, exists m9,
+                   nth m7 Ks' (None,nil) = (Some (arrow_kind m8 m9), nil) /\
+                   m7 <> m8 /\ m7 <> m9).
+        admit.
+      destruct H4 as [m8 [m9 [Hm7 [Hm78 Hm79]]]].
+      assert (exists Us',
+              forall X, X # K ->
+              let Us' := set_nth m7 (typ_fvar X) Us' typ_def in
+              proper_instance
+                (K & X ~ kind_open (Some (arrow_kind m8 m9), nil) Us')
+                Ks' Us' /\
+              nth m7 Us' typ_def = typ_fvar X /\
+              nth m5 Us typ_def = nth m8 Us' typ_def /\
+              nth m3 Us typ_def = nth m9 Us' typ_def).
+        admit.
+      destruct H4 as [Us' HUs'].
+      apply (@typing_gc _ Q
+               (kind_open (Some (arrow_kind m8 m9), nil) Us' :: nil)
+               (dom K)).
+        simpl*.
+      intros.
+      destruct Xs; try contradiction.
+      destruct Xs; try contradiction.
+      simpl in H4; destruct H4 as [HX _].
+      forward~ (HUs' v); intros [PI [Xm7 [Hm5 Hm3]]]; clear HUs'.
+      set (Us'' := set_nth m7 (typ_fvar v) Us' typ_def) in *.
+      assert (forall i, In i (m7::m8::m9::nil) -> type (nth i Us'' typ_def))
+        by admit.
+      forward~ (H4 m9) as Tm9.
+      forward~ (H4 m8) as Tm8.
+      rewrite Hm3.
+      inversions Tm9; unfold typ_open_vars.
+      simpl typ_open.
+      rewrite H16.
+      assert (kind_open (kind_open (Some (arrow_kind m8 m9), nil) Us')
+                        (typ_fvar v :: nil) =
+              kind_open (Some (arrow_kind m8 m9), nil) Us'').
+          unfold kind_open, kind_map; simpl.
+          f_equal; f_equal.
+          apply ckind_pi. now rewrite kind_cstr_map.
+          inversions Tm8.
+          destruct (le_lt_dec (length Us'') m8).
+            rewrite (nth_overflow _ _ l) in H18; discriminate.
+          destruct (le_lt_dec (length Us'') m9).
+            rewrite (nth_overflow _ _ l0) in H16; discriminate.
+          simpl.
+          rewrite* <- (@set_nth_other _ m7 (typ_fvar v) Us' typ_def).
+          fold Us''.
+          rewrite* <- (@set_nth_other _ m7 (typ_fvar v) Us' typ_def).
+          fold Us''.
+          now rewrite <- H16, <- H18.
+      apply (@typing_app _ _ _ _ v
+                         (ckind_map (fun T => typ_open T Us'')
+                                    (arrow_kind m8 m9)) nil
+                         (nth m8 Us'' typ_def) (nth m9 Us'' typ_def)); auto.
+          unfold binds; simpl.
+          destruct eq_var_dec; try contradiction.
+          now rewrite H14.
+        rewrite <- Xm7.
+        apply (@typing_ann _ _ _ _ Ks'); auto.
+          admit.
+        unfold kinds_open_vars, kinds_open; simpl.
+        rewrite H14.
+        apply PI.
+      rewrite <- Hm5.
+      admit.
+     admit.
     admit.
-  admit.
+  apply (@typing_gc (true,GcAny) Q Ks (L \u dom K)). simpl*.
+  intros. destruct (H3 Xs); auto.
+  apply H8; auto.
+  apply* typing_weaken_kinds.
   (* ApplyAnn2 *)
   admit.
   (* ApplyUse *)
