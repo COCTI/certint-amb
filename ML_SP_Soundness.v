@@ -1096,6 +1096,32 @@ Proof.
         rewrite H14.
         apply PI.
       rewrite <- Hm5.
+      destruct H20.
+      destruct (le_lt_dec (length Us) n).
+        rewrite (nth_overflow _ _ l) in H6; discriminate.
+      forward~ (list_forall2_nth (n:=n)
+                                 (kind_open (Some (arrow_kind m1 m2), nil) nil)
+                                 typ_def H20) as WK.
+        unfold kinds_open. now rewrite map_length, (proj1 H18).
+      inversions WK.
+      rewrite H6 in H21.
+      inversions H21; clear H21.
+      unfold binds in H8, H22.
+      fold kind in H8, H22.
+      rewrite H8 in H22; inversions H22; clear H22.
+      destruct H23.
+      revert H21; simpl.
+      unfold kinds_open.
+      rewrite (nth_indep _ _ (kind_open (None, nil) Us)).
+        rewrite (map_nth (fun k => kind_open k Us)).
+        rewrite Hn.
+        simpl.
+        intros [_ Erel].
+        forward~ (Erel (Cstr.arrow_cod, typ_open (typ_bvar m2) Us)) as Ik0.
+        assert (typ_open (typ_bvar m2) Us = typ_fvar V).
+          apply (@kind_coherent k0 Cstr.arrow_cod); auto.
+          now rewrite H9, Cstr.unique_cod.
+        admit.
       admit.
      admit.
     admit.
