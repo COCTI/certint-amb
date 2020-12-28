@@ -833,13 +833,14 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
         [ Q; K & kinds_open_vars ((None, rvar_f R :: nil) :: Ks) Xs; E
         | gc_raise gc |= trm_open_rigid t (rvar_f R) ~: typ_open_vars T Xs ]) ->
       [ Q; K; E | gc |= trm_rigid t ~: typ_open T Us ]
-  | typing_use : forall n Ks Us Q K E t T1 T2,
+  | typing_use : forall n Ks Us Q K E t1 T1 T2 t2 T,
       graph_of_tree_type (tr_eq T1 T2, nil) = (n, Ks) ->
       proper_instance K Ks Us ->
       env_prop (qcoherent Q) K ->
       env_prop (fun M => list_forall (qcoherent Q) (sch_kinds M)) E ->
-      [ qeq T1 T2 :: Q; K; E | gc_raise gc |= t ~: nth n Us typ_def ] -> 
-      [ Q; K; E | gc |= t ~: nth n Us typ_def ]
+      [ Q; K; E | gc_raise gc |= t1 ~: nth n Us typ_def ] ->
+      [ qeq T1 T2 :: Q; K; E | gc_raise gc |= t2 ~: T ] -> 
+      [ Q; K; E | gc |= trm_use t1 T1 T2 t2 ~: T ]
   | typing_eq : forall Q K E x k rs T,
       kenv_ok Q K ->
       env_ok Q K E ->

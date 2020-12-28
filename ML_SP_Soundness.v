@@ -143,7 +143,7 @@ Proof.
   - intros x M Hb.
     use (H2 x M Hb).
     refine (list_forall_imp _ _ H3). auto*.
-  - apply* (IHTyp (qeq T1 T2 :: Q0) Q').
+  - apply* (IHTyp2 (qeq T1 T2 :: Q0) Q').
 Qed.
   
 Lemma proper_instance_weaken : forall K K' Ks Us,
@@ -623,14 +623,14 @@ induction Typ; introv WS EQ EQ'; subst.
   + auto.
   (* Use *)
 - assert (nth n Us typ_def = typ_open (typ_bvar n) Us) by reflexivity.
-  rewrite H3, typ_subst_open; simpl.
-  apply (typing_use gc H).
+  rewrite H3, typ_subst_open in IHTyp1.
+  apply* (@typing_use gc n Ks (List.map (typ_subst S) Us)).
   + set (gt := graph_of_tree_type _) in H.
     replace Ks with (snd gt) by now rewrite H.
     subst gt.
     rewrite <- (graph_of_tree_type_subst (tr_eq T1 T2, nil) S).
+    rewrite H; simpl.
     apply* proper_instance_subst.
-    now rewrite H.
   + apply kenv_ok_qcoherent.
     apply* kenv_ok_subst.
   + intros x M B.
@@ -638,10 +638,6 @@ induction Typ; introv WS EQ EQ'; subst.
       now intros [].
     revert x M B.
     apply* env_ok_subst.
-    use (typing_use gc H H0 H1 H2 Typ).
-  + puts (typ_subst_open S (typ_bvar n) Us).
-    simpl in H4; rewrite <- H4.
-    apply* (IHTyp F K'').
   (* Eq *)
 - assert (WK := WS _ _ H1).
   inversions WK.
@@ -805,7 +801,7 @@ induction Typt; introv EQ1 EQ2; subst; simpl trm_subst;
     rewrite* <- (fresh_length _ _ _ H7).
     admit.
 - apply* typing_use.
-  apply* IHTypt.
+  apply* IHTypt2.
   exists Lu. intros Xs Fr.
   apply (typing_weaken_qitem nil); auto.
 - auto*.
@@ -950,8 +946,7 @@ Proof.
   puts (H0 Xs H2); clear H0.
   apply* H1.
   apply* typing_weaken_kinds.
-  admit.
-Admitted.
+Qed.
 
 Lemma preservation_result : preservation.
 Proof.
@@ -985,6 +980,18 @@ Proof.
   (* App2 *)
   auto*.
   (* ApplyAnn1 *)
+  apply (@typing_let _ Q (Sch S nil) (dom K) (dom E)); auto.
+    simpl; introv Fr.
+  unfold kinds_open_vars, kinds_open, sch_open_vars, typ_open_vars; simpl.
+  rewrite combine_nil; simpl.
+  apply typing_canonize in Typ1.
+  gen_eq (trm_app (trm_ann (tr_arrow T0 U)) (trm_abs t)) as t1.
+  gen_eq (typ_fvar V) as T1.
+  fold (typing_gc_let Q K E t1 T1) in Typ1.
+  induction Typ1 using typing_gc_ind; intros; subst.
+    inversions H3; try discriminate; simpl in *.
+    inversions H15; try discriminate.
+    admit.
   admit.
   (* ApplyAnn2 *)
   admit.

@@ -1628,13 +1628,6 @@ induction* H; try (pick_freshes (length Ks) Xs; forward~ (H1 Xs)); split4*.
   rewrite map_length, <- Hlen'.
   splits*.
   destruct* H1 as [[] _].
-  (* typing_use *)
-- destruct IHtyping as [_ [[]]].
-  split; auto.
-  intros x M HM.
-  destruct* (H5 _ _ HM).
-  split; auto.
-  apply* list_forall_imp.
 Qed.
 
 (** The value predicate only holds on locally-closed terms. *)
