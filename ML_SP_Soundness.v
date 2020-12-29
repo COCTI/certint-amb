@@ -978,17 +978,17 @@ Proof.
 Qed.
 End set_nth.
 
-Lemma extract_arrow_kind K V k rvs k' rvs' a T S n Ks Us :
+Lemma extract_unique_attr K V k rvs k' rvs' a T S n Ks Us :
   binds V (Some k, rvs) K ->
-  Cstr.unique (kind_cstr k) a = true ->
-  In (a, T) (kind_rel k) ->
   proper_instance K Ks Us ->
   nth n Us typ_def = typ_fvar V ->
   nth n Ks (None, nil) = (Some k', rvs') ->
+  In (a, T) (kind_rel k) ->
   In (a, S) (kind_rel k') ->
+  Cstr.unique (kind_cstr k) a = true ->
   typ_open S Us = T.
 Proof.
-  intros B HU HT PI nUs nKs HS.
+  intros B PI nUs nKs HT HS HU.
   apply (@kind_coherent k a); auto.
   destruct PI.
   destruct (le_lt_dec (length Ks) n).
@@ -1130,11 +1130,11 @@ Proof.
       rewrite <- Hm5.
       assert (typ_open (typ_bvar m2) Us = typ_fvar V).
         clear -H20 H9 H6 H8 H11 Hn.
-        apply* extract_arrow_kind.
+        apply* extract_unique_attr.
         now rewrite H9, Cstr.unique_cod.
       assert (typ_open (typ_bvar m5) Us = S).
         clear -H20 H0 H1 H H18 Hm2.
-        apply* extract_arrow_kind.
+        apply* extract_unique_attr.
         now rewrite H0, Cstr.unique_dom.
       simpl in H21; rewrite H21.
       apply* typing_weaken_kinds.
