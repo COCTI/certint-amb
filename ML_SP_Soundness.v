@@ -978,6 +978,38 @@ Proof.
 Qed.
 End set_nth.
 
+Lemma extract_arrow_kind K V k rvs k' rvs' a T S n Ks Us :
+  binds V (Some k, rvs) K ->
+  Cstr.unique (kind_cstr k) a = true ->
+  In (a, T) (kind_rel k) ->
+  proper_instance K Ks Us ->
+  nth n Us typ_def = typ_fvar V ->
+  nth n Ks (None, nil) = (Some k', rvs') ->
+  In (a, S) (kind_rel k') ->
+  typ_open S Us = T.
+Proof.
+  intros B HU HT PI nUs nKs HS.
+  apply (@kind_coherent k a); auto.
+  destruct PI.
+  destruct (le_lt_dec (length Ks) n).
+    rewrite (nth_overflow _ _ l) in nKs; discriminate.
+  forward~ (list_forall2_nth (n:=n) (kind_open (Some k', rvs') nil) typ_def H0)
+      as WK.
+    unfold kinds_open; now rewrite map_length.
+  inversions WK; clear WK.
+  rewrite nUs in H1; inversions H1; clear H1.
+  puts (binds_func B H2); subst.
+  destruct H3. revert H1.
+  unfold kinds_open; simpl.
+  rewrite (nth_indep _ _ (kind_open (None, nil) Us));
+    try now rewrite map_length.
+  rewrite (map_nth (fun k => kind_open k Us)), nKs.
+  simpl; intros [_ Erel].
+  forward~ (Erel (a, typ_open S Us)).
+  rewrite kind_rel_map.
+  now apply (in_map_snd (fun T => typ_open T Us)).
+Qed.
+
 Lemma preservation_result : preservation.
 Proof.
   introv Typ. gen_eq (true, GcAny) as gc. gen t'.
@@ -1096,32 +1128,16 @@ Proof.
         rewrite H14.
         apply PI.
       rewrite <- Hm5.
-      destruct H20.
-      destruct (le_lt_dec (length Us) n).
-        rewrite (nth_overflow _ _ l) in H6; discriminate.
-      forward~ (list_forall2_nth (n:=n)
-                                 (kind_open (Some (arrow_kind m1 m2), nil) nil)
-                                 typ_def H20) as WK.
-        unfold kinds_open. now rewrite map_length, (proj1 H18).
-      inversions WK.
-      rewrite H6 in H21.
-      inversions H21; clear H21.
-      unfold binds in H8, H22.
-      fold kind in H8, H22.
-      rewrite H8 in H22; inversions H22; clear H22.
-      destruct H23.
-      revert H21; simpl.
-      unfold kinds_open.
-      rewrite (nth_indep _ _ (kind_open (None, nil) Us)).
-        rewrite (map_nth (fun k => kind_open k Us)).
-        rewrite Hn.
-        simpl.
-        intros [_ Erel].
-        forward~ (Erel (Cstr.arrow_cod, typ_open (typ_bvar m2) Us)) as Ik0.
-        assert (typ_open (typ_bvar m2) Us = typ_fvar V).
-          apply (@kind_coherent k0 Cstr.arrow_cod); auto.
-          now rewrite H9, Cstr.unique_cod.
-        admit.
+      assert (typ_open (typ_bvar m2) Us = typ_fvar V).
+        clear -H20 H9 H6 H8 H11 Hn.
+        apply* extract_arrow_kind.
+        now rewrite H9, Cstr.unique_cod.
+      assert (typ_open (typ_bvar m5) Us = S).
+        clear -H20 H0 H1 H H18 Hm2.
+        apply* extract_arrow_kind.
+        now rewrite H0, Cstr.unique_dom.
+      simpl in H21; rewrite H21.
+      apply* typing_weaken_kinds.
       admit.
      admit.
     admit.
