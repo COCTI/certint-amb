@@ -1502,6 +1502,39 @@ Qed.
 
 Hint Resolve wf_kind_weaken : core.
 
+Lemma wf_kind_strengthen K K' x k :
+  disjoint (fv_in kind_fv K) (dom K') ->
+  In (x, k) K -> wf_kind (K & K') k -> wf_kind K k.
+Proof.
+  intros Dis B Wf.
+  inversions Wf.
+    constructor.
+  constructor; intros.
+  destruct (H l a H0 H1) as [k [rvs [B1 Hrvs]]].
+  exists k; exists rvs; splits*.
+  binds_cases B1; auto.
+  elim (binds_fresh B2).
+  assert (Ha' : a \in fv_in kind_fv K).
+    apply (fv_in_spec kind_fv K _ _ B).
+    unfold kind_fv, kind_types; simpl.
+    revert H1; clear.
+    induction (kind_rel ck); simpl*; intros.
+    destruct H1; subst; simpl*.
+  auto.
+Qed.
+
+Lemma kenv_ok_strengthen Q K K' :
+  disjoint (fv_in kind_fv K) (dom K') ->
+  kenv_ok Q (K & K') ->
+  kenv_ok Q K.
+Proof.
+  intros Fr Kok.
+  splits*.
+  destruct Kok as [_ []].
+  intros x k Hx.
+  apply* wf_kind_strengthen.
+Qed.
+
 Lemma scheme_strengthen_kinds Q K K' M :
   disjoint (dom K') (sch_fv M) ->
   scheme Q (K & K') M -> scheme Q K M.
@@ -1581,26 +1614,8 @@ induction* H; try (pick_freshes (length Ks) Xs; forward~ (H1 Xs)); split4*.
   (* typing_cst *)
 - destruct H1. use (Delta.scheme c).
   (* typing_gc *)
-- destruct H2 as [[]]. splits*.
-  destruct H3 as [_ []].
-  intros x k Hx.
-  assert (Hwf : wf_kind (K & kinds_open_vars Ks Xs) k).
-    apply* H5.
-  inversions Hwf.
-    constructor.
-  constructor; intros.
-  destruct (H6 l a H7 H8) as [k [rvs [B Hrvs]]].
-  exists k; exists rvs; splits*.
-  binds_cases B; auto.
-  elim (binds_fresh B1).
+- apply* kenv_ok_strengthen.
   rewrite* dom_kinds_open_vars.
-  assert (Ha' : a \in fv_in kind_fv K).
-    apply (fv_in_spec kind_fv K _ _ Hx).
-    unfold kind_fv, kind_types; simpl.
-    revert H8; clear.
-    induction (kind_rel ck); simpl*; intros.
-    destruct H8; subst; simpl*.
-  disjoint_solve.
 - destruct (var_freshes (L \u fv_in sch_fv E) (length Ks)) as [Ys FrY].
   destruct* (H1 Ys) as [_ [? _]].
   apply* env_ok_strengthen_kinds.

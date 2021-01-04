@@ -833,7 +833,6 @@ Lemma typing_gc_ind (P : qenv -> kenv -> env -> trm -> typ -> Prop) :
   (forall Ks L Q K E t T,
     (forall Xs : list var,
       fresh L (length Ks) Xs ->
-      kenv_ok Q (K & kinds_open_vars Ks Xs) /\
       P Q (K & kinds_open_vars Ks Xs) E t T) ->
     P Q K E t T) ->
   forall Q K E t T, typing_gc_let Q K E t T -> P Q K E t T.
@@ -842,8 +841,7 @@ Proof.
   unfold typing_gc_let in H1.
   gen_eq (true,GcLet) as gc.
   induction H1; intros; subst; try solve [apply* H].
-  apply* H0. split; [| apply* H3].
-  forward~ (H2 Xs).
+  apply* H0.
 Qed.
 
 Lemma typing_canonize gc Q K E t T :
@@ -864,9 +862,11 @@ induction 1; auto*.
       split2*; intros; subst.
       apply* typing_app.
     split.
-      destruct (var_freshes L (length Ks)) as [Xs HXs].
-      destruct* (H Xs HXs).
-      admit.
+      destruct (var_freshes (L \u fv_in kind_fv K) (length Ks))
+        as [Xs HXs].
+      destruct* (H Xs).
+      apply* kenv_ok_strengthen.
+      rewrite* dom_kinds_open_vars.
     intros; subst.
     apply* (@typing_gc (true,GcLet) Q Ks L).
       simpl; auto.
@@ -875,9 +875,10 @@ induction 1; auto*.
     apply* H7.
     apply* typing_weaken_kinds.
   split.
-    destruct (var_freshes L (length Ks)) as [Xs HXs].
+    destruct (var_freshes (L \u fv_in kind_fv K) (length Ks)) as [Xs HXs].
     destruct* (H Xs).
-    admit.
+    apply* kenv_ok_strengthen.
+    rewrite* dom_kinds_open_vars.
   intros.
   apply* (@typing_gc (true,GcLet) Q Ks (L \u dom K)).
     simpl; auto.
@@ -888,7 +889,7 @@ induction 1; auto*.
   (* GC *)
 - apply* typing_gc.
   simpl; auto.
-Admitted.
+Qed.
 
 (* End of canonical derivations *)
 
