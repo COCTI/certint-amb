@@ -136,7 +136,6 @@ Fixpoint rvar_fv (r : rvar) : vars :=
   | rvar_f x => {{x}}
   | rvar_attr x _ => rvar_fv x
   end.
-                      
 
 Fixpoint tree_fv (T : tree) : vars :=
   match T with

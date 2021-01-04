@@ -66,20 +66,26 @@ Proof.
   apply* scheme_weaken.
 Qed.
 
+Lemma scheme_add_qitem Q q Q' K M :
+  scheme (Q ++ Q') K M -> scheme (Q ++ q :: Q') K M.
+Proof.
+  intros []; split; auto.
+  revert H; apply list_forall_imp; intros.
+  apply* qcoherent_add_qitem.
+Qed.
+
 Lemma env_ok_add_qitem Q q Q' K E :
   env_ok (Q ++ Q') K E -> env_ok (Q ++ q :: Q') K E.
 Proof.
   intros [Ok P].
   split; auto; intros X M B.
-  destruct (P _ _ B); split; auto.
-  revert H; apply list_forall_imp; intros.
-  apply* qcoherent_add_qitem.
+  apply* scheme_add_qitem.
 Qed.
 
 Lemma env_ok_add_qitem' q Q K E : env_ok Q K E -> env_ok (q :: Q) K E.
 Proof. apply (env_ok_add_qitem nil). Qed.
 
-Hint Resolve scheme_weaken env_ok_weaken
+Hint Resolve scheme_weaken env_ok_weaken scheme_add_qitem
      env_ok_add_qitem env_ok_add_qitem' : core.
 
 (* ********************************************************************** *)
@@ -252,7 +258,8 @@ induction Typ; introv EQ; subst.
   rewrite concat_assoc.
   apply* (H1 Xs).
   rewrite* concat_assoc.
-- apply* typing_ann. apply* proper_instance_exchange.
+- apply* typing_ann.
+  apply* proper_instance_exchange.
 - apply* (@typing_rigid gc Q). apply* proper_instance_exchange.
   introv Fr.
   rewrite concat_assoc.
@@ -499,17 +506,18 @@ Proof.
   now rewrite E1, E2.
 Qed.
 
-Lemma graph_of_tree_type_subst tr S :
-  let Ks := snd (graph_of_tree_type tr) in
+Lemma graph_of_tree_type_subst n Ks tr S :
+  graph_of_tree_type tr = (n, Ks) ->
   List.map (kind_subst S) Ks = Ks.
 Proof.
   simpl.
   unfold graph_of_tree_type.
-  destruct tr as [T Ks].
-  generalize (graph_of_kinds_subst (length Ks) Ks S).
-  case_eq (graph_of_kinds (length Ks) Ks); simpl; introv HG; intros [E1 E2].
+  destruct tr as [T K].
+  generalize (graph_of_kinds_subst (length K) K S).
+  case_eq (graph_of_kinds (length K) K); simpl; introv HG; intros [E1 E2].
   generalize (graph_of_tree_subst (length l + length l0) T S).
-  case_eq (graph_of_tree (length l + length l0) T); simpl; introv HT E.
+  case_eq (graph_of_tree (length l + length l0) T); simpl; introv HT E E'.
+  injection E'; intros; subst.
   now rewrite map_app, map_app, E1, E2, E.
 Qed.
 
@@ -597,9 +605,7 @@ induction Typ; introv WS EQ EQ'; subst.
   rewrite <- map_nth.
   simpl.
   apply (@typing_ann gc Q _ _ (List.map (kind_subst S) Ks)); auto*.
-  + generalize (graph_of_tree_type_subst (annotation_tree (T,nil)) S).
-    rewrite H1; simpl; intros.
-    now rewrite H3.
+  + now rewrite (graph_of_tree_type_subst _ S H1).
   + apply* proper_instance_subst.
 - (* Rigid *)
   rewrite typ_subst_open.
@@ -616,21 +622,19 @@ induction Typ; introv WS EQ EQ'; subst.
   apply* (H3 R Xs); auto.
   + forward~ (H2 R Xs) as Typ.
     destruct (typing_regular Typ).
-    apply (well_subst_fresh (Q:=qvar R :: Q)); auto.
-    destruct H1 as [[] _]; simpl in *.
-    rewrite* H1.
+    apply (well_subst_fresh (Q:=qvar R :: Q)); trivial.
+      destruct H1 as [[] _]; simpl in *.
+      rewrite* H1.
+    apply* kenv_ok_add_qitem'.
   + rewrite* concat_assoc.
   + auto.
   (* Use *)
 - assert (nth n Us typ_def = typ_open (typ_bvar n) Us) by reflexivity.
   rewrite H3, typ_subst_open in IHTyp1.
-  apply* (@typing_use gc n Ks (List.map (typ_subst S) Us)).
-  + set (gt := graph_of_tree_type _) in H.
-    replace Ks with (snd gt) by now rewrite H.
-    subst gt.
-    rewrite <- (graph_of_tree_type_subst (tr_eq T1 T2, nil) S).
-    rewrite H; simpl.
-    apply* proper_instance_subst.
+  apply* (@typing_use gc n (List.map (kind_subst S) Ks)
+                      (List.map (typ_subst S) Us)).
+  + now rewrite (graph_of_tree_type_subst _ S H).
+  + apply* proper_instance_subst.
   + apply kenv_ok_qcoherent.
     apply* kenv_ok_subst.
   + intros x M B.
@@ -794,12 +798,12 @@ induction Typt; introv EQ1 EQ2; subst; simpl trm_subst;
     exists (L \u Lu \u mkset Xs). intro Ys; intros.
     apply* typing_comm. apply* typing_weaken_kinds.
     forward~ (Typu Ys) as Typu'.
-    apply* kenv_ok_concat.
+    apply kenv_ok_concat; auto.
     forward~ (H2 R Xs).
     repeat rewrite* dom_kinds_open_vars.
     destruct H1; simpl in *; destruct H4.
     rewrite* <- (fresh_length _ _ _ H7).
-    admit.
+  admit.
 - apply* typing_use.
   apply* IHTypt2.
   exists Lu. intros Xs Fr.
@@ -880,10 +884,9 @@ induction 1; auto*.
     apply* kenv_ok_strengthen.
     rewrite* dom_kinds_open_vars.
   intros.
-  apply* (@typing_gc (true,GcLet) Q Ks (L \u dom K)).
-    simpl; auto.
+  apply (@typing_gc (true,GcLet) Q Ks (L \u dom K)); simpl; auto.
   intros.
-  destruct* (H Xs).
+  destruct (H Xs); auto.
   apply* H6; clear H6.
   apply* typing_weaken_kinds.
   (* GC *)
@@ -1013,22 +1016,22 @@ Qed.
 
 Lemma preservation_result : preservation.
 Proof.
-  introv Typ. gen_eq (true, GcAny) as gc. gen t'.
-  induction Typ; introv EQ Red; subst; inversions Red;
-    try solve [apply* typing_gc];
-    try (destruct (const_app_inv c tl) as [eq | [T1' [T2' eq]]];
-         rewrite eq in *; discriminate).
+introv Typ. gen_eq (true, GcAny) as gc. gen t'.
+induction Typ; introv EQ Red; subst; inversions Red;
+  try solve [apply* typing_gc];
+  try (destruct (const_app_inv c tl) as [eq | [T1' [T2' eq]]];
+       rewrite eq in *; discriminate).
   (* Let *)
-  pick_fresh x. rewrite* (@trm_subst_intro x).
+- pick_fresh x. rewrite* (@trm_subst_intro x).
    simpl in H1.
    apply_empty* (@typing_trm_subst true).
    apply* H1.
   (* Let *)
-  apply* (@typing_let (true,GcAny) Q M L1).
+- apply* (@typing_let (true,GcAny) Q M L1).
   (* Beta *)
-  apply* typing_abs_inv.
+- apply* typing_abs_inv.
   (* Delta *)
-  assert ([Q;K;E |(true,GcAny)|= trm_app t1 t2 ~: T]) by auto*.
+- assert ([Q;K;E |(true,GcAny)|= trm_app t1 t2 ~: T]) by auto*.
   use (typing_canonize H3).
   fold (typing_gc_let Q K E (trm_app t1 t2) T) in H5.
   rewrite <- H4 in *.
@@ -1038,13 +1041,12 @@ Proof.
     apply* typing_gc_any.
     apply* delta_typed.
   apply* typing_gc. simpl*.
-  intros; destruct* (H Xs).
   (* App1 *)
-  auto*.
+- auto*.
   (* App2 *)
-  auto*.
+- auto*.
   (* ApplyAnn1 *)
-  apply typing_canonize in Typ1.
+- apply typing_canonize in Typ1.
   gen_eq (trm_app (trm_ann (tr_arrow T0 U)) (trm_abs t)) as t1.
   gen_eq (typ_fvar V) as T1.
   fold (typing_gc_let Q K E t1 T1) in Typ1.
@@ -1143,23 +1145,25 @@ Proof.
      admit.
     admit.
   apply (@typing_gc (true,GcAny) Q Ks (L \u dom K)). simpl*.
-  intros. destruct (H3 Xs); auto.
-  apply H8; auto.
-  apply* typing_weaken_kinds.
+  intros.
+  (* destruct (H3 Xs); auto.
+  + apply* typing_weaken_kinds. *)
+  admit.
   (* ApplyAnn2 *)
-  admit.
+- admit.
   (* ApplyUse *)
-  admit.
+- admit.
   (* ApplyRigid *)
-  admit.
+- admit.
   (* Delta/cst *)
-  apply* (@typing_gc_any (false,GcAny)).
+- apply* (@typing_gc_any (false,GcAny)).
   apply* delta_typed.
   rewrite* H3.
   (* Rigid *)
-  admit.
-  admit.
-  (*  *)
+- admit.
+  (* Use *)
+- admit.
+- admit.
 Admitted.
 
 (* ********************************************************************** *)
