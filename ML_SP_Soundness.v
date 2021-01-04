@@ -480,6 +480,18 @@ Proof.
     now apply kind_pi.
 Qed.
 
+Lemma graph_of_tree_type_subst n Ks tr S :
+  graph_of_tree_type tr = (n, Ks) ->
+  List.map (kind_subst S) Ks = Ks.
+Proof.
+  unfold graph_of_tree_type.
+  case_eq (graph_of_tree 0 tr); introv HK E.
+  injection E; intros; subst.
+  generalize (graph_of_tree_subst 0 tr S); simpl.
+  now rewrite HK.
+Qed.
+
+(*
 Lemma graph_of_kinds_subst ofs TKs S :
   let (Ks, Ks') := graph_of_kinds ofs TKs in
   List.map (kind_subst S) Ks = Ks /\ List.map (kind_subst S) Ks' = Ks'.
@@ -520,6 +532,7 @@ Proof.
   injection E'; intros; subst.
   now rewrite map_app, map_app, E1, E2, E.
 Qed.
+*)
 
 Lemma typing_typ_subst : forall gc Q F K'' S K K' E t T,
   disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) ->
@@ -1014,6 +1027,46 @@ Proof.
   now apply (in_map_snd (fun T => typ_open T Us)).
 Qed.
 
+Lemma graph_of_tr_arrow n Ks ofs T1 T2 :
+  graph_of_tree ofs (tr_arrow T1 T2) = (n, Ks) ->
+  exists m1, exists Ks1, exists m2, exists Ks2,
+      Ks = (Some (arrow_kind m1 m2), nil) :: Ks1 ++ Ks2 /\
+      graph_of_tree (ofs+1) T1 = (m1, Ks1) /\
+      graph_of_tree (ofs+length Ks1+1) T2 = (m2, Ks2).
+Proof.
+  simpl.
+  case_eq (graph_of_tree (ofs + 1) T1); intros m1 Ks1 HT1.
+  case_eq (graph_of_tree (ofs + length Ks1 + 1) T2); intros m2 Ks2 HT2 E.
+  inversions E; clear E.
+  now repeat esplit.
+Qed.
+
+Lemma graph_of_tr_eq n Ks ofs T1 T2 :
+  graph_of_tree ofs (tr_eq T1 T2) = (n, Ks) ->
+  exists m1, exists Ks1, exists m2, exists Ks2,
+      Ks = (Some (eq_kind m1 m2), nil) :: Ks1 ++ Ks2 /\
+      graph_of_tree (ofs+1) T1 = (m1, Ks1) /\
+      graph_of_tree (ofs+length Ks1+1) T2 = (m2, Ks2).
+Proof.
+  simpl.
+  case_eq (graph_of_tree (ofs + 1) T1); intros m1 Ks1 HT1.
+  case_eq (graph_of_tree (ofs + length Ks1 + 1) T2); intros m2 Ks2 HT2 E.
+  inversions E; clear E.
+  now repeat esplit.
+Qed.
+
+Lemma graph_of_tree_root n Ks ofs T :
+  graph_of_tree ofs T = (n, Ks) -> n = ofs.
+Proof.
+  case T; simpl; try solve [introv E; inversions* E];
+  intros T1 T2; simpl;
+  case_eq (graph_of_tree (ofs + 1) T1); intros n1 K1;
+  case_eq (graph_of_tree (ofs + length K1 + 1) T2); intros;
+  inversions* H1.
+Qed.
+
+Import Lia.
+
 Lemma preservation_result : preservation.
 Proof.
 introv Typ. gen_eq (true, GcAny) as gc. gen t'.
@@ -1058,18 +1111,38 @@ induction Typ; introv EQ Red; subst; inversions Red;
             nth n Ks (None,nil) = (Some (arrow_kind m1 m2),nil) /\
             nth m1 Ks (None,nil) = (Some (arrow_kind m3 m4),nil) /\
             nth m2 Ks (None,nil) = (Some (arrow_kind m5 m6),nil)).
-      admit.
+      unfold graph_of_tree_type, annotation_tree in H19.
+      destruct (graph_of_tr_arrow _ _ _ H19)
+        as [m1 [Ks1 [m2 [Ks2 [HKs [HT1 HT2]]]]]].
+      destruct (graph_of_tr_arrow _ _ _ HT1)
+        as [m3 [Ks3 [m4 [Ks4 [HKs1 _]]]]].
+      destruct (graph_of_tr_arrow _ _ _ HT2)
+        as [m5 [Ks5 [m6 [Ks6 [HKs2 _]]]]].
+      exists m1; exists m2; exists m3; exists m4; exists m5; exists m6.
+      split.
+        now rewrite (graph_of_tree_root _ _ H19), HKs.
+      split.
+        now rewrite (graph_of_tree_root _ _ HT1), HKs, HKs1.
+      rewrite (graph_of_tree_root _ _ HT2), HKs, HKs2.
+      rewrite plus_comm; simpl.
+      rewrite app_nth2, Nat.sub_diag; now auto.
     destruct H4 as [m1 [m2 [m3 [m4 [m5 [m6 [Hn [Hm1 Hm2]]]]]]]].
     apply (@typing_let _ Q (Sch (nth m3 Us typ_def) nil) (dom K) (dom E)); auto.
       simpl; introv Fr.
       destruct Xs; try contradiction; simpl.
       unfold sch_open_vars; simpl.
-      case_eq (graph_of_tree_type (annotation_tree (T0,nil)));
+      case_eq (graph_of_tree_type (annotation_tree T0));
         intros m7 Ks' GT'.
       assert (exists m8, exists m9,
                    nth m7 Ks' (None,nil) = (Some (arrow_kind m8 m9), nil) /\
                    m7 <> m8 /\ m7 <> m9).
-        admit.
+        destruct (graph_of_tr_arrow _ _ _ GT')
+          as [m8 [Ks8 [m9 [Ks9 [HKs' [HT0 HT0']]]]]].
+        exists m8; exists m9.
+        rewrite (graph_of_tree_root _ _ GT'), HKs'; simpl.
+        rewrite (graph_of_tree_root _ _ HT0).
+        rewrite (graph_of_tree_root _ _ HT0').
+        splits*; clear; lia.
       destruct H4 as [m8 [m9 [Hm7 [Hm78 Hm79]]]].
       assert (exists Us',
               forall X, X # K ->

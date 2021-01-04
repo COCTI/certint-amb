@@ -183,6 +183,11 @@ Fixpoint graph_of_tree ofs (tr : tree) : nat * list kind :=
     (ofs, (None, rv :: nil) :: nil)
   end.
 
+Definition graph_of_tree_type S := graph_of_tree 0 S.
+
+Definition annotation_tree (S : tree) := tr_arrow S S.
+
+(*
 Fixpoint graph_of_kinds ofs (Ks : list tree_kind) : list kind * list kind :=
   match Ks with
   | nil => (nil, nil)
@@ -251,6 +256,7 @@ Definition annotation_tree (S : tree_type) :=
   let '(T,K) := S in
   let V := build_right_map 0 (length K) K in
   (tr_arrow T (bsubst_tree T), K ++ right_tree_kinds K).
+*)
 
 (* Need also to define substitution of rigid variables *)
 Fixpoint rvar_open (k : nat) (u : rvar) (t : rvar) :=
@@ -336,7 +342,7 @@ End tree_subst.
 
 Eval compute in
   graph_of_tree_type (
-  annotation_tree (tr_arrow (tr_rvar (rvar_b 0)) (tr_rvar (rvar_b 1)), nil)).
+  annotation_tree (tr_arrow (tr_rvar (rvar_b 0)) (tr_rvar (rvar_b 1)))).
 
 (* Eval compute in
   annotation_tree (tr_arrow (tr_rvar (rvar_b 0)) (tr_bvar 0),
@@ -822,7 +828,7 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
   | typing_ann : forall Q (T : tree) n Ks K E Us,
       kenv_ok Q K ->
       env_ok Q K E ->
-      graph_of_tree_type (annotation_tree (T,nil)) = (n, Ks) ->
+      graph_of_tree_type (annotation_tree T) = (n, Ks) ->
       proper_instance K Ks Us ->
       [ Q; K; E | gc |= (trm_ann T) ~: nth n Us typ_def ]
   | typing_rigid : forall Q L K Ks Us E t T,
@@ -834,7 +840,7 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
         | gc_raise gc |= trm_open_rigid t (rvar_f R) ~: typ_open_vars T Xs ]) ->
       [ Q; K; E | gc |= trm_rigid t ~: typ_open T Us ]
   | typing_use : forall n Ks Us Q K E t1 T1 T2 t2 T,
-      graph_of_tree_type (tr_eq T1 T2, nil) = (n, Ks) ->
+      graph_of_tree_type (tr_eq T1 T2) = (n, Ks) ->
       proper_instance K Ks Us ->
       env_prop (qcoherent Q) K ->
       env_prop (fun M => list_forall (qcoherent Q) (sch_kinds M)) E ->

@@ -1424,10 +1424,10 @@ Proof.
 Qed.
   
 Lemma graph_of_tree_type_n T :
-  let '(n, Ks) := graph_of_tree_type (T, nil) in
+  let '(n, Ks) := graph_of_tree_type T in
   n < length Ks.
 Proof.
-  simpl*.
+  unfold graph_of_tree_type.
   case_eq (graph_of_tree 0 T); intros.
   generalize (graph_of_tree_n 0 T).
   rewrite H. lia.
@@ -1622,8 +1622,7 @@ induction* H; try (pick_freshes (length Ks) Xs; forward~ (H1 Xs)); split4*.
   (* typing_ann *)
 - destruct H2 as [[]]. clear H4.
   apply* (list_forall_out H3). apply* nth_In.
-  simpl annotation_tree in H1.
-  generalize (graph_of_tree_type_n (tr_arrow T (bsubst_tree T))).
+  generalize (graph_of_tree_type_n (annotation_tree T)).
   fold tree_kind in H1.
   now rewrite H1, H2.
   (* typing_rigid *)
