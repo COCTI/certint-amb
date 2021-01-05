@@ -764,9 +764,31 @@ Proof.
   rewrite* Len.
 Qed.
 
+(* This lemma could be untrue but should be possible to make it true... *)
+Lemma trm_rigid_rec_subst_comm : forall x n u t r,
+    trm_subst x u (trm_rigid_rec n r t) = trm_rigid_rec n r (trm_subst x (trm_shift_rigid 0 u) t).
+Proof.
+  intros. revert t n u.
+  induction t; simpl*; intros*; try rewrite* IHt; 
+    try (rewrite* <- IHt1; rewrite* <- IHt2).
+  + case (v == x); intros H; revert n.
+    induction u; simpl*; intros; try rewrite* <- IHu;
+      try (rewrite* <- IHu1; rewrite* <- IHu2).
+    * admit.
+    * admit.
+    * admit.
+    * intros. simpl*.
+Admitted.
+
+Lemma trm_open_rigid_subst_comm x u t r :
+  trm_subst x u (trm_open_rigid t r) = trm_open_rigid (trm_subst x (trm_shift_rigid 0 u) t) r.
+Proof.
+  unfold trm_open_rigid.
+  rewrite* trm_rigid_rec_subst_comm.
+Qed.
+
 (* ********************************************************************** *)
 (** Typing is preserved by term substitution *)
-
 Lemma typing_trm_subst : forall gc F M Q K E t T z u,
   [ Q ; K ; E & z ~ M & F |(gc,GcAny)|= t ~: T ] ->
   (exists L:vars, has_scheme_vars (gc,GcAny) L Q K E u M) ->
@@ -816,7 +838,7 @@ induction Typt; introv EQ1 EQ2; subst; simpl trm_subst;
     repeat rewrite* dom_kinds_open_vars.
     destruct H1; simpl in *; destruct H4.
     rewrite* <- (fresh_length _ _ _ H7).
-  admit.
+  rewrite* <- trm_open_rigid_subst_comm.
 - apply* typing_use.
   apply* IHTypt2.
   exists Lu. intros Xs Fr.
