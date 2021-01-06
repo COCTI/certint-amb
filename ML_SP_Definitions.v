@@ -261,7 +261,8 @@ Definition annotation_tree (S : tree_type) :=
 (* Need also to define substitution of rigid variables *)
 Fixpoint rvar_open (k : nat) (u : rvar) (t : rvar) :=
   match t with
-  | rvar_b i => if k === i then u else rvar_b i
+  | rvar_b i =>
+    if k === i then u else rvar_b (if le_lt_dec k i then i-1 else i)
   | rvar_f v => rvar_f v
   | rvar_attr r att => rvar_attr (rvar_open k u r) att
   end.
@@ -634,7 +635,7 @@ Fixpoint trm_rigid_rec (k : nat) (u : rvar) (t : trm) {struct t} : trm :=
   | trm_bvar i    => trm_bvar i
   | trm_fvar x    => trm_fvar x 
   | trm_abs t1    => trm_abs (trm_rigid_rec k u t1) 
-  | trm_let t1 t2 => trm_let (trm_rigid_rec k u t1) (trm_rigid_rec (S k) u t2) 
+  | trm_let t1 t2 => trm_let (trm_rigid_rec k u t1) (trm_rigid_rec k u t2) 
   | trm_app t1 t2 => trm_app (trm_rigid_rec k u t1) (trm_rigid_rec k u t2)
   | trm_cst c     => trm_cst c
   | trm_use t1 T U t2 =>

@@ -8,7 +8,7 @@
 Set Implicit Arguments.
 Require Import Arith List Metatheory
   ML_SP_Definitions ML_SP_Infrastructure.
-Require Lia.
+Require Import Lia.
 
 Module MkSound(Cstr:CstrIntf)(Const:CstIntf).
 
@@ -764,29 +764,6 @@ Proof.
   rewrite* Len.
 Qed.
 
-(* This lemma could be untrue but should be possible to make it true... *)
-Lemma trm_rigid_rec_subst_comm : forall x n u t r,
-    trm_subst x u (trm_rigid_rec n r t) = trm_rigid_rec n r (trm_subst x (trm_shift_rigid 0 u) t).
-Proof.
-  intros. revert t n u.
-  induction t; simpl*; intros*; try rewrite* IHt; 
-    try (rewrite* <- IHt1; rewrite* <- IHt2).
-  + case (v == x); intros H; revert n.
-    induction u; simpl*; intros; try rewrite* <- IHu;
-      try (rewrite* <- IHu1; rewrite* <- IHu2).
-    * admit.
-    * admit.
-    * admit.
-    * intros. simpl*.
-Admitted.
-
-Lemma trm_open_rigid_subst_comm x u t r :
-  trm_subst x u (trm_open_rigid t r) = trm_open_rigid (trm_subst x (trm_shift_rigid 0 u) t) r.
-Proof.
-  unfold trm_open_rigid.
-  rewrite* trm_rigid_rec_subst_comm.
-Qed.
-
 (* ********************************************************************** *)
 (** Typing is preserved by term substitution *)
 Lemma typing_trm_subst : forall gc F M Q K E t T z u,
@@ -844,7 +821,7 @@ induction Typt; introv EQ1 EQ2; subst; simpl trm_subst;
   exists Lu. intros Xs Fr.
   apply (typing_weaken_qitem nil); auto.
 - auto*.
-Admitted.
+Qed.
 
 (* ********************************************************************** *)
 (** Canonical derivations *)

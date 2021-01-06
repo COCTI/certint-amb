@@ -6,7 +6,7 @@
 ***************************************************************************)
 
 Set Implicit Arguments.
-Require Import List Lia Metatheory ML_SP_Definitions.
+Require Import Arith List Lia Metatheory ML_SP_Definitions.
 Require Import ProofIrrelevance.
 
 (* ====================================================================== *)
@@ -376,8 +376,6 @@ Qed.
 
 (* end hide *)
 
-(** Substitution for a fresh name is identity. *)
-
 Lemma rvar_shift_comm k j r : k <= j ->
   rvar_shift k (rvar_shift j r) = rvar_shift (j + 1) (rvar_shift k r).
 Proof.
@@ -394,13 +392,56 @@ Proof.
 Qed.
 
 Lemma trm_shift_rigid_comm k j t : k <= j ->
-  trm_shift_rigid k (trm_shift_rigid j t) = trm_shift_rigid (j + 1) (trm_shift_rigid k t).
+  trm_shift_rigid k (trm_shift_rigid j t) =
+  trm_shift_rigid (j + 1) (trm_shift_rigid k t).
 Proof.
 revert k j; induction t; simpls; intros; auto; try solve [f_equal*].
 - f_equal*; now apply tree_shift_rigid_comm.
 - f_equal; auto with arith.
 - f_equal*; now apply tree_shift_rigid_comm.
 Qed.
+
+Lemma rvar_open_shift n s r : rvar_open n s (rvar_shift n r) = r.
+Proof.
+  induction r; simpl; try congruence.
+  destruct Compare_dec.le_lt_dec; simpl.
+    case (n === n0 + 1); intros; subst. lia.
+    destruct Compare_dec.le_lt_dec. f_equal; lia.
+    lia.
+  case (n === n0); intros; subst. lia.
+  destruct* Compare_dec.le_lt_dec. lia.
+Qed.
+
+Lemma tree_rigid_shift n r t : tree_open_rigid n r (tree_shift_rigid n t) = t.
+Proof. induction t; simpl; try congruence; rewrite* rvar_open_shift. Qed.
+  
+Lemma trm_rigid_shift n r u : trm_rigid_rec n r (trm_shift_rigid n u) = u.
+Proof.
+  revert n; induction u; intros; simpls*; try congruence.
+  - repeat rewrite tree_rigid_shift; congruence.
+  - rewrite plus_comm; simpl; congruence.
+  - rewrite tree_rigid_shift; congruence.
+Qed.
+
+Lemma trm_rigid_rec_subst_comm x n u t r :
+  trm_subst x u (trm_rigid_rec n r t) =
+  trm_rigid_rec n r (trm_subst x (trm_shift_rigid n u) t).
+Proof.
+  revert t n u.
+  induction t; simpl*; intros*; try congruence.
+  + case (v == x); intros H; simpl*. rewrite* trm_rigid_shift.
+  + rewrite IHt, (@trm_shift_rigid_comm 0), plus_comm; auto with arith.
+Qed.
+
+Lemma trm_open_rigid_subst_comm x u t r :
+  trm_subst x u (trm_open_rigid t r) =
+  trm_open_rigid (trm_subst x (trm_shift_rigid 0 u) t) r.
+Proof.
+  unfold trm_open_rigid.
+  rewrite* trm_rigid_rec_subst_comm.
+Qed.
+
+(** Substitution for a fresh name is identity. *)
 
 Lemma trm_subst_fresh : forall x t u, 
   x \notin trm_fv t ->  [x ~> u] t = t.
@@ -1481,7 +1522,7 @@ Proof.
   - specialize (H _ H1).
     apply (H0 _ H1 n).
     apply trm_rigid_rec_open.
-  - apply (H0 _ H1 (S n)).
+  - apply (H0 _ H1 n).
     apply trm_rigid_rec_open.
 Qed.
 
