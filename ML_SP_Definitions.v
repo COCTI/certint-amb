@@ -843,7 +843,6 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
   | typing_use : forall n Ks Us Q K E t1 T1 T2 t2 T,
       graph_of_tree_type (tr_eq T1 T2) = (n, Ks) ->
       proper_instance K Ks Us ->
-      env_prop (fun M => list_forall (qcoherent Q) (sch_kinds M)) E ->
       [ Q; K; E | gc_raise gc |= t1 ~: nth n Us typ_def ] ->
       [ qeq T1 T2 :: Q; K; E | gc_raise gc |= t2 ~: T ] -> 
       [ Q; K; E | gc |= trm_use t1 T1 T2 t2 ~: T ]

@@ -119,9 +119,6 @@ induction Typ; introv EQ Ok; subst; auto*.
   rewrite <- Len in Fr.
   simpl in Fr.
   auto*.
-- apply* typing_use.
-  intros X M B.
-  destruct* (proj2 Ok X M B). 
 Qed.
 
 Lemma kenv_ok_add_qitem Q q Q' K :
@@ -144,10 +141,7 @@ Proof.
   intros Typ; gen_eq (Q ++ Q') as Q0.
   revert Q Q'; induction Typ; intros; subst; auto*.
   apply* typing_use.
-  - intros x M Hb.
-    use (H1 x M Hb).
-    refine (list_forall_imp _ _ H2). auto*.
-  - apply* (IHTyp2 (qeq T1 T2 :: Q0) Q').
+  apply* (IHTyp2 (qeq T1 T2 :: Q0) Q').
 Qed.
   
 Lemma proper_instance_weaken : forall K K' Ks Us,
@@ -641,18 +635,11 @@ induction Typ; introv WS EQ EQ'; subst.
   + auto.
   (* Use *)
 - assert (nth n Us typ_def = typ_open (typ_bvar n) Us) by reflexivity.
-  rewrite H3, typ_subst_open in IHTyp1.
+  rewrite H1, typ_subst_open in IHTyp1.
   apply* (@typing_use gc n (List.map (kind_subst S) Ks)
                       (List.map (typ_subst S) Us)).
-  + now rewrite (graph_of_tree_type_subst _ S H).
-  + apply* proper_instance_subst.
-  + apply kenv_ok_qcoherent.
-    apply* kenv_ok_subst.
-  + intros x M B.
-    cut (scheme Q (K & map (kind_subst S) K'') M).
-      now intros [].
-    revert x M B.
-    apply* env_ok_subst.
+    now rewrite (graph_of_tree_type_subst _ S H).
+  apply* proper_instance_subst.
   (* Eq *)
 - assert (WK := WS _ _ H1).
   inversions WK.
