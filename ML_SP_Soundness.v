@@ -144,11 +144,9 @@ Proof.
   intros Typ; gen_eq (Q ++ Q') as Q0.
   revert Q Q'; induction Typ; intros; subst; auto*.
   apply* typing_use.
-  - intros r; intros.
-    apply* qcoherent_add_qitem.
   - intros x M Hb.
-    use (H2 x M Hb).
-    refine (list_forall_imp _ _ H3). auto*.
+    use (H1 x M Hb).
+    refine (list_forall_imp _ _ H2). auto*.
   - apply* (IHTyp2 (qeq T1 T2 :: Q0) Q').
 Qed.
   
