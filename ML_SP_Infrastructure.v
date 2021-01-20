@@ -126,7 +126,7 @@ Fixpoint trm_fv (t : trm) {struct t} : vars :=
   | trm_cst c     => {}
   | trm_use t1 _ _ t2 => (trm_fv t1) \u (trm_fv t2)
   | trm_rigid t1  => (trm_fv t1)
-  | trm_ann _     => {}
+  | trm_ann t1 _  => (trm_fv t1)
   | trm_eq        => {}
   end.
 
@@ -200,7 +200,7 @@ Fixpoint trm_subst (z : var) (u : trm) (t : trm) {struct t} : trm :=
   | trm_cst c     => trm_cst c
   | trm_use t1 T1 T2 t2 => trm_use (trm_subst z u t1) T1 T2 (trm_subst z u t2)
   | trm_rigid t1  => trm_rigid (trm_subst z (trm_shift_rigid 0 u) t1)
-  | trm_ann T     => trm_ann T
+  | trm_ann t1 T  => trm_ann (trm_subst z u t1) T
   | trm_eq        => trm_eq
   end.
 
@@ -1661,11 +1661,11 @@ induction* H; try (pick_freshes (length Ks) Xs; forward~ (H1 Xs)); split4*.
   apply* env_ok_strengthen_kinds.
   rewrite* dom_kinds_open_vars.
   (* typing_ann *)
-- destruct H2 as [[]]. clear H4.
+- destruct H1 as [[]]. clear H0.
   apply* (list_forall_out H3). apply* nth_In.
-  generalize (graph_of_tree_type_n (annotation_tree T)).
-  fold tree_kind in H1.
-  now rewrite H1, H2.
+  generalize (graph_of_tree_type_n T).
+  fold tree_kind in H.
+  now rewrite H, H1.
   (* typing_rigid *)
 - pick_freshes (1 + length Us) Xs.
   destruct Xs as [|R Xs]; try contradiction.

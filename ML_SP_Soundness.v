@@ -252,6 +252,7 @@ induction Typ; introv EQ; subst.
   rewrite* concat_assoc.
 - apply* typing_ann.
   apply* proper_instance_exchange.
+  apply* proper_instance_exchange.
 - apply* (@typing_rigid gc Q). apply* proper_instance_exchange.
   introv Fr.
   rewrite concat_assoc.
@@ -303,6 +304,7 @@ induction* Typ; intros.
   apply* (H1 Xs); clear H1.
   forward~ (H0 Xs).
 - apply* typing_ann. apply* proper_instance_weaken.
+  apply* proper_instance_weaken.
 - apply_fresh* (@typing_rigid gc Q) as Xs.
     apply* proper_instance_weaken.
   introv Fr.
@@ -609,9 +611,12 @@ induction Typ; introv WS EQ EQ'; subst.
 - (* Ann *)
   rewrite <- map_nth.
   simpl.
-  apply (@typing_ann gc Q _ _ (List.map (kind_subst S) Ks)); auto*.
-  + now rewrite (graph_of_tree_type_subst _ S H1).
+  apply (@typing_ann gc Q _ _ _ (List.map (kind_subst S) Ks) _ _ (List.map (typ_subst S) Us)); auto*.
+  + now rewrite (graph_of_tree_type_subst _ S H).
   + apply* proper_instance_subst.
+  + apply* proper_instance_subst.
+  + forward~ (IHTyp F K'').
+    now rewrite <- map_nth.
 - (* Rigid *)
   rewrite typ_subst_open.
   apply (@typing_rigid gc Q (L \u dom S) _ (List.map (kind_subst S) Ks)); auto*.
@@ -889,6 +894,30 @@ induction 1; auto*.
   (* GC *)
 - apply* typing_gc.
   simpl; auto.
+  (* Ann *)
+- clear H2.
+  gen_eq (nth n Us typ_def) as T0.
+  assert (OkK: ok K) by auto.
+  fold (typing_gc_let Q K E t T0) in IHtyping.
+  apply (proj2 (A:=kenv_ok Q K)).
+  induction IHtyping using typing_gc_ind.
+    splits*.
+    intros; subst.
+    apply (typing_ann (true,GcLet) T (Ks:=Ks) (Us:=Us) (Us':=Us')); auto.
+  split.
+    destruct (var_freshes (L \u dom K \u fv_in kind_fv K) (length Ks0))
+      as [Xs HXs].
+    destruct* (H2 Xs).
+        apply* proper_instance_weaken.
+      apply* proper_instance_weaken.
+    apply* kenv_ok_strengthen.
+    rewrite* dom_kinds_open_vars.
+  intros; subst.
+  apply (@typing_gc (true,GcLet) Q Ks0 (L \u dom K)); simpl; auto.
+  intros.
+  destruct (H2 Xs); auto.
+  + apply* proper_instance_weaken.
+  + apply* proper_instance_weaken.
 Qed.
 
 (* End of canonical derivations *)
@@ -1084,128 +1113,86 @@ induction Typ; introv EQ Red; subst; inversions Red;
 - auto*.
   (* ApplyAnn1 *)
 - apply typing_canonize in Typ1.
-  gen_eq (trm_app (trm_ann (tr_arrow T0 U)) (trm_abs t)) as t1.
+  gen_eq (trm_ann (trm_abs t) (tr_arrow T0 U)) as t1.
   gen_eq (typ_fvar V) as T1.
   fold (typing_gc_let Q K E t1 T1) in Typ1.
   clear IHTyp1 IHTyp2.
-  induction Typ1 using typing_gc_ind; intros; subst.
-    inversions H3; try discriminate; simpl in *.
+  revert H Typ2 Red.
+  apply (proj2 (A:=kenv_ok Q K)).
+  induction Typ1 using typing_gc_ind.
+    split2*; intros; subst.
+    inversions H; try discriminate; simpl in *.
     inversions H15; try discriminate.
-    assert (exists m1, exists m2, exists m3, exists m4, exists m5, exists m6,
-            nth n Ks (None,nil) = (Some (arrow_kind m1 m2),nil) /\
-            nth m1 Ks (None,nil) = (Some (arrow_kind m3 m4),nil) /\
-            nth m2 Ks (None,nil) = (Some (arrow_kind m5 m6),nil)).
-      unfold graph_of_tree_type, annotation_tree in H19.
-      destruct (graph_of_tr_arrow _ _ _ H19)
-        as [m1 [Ks1 [m2 [Ks2 [HKs [HT1 HT2]]]]]].
-      destruct (graph_of_tr_arrow _ _ _ HT1)
-        as [m3 [Ks3 [m4 [Ks4 [HKs1 _]]]]].
-      destruct (graph_of_tr_arrow _ _ _ HT2)
-        as [m5 [Ks5 [m6 [Ks6 [HKs2 _]]]]].
-      exists m1; exists m2; exists m3; exists m4; exists m5; exists m6.
-      split.
-        now rewrite (graph_of_tree_root _ _ H19), HKs.
-      split.
-        now rewrite (graph_of_tree_root _ _ HT1), HKs, HKs1.
-      rewrite (graph_of_tree_root _ _ HT2), HKs, HKs2.
-      rewrite plus_comm; simpl.
-      rewrite app_nth2, Nat.sub_diag; now auto.
-    destruct H4 as [m1 [m2 [m3 [m4 [m5 [m6 [Hn [Hm1 Hm2]]]]]]]].
-    apply (@typing_let _ Q (Sch (nth m3 Us typ_def) nil) (dom K) (dom E)); auto.
+    assert (exists m1, exists m2,
+            nth n Ks (None,nil) = (Some (arrow_kind m1 m2),nil)).
+      unfold graph_of_tree_type in H9.
+      destruct (graph_of_tr_arrow _ _ _ H9)
+        as [m1 [Ks1 [m2 [Ks2 [HKs _]]]]].
+      exists m1; exists m2.
+      now rewrite (graph_of_tree_root _ _ H9), HKs.
+    destruct H4 as [m1 [m2 Hn]].
+    case_eq (graph_of_tree_type T0); intros m3 Ks1 GT1.
+    assert (exists Us1, exists Us1',
+                 proper_instance K Ks1 Us1 /\
+                 proper_instance K Ks1 Us1' /\
+                 nth m3 Us1 typ_def = nth m1 Us' typ_def /\
+                 nth m3 Us1' typ_def = nth m1 Us typ_def).
+      admit.
+    destruct H4 as [Us1 [Us1' [PI1 [PI1' [Hm31 Hm31']]]]].
+    apply (@typing_let _ Q (Sch (nth m1 Us typ_def) nil) (dom K) (L \u dom E));
+        auto.
       simpl; introv Fr.
       destruct Xs; try contradiction; simpl.
       unfold sch_open_vars; simpl.
-      case_eq (graph_of_tree_type (annotation_tree T0));
-        intros m7 Ks' GT'.
-      assert (exists m8, exists m9,
-                   nth m7 Ks' (None,nil) = (Some (arrow_kind m8 m9), nil) /\
-                   m7 <> m8 /\ m7 <> m9).
-        destruct (graph_of_tr_arrow _ _ _ GT')
-          as [m8 [Ks8 [m9 [Ks9 [HKs' [HT0 HT0']]]]]].
-        exists m8; exists m9.
-        rewrite (graph_of_tree_root _ _ GT'), HKs'; simpl.
-        rewrite (graph_of_tree_root _ _ HT0).
-        rewrite (graph_of_tree_root _ _ HT0').
-        splits*; clear; lia.
-      destruct H4 as [m8 [m9 [Hm7 [Hm78 Hm79]]]].
-      assert (exists Us',
-              forall X, X # K ->
-              let Us' := set_nth m7 (typ_fvar X) Us' typ_def in
-              proper_instance
-                (K & X ~ kind_open (Some (arrow_kind m8 m9), nil) Us')
-                Ks' Us' /\
-              nth m7 Us' typ_def = typ_fvar X /\
-              nth m5 Us typ_def = nth m8 Us' typ_def /\
-              nth m3 Us typ_def = nth m9 Us' typ_def).
-        admit.
-      destruct H4 as [Us' HUs'].
-      apply (@typing_gc _ Q
-               (kind_open (Some (arrow_kind m8 m9), nil) Us' :: nil)
-               (dom K)).
-        simpl*.
-      intros.
-      destruct Xs; try contradiction.
-      destruct Xs; try contradiction.
-      simpl in H4; destruct H4 as [HX _].
-      forward~ (HUs' v); intros [PI [Xm7 [Hm5 Hm3]]]; clear HUs'.
-      set (Us'' := set_nth m7 (typ_fvar v) Us' typ_def) in *.
-      assert (forall i, In i (m7::m8::m9::nil) -> type (nth i Us'' typ_def))
-        by admit.
-      forward~ (H4 m9) as Tm9.
-      forward~ (H4 m8) as Tm8.
-      rewrite Hm3.
-      inversions Tm9; unfold typ_open_vars.
-      simpl typ_open.
-      rewrite H16.
-      assert (kind_open (kind_open (Some (arrow_kind m8 m9), nil) Us')
-                        (typ_fvar v :: nil) =
-              kind_open (Some (arrow_kind m8 m9), nil) Us'').
-          unfold kind_open, kind_map; simpl.
-          f_equal; f_equal.
-          apply ckind_pi. now rewrite kind_cstr_map.
-          inversions Tm8.
-          destruct (le_lt_dec (length Us'') m8).
-            rewrite (nth_overflow _ _ l) in H18; discriminate.
-          destruct (le_lt_dec (length Us'') m9).
-            rewrite (nth_overflow _ _ l0) in H16; discriminate.
-          simpl.
-          rewrite* <- (@set_nth_other _ m7 (typ_fvar v) Us' typ_def).
-          fold Us''.
-          rewrite* <- (@set_nth_other _ m7 (typ_fvar v) Us' typ_def).
-          fold Us''.
-          now rewrite <- H16, <- H18.
-      apply (@typing_app _ _ _ _ v
-                         (ckind_map (fun T => typ_open T Us'')
-                                    (arrow_kind m8 m9)) nil
-                         (nth m8 Us'' typ_def) (nth m9 Us'' typ_def)); auto.
-          unfold binds; simpl.
-          destruct eq_var_dec; try contradiction.
-          now rewrite H14.
-        rewrite <- Xm7.
-        apply (@typing_ann _ _ _ _ Ks'); auto.
-          admit.
-        unfold kinds_open_vars, kinds_open; simpl.
-        rewrite H14.
-        apply PI.
-      rewrite <- Hm5.
-      assert (typ_open (typ_bvar m2) Us = typ_fvar V).
-        clear -H20 H9 H6 H8 H11 Hn.
-        apply* extract_unique_attr.
-        now rewrite H9, Cstr.unique_cod.
-      assert (typ_open (typ_bvar m5) Us = S).
-        clear -H20 H0 H1 H H18 Hm2.
+      rewrite typ_open_vars_nil by admit.
+      rewrite <- Hm31'.
+      apply (typing_ann _ _ GT1 PI1 PI1').
+      rewrite Hm31.
+      assert (typ_open (typ_bvar m1) Us' = S).
+        clear H11.
         apply* extract_unique_attr.
         now rewrite H0, Cstr.unique_dom.
-      simpl in H21; rewrite H21.
-      apply* typing_weaken_kinds.
+      simpl in H4; rewrite* H4.
+    intros X FrX.
+    unfold trm_open; simpl trm_open_rec.
+    fold (trm_open t (trm_fvar X)).
+    assert (typ_open (typ_bvar m2) Us' = T).
+      clear H11.
+      apply* extract_unique_attr.
+      now rewrite H0, Cstr.unique_cod.
+    rewrite <- H4; simpl typ_open.
+    case_eq (graph_of_tree_type U); intros m4 Ks2 GT2.
+    assert (exists Us2, exists Us2',
+                 proper_instance K Ks2 Us2 /\
+                 proper_instance K Ks2 Us2' /\
+                 nth m4 Us2 typ_def = nth m2 Us typ_def /\
+                 nth m4 Us2' typ_def = nth m2 Us' typ_def).
       admit.
-     admit.
-    admit.
-  apply (@typing_gc (true,GcAny) Q Ks (L \u dom K)). simpl*.
+    destruct H17 as [Us2 [Us2' [PI2 [PI2' [Hm42 Hm42']]]]].
+    rewrite <- Hm42'.
+    apply (typing_ann _ _ GT2 PI2 PI2').
+    rewrite Hm42.
+    assert (typ_open (typ_bvar m1) Us = U0).
+      apply* extract_unique_attr.
+      now rewrite H12, Cstr.unique_dom.
+    simpl in H17; rewrite H17.
+    assert (typ_open (typ_bvar m2) Us = T1).
+      apply* extract_unique_attr.
+      now rewrite H12, Cstr.unique_cod.
+    simpl in H18; rewrite H18.
+    eapply typing_gc_any, H21; auto.
+  split.
+    pick_freshes (length Ks) Xs.
+    destruct* (H Xs).
+    apply* kenv_ok_strengthen.
+    rewrite* dom_kinds_open_vars.
+  intros; subst.
+  apply (typing_gc Ks (L \u dom K \u fv_in kind_fv K)).
+    simpl*.
   intros.
-  (* destruct (H3 Xs); auto.
-  + apply* typing_weaken_kinds. *)
-  admit.
+  apply H; auto.
+  apply* typing_weaken_kinds.
+  destruct* (H Xs).
   (* ApplyAnn2 *)
 - admit.
   (* ApplyUse *)
