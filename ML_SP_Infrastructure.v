@@ -1712,6 +1712,17 @@ Proof.
   - splits*.
     inversions H.
     econstructor; unfold trm_open; simpl*.
+  - splits*.
+    apply (@term_abs (trm_fv t1)); intros.
+    unfold trm_open; simpl.
+    apply (@term_let (trm_fv t1)); intros.
+      repeat constructor.
+    generalize (trm_open_rec_term (trm_fvar x) H 0); simpl; intro Habs.
+    injection Habs; subst; intro Hopen.
+    rewrite <- Hopen.
+    unfold trm_open; simpl.
+    constructor.
+    apply* trm_open_term.
 Qed.
 
 (* ********************************************************************** *)

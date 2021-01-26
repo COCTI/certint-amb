@@ -909,6 +909,11 @@ Inductive red : trm -> trm -> Prop :=
       red (trm_app (trm_ann (trm_abs t) (tr_rvar r)) t')
           (trm_let (trm_ann t' (tr_rvar (rvar_attr r Cstr.arrow_dom)))
                    (trm_ann t (tr_rvar (rvar_attr r Cstr.arrow_cod))))
+  | red_ann_abs : forall T U t1,
+      term (trm_abs t1) ->
+      red (trm_ann (trm_abs t1) (tr_arrow T U))
+          (trm_abs (trm_let (trm_ann (trm_bvar 0) T)
+                            (trm_ann t1 U)))
   | red_apply_rigid : forall t1 t2,
       term t1 -> term t2 ->
       red (trm_app (trm_rigid t1) t2)
