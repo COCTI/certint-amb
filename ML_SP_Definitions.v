@@ -903,22 +903,21 @@ Inductive red : trm -> trm -> Prop :=
       red (trm_app (trm_ann (trm_abs t) (tr_arrow T U)) t')
           (trm_let (trm_ann t' T)
                    (trm_ann t U))
-  | red_apply_ann_2 : forall r t t',
-      term (trm_abs t) ->
-      term t' ->
-      red (trm_app (trm_ann (trm_abs t) (tr_rvar r)) t')
-          (trm_let (trm_ann t' (tr_rvar (rvar_attr r Cstr.arrow_dom)))
-                   (trm_ann t (tr_rvar (rvar_attr r Cstr.arrow_cod))))
-  | red_ann_abs : forall T U t1,
+  | red_ann_abs_1 : forall T U t1,
       term (trm_abs t1) ->
       red (trm_ann (trm_abs t1) (tr_arrow T U))
           (trm_abs (trm_let (trm_ann (trm_bvar 0) T)
                             (trm_ann t1 U)))
-  | red_apply_rigid : forall t1 t2,
+  | red_ann_abs_2 : forall r t1,
+      term (trm_abs t1) ->
+      red (trm_ann (trm_abs t1) (tr_rvar r))
+          (trm_abs (trm_let
+              (trm_ann (trm_bvar 0) (tr_rvar (rvar_attr r Cstr.arrow_dom)))
+              (trm_ann t1 (tr_rvar (rvar_attr r Cstr.arrow_cod)))))
+  | red_rigid_apply : forall t1 t2,
       term t1 -> term t2 ->
-      red (trm_app (trm_rigid t1) t2)
-          (trm_rigid (trm_app t1 (trm_shift_rigid 0 t2))).
-               
+      red (trm_rigid (trm_app t1 t2))
+          (trm_app (trm_rigid t1) (trm_rigid t2)).
 
 Notation "t --> t'" := (red t t') (at level 68).
 
