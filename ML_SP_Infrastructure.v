@@ -1731,6 +1731,11 @@ Proof.
     unfold trm_open; simpl.
     constructor.
     apply* trm_open_term.
+  - splits*; repeat constructor.
+    apply (@term_abs (trm_fv t1)); intros.
+    unfold trm_open; simpl.
+    constructor.
+    apply* trm_open_term.
 Qed.
 
 (* ********************************************************************** *)
