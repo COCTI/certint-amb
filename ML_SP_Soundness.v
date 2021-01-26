@@ -1195,8 +1195,6 @@ induction Typ; introv EQ Red; subst; inversions Red;
   destruct* (H Xs).
   (* ApplyAnn2 *)
 - admit.
-  (* ApplyUse *)
-- admit.
   (* ApplyRigid *)
 - admit.
   (* Delta/cst *)

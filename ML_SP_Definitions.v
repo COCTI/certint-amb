@@ -885,25 +885,18 @@ Inductive red : trm -> trm -> Prop :=
       term t1 ->
       red t2 t2' ->
       red (trm_app t1 t2) (trm_app t1 t2')
+  | red_use : forall T T' t2,
+      term t2 ->
+      red (trm_use trm_eq T T' t2) t2
   | red_use_1 : forall t1 t1' T T' t2,
       term t1 ->
       term t2 ->
       red t1 t1' ->
       red (trm_use t1 T T' t2) (trm_use t1' T T' t2)
-  | red_use_2 : forall t1 T T' t2 t2',
-      term t1 ->
-      term t2 ->
-      red t2 t2' ->
-      red (trm_use t1 T T' t2) (trm_use t1 T T' t2')
   | red_rigid : forall t t',
       term t ->
       red t t' ->
       red (trm_rigid t) (trm_rigid t')
-  (* | red_drop_ann  : forall rv t t',
-      term t ->
-      term t' ->
-      red (trm_app (trm_app (trm_ann (tr_rvar rv, nil)) t) t')
-          (trm_app t t') *)
   | red_apply_ann_1 : forall T U t t',
       term (trm_abs t) ->
       term t' ->
@@ -916,10 +909,6 @@ Inductive red : trm -> trm -> Prop :=
       red (trm_app (trm_ann (trm_abs t) (tr_rvar r)) t')
           (trm_let (trm_ann t' (tr_rvar (rvar_attr r Cstr.arrow_dom)))
                    (trm_ann t (tr_rvar (rvar_attr r Cstr.arrow_cod))))
-  | red_apply_use : forall t1 T1 T2 t2 t3,
-      term t1 -> term t2 -> term t3 ->
-      red (trm_app (trm_use t1 T1 T2 t2) t3)
-          (trm_use t1 T1 T2 (trm_app t2 t3))
   | red_apply_rigid : forall t1 t2,
       term t1 -> term t2 ->
       red (trm_app (trm_rigid t1) t2)
