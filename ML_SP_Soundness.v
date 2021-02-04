@@ -1195,17 +1195,23 @@ induction Typ; introv EQ Red; subst; inversions Red;
   destruct* (H Xs).
   (* ApplyAnn2 *)
 - admit.
-  (* ApplyRigid *)
+  (* AnnAbs1 *)
 - admit.
-  (* Delta/cst *)
-- apply* (@typing_gc_any (false,GcAny)).
-  apply* delta_typed.
-  rewrite* H3.
+  (* AnnAbs2 *)
+- admit.
   (* Rigid *)
+- apply* typing_rigid.
+  admit.
+  (* AbsRigid *)
 - admit.
-  (* Use *)
+  (* AppRigid *)
 - admit.
-- admit.
+  (* UseEq *)
+- admit. (* destruct* Typ2.
+  apply* (@typing_abs (true, GcAny) Q L K E U). inversion H1.
+  admit. *)
+  (* *)
+- apply* typing_use. 
 Admitted.
 
 (* ********************************************************************** *)
@@ -1230,10 +1236,12 @@ Proof.
   inversions H3. rewrite H1.
   unfold const_app. simpl; auto.
   split3*. constructor; auto. exists* n2.
-Qed.
+  admit.
+  admit.
+Admitted.
 
 Lemma progress_delta : forall K t0 t3 t2 T,
-  K; empty |(false,GcLet)|= trm_app (trm_app t0 t3) t2 ~: T ->
+  [ nil ; K; empty |(false,GcLet)|= trm_app (trm_app t0 t3) t2 ~: T ] ->
   valu 0 (trm_app t0 t3) ->
   value t2 ->
   exists t' : trm, trm_app (trm_app t0 t3) t2 --> t'.
@@ -1269,8 +1277,8 @@ Proof.
       remember (empty(A:=sch)) as E.
       remember (trm_app t1 t2) as t.
       clear Typ1 Typ2 Typ'.
-      fold (typing_gc_let K E t T) in H3.
-      apply (proj2 (A:=kenv_ok K)).
+      fold (typing_gc_let Q K E t T) in H3.
+      apply (proj2 (A:=kenv_ok Q K)).
       induction H3 using typing_gc_ind.
         split2*; intros; subst.
         destruct Val1 as [n Val1]; inversions Val1.
