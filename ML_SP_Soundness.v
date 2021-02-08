@@ -1200,7 +1200,9 @@ induction Typ; introv EQ Red; subst; inversions Red;
   (* AnnAbs2 *)
 - admit.
   (* Rigid *)
-- apply* typing_rigid.
+- apply* (@typing_rigid (true, GcAny) Q L).
+  intros.
+  apply* H3. unfold trm_open_rigid.
   admit.
   (* AbsRigid *)
 - admit.
@@ -1292,9 +1294,13 @@ Proof.
         left*. exists n. rewrite H4 in Val1. destruct* Val2.
         destruct n.
           right*; apply* progress_delta.
+          admit.
         left*. destruct Val2. exists* n.
+        admit.
+        inversion H13.
       destruct (var_freshes (L \u dom K) (length Ks)) as [Xs HXs].
-      destruct* (H3 Xs).
+      destruct* (H17 Xs).
+      admit.
       right*; exists* (trm_app t1' t2).
     right*; exists* (trm_app t1 t2').
   left*; exists* (Const.arity c).
