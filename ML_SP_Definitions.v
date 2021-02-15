@@ -641,7 +641,7 @@ Fixpoint trm_rigid_rec (k : nat) (u : rvar) (t : trm) {struct t} : trm :=
   | trm_use t1 T U t2 =>
     trm_use (trm_rigid_rec k u t1) (tree_open_rigid k u T)
             (tree_open_rigid k u U) (trm_rigid_rec k u t2)
-  | trm_rigid t1  => trm_rigid (trm_rigid_rec (S k) u t1)
+  | trm_rigid t1  => trm_rigid (trm_rigid_rec (S k) (rvar_shift 0 u) t1)
   | trm_ann t1 T  => trm_ann (trm_rigid_rec k u t1) (tree_open_rigid k u T)
   end.
 

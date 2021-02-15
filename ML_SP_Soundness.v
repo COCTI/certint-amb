@@ -1078,6 +1078,14 @@ Proof.
   inversions* H1.
 Qed.
 
+Lemma trm_open_rigid_red t t' r :
+  t --> t' ->
+  trm_open_rigid t r --> trm_open_rigid t' r.
+Proof.
+  unfold trm_open_rigid. intros; generalize 0.
+  induction H; simpl*; intros.
+  + rewrite <- trm_rigid_rec_open.
+  
 Import Lia.
 
 Lemma preservation_result : preservation.
@@ -1202,7 +1210,7 @@ induction Typ; introv EQ Red; subst; inversions Red;
   (* Rigid *)
 - apply* (@typing_rigid (true, GcAny) Q L).
   intros.
-  apply* H3. unfold trm_open_rigid.
+  apply* H3. 
   admit.
   (* AbsRigid *)
 - admit.

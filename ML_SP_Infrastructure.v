@@ -417,7 +417,7 @@ Proof. induction t; simpl; try congruence; rewrite* rvar_open_shift. Qed.
   
 Lemma trm_rigid_shift n r u : trm_rigid_rec n r (trm_shift_rigid n u) = u.
 Proof.
-  revert n; induction u; intros; simpls*; try congruence.
+  revert n r; induction u; intros; simpls*; try congruence.
   - repeat rewrite tree_rigid_shift; congruence.
   - rewrite plus_comm; simpl; congruence.
   - rewrite tree_rigid_shift; congruence.
@@ -427,7 +427,7 @@ Lemma trm_rigid_rec_subst_comm x n u t r :
   trm_subst x u (trm_rigid_rec n r t) =
   trm_rigid_rec n r (trm_subst x (trm_shift_rigid n u) t).
 Proof.
-  revert t n u.
+  revert t n u r.
   induction t; simpl*; intros*; try congruence.
   + case (v == x); intros H; simpl*. rewrite* trm_rigid_shift.
   + rewrite IHt, (@trm_shift_rigid_comm 0), plus_comm; auto with arith.
@@ -1501,14 +1501,66 @@ Proof.
 Qed.
 Hint Resolve qcoherent_add_qitem : core.
 
-Lemma trm_rigid_rec_open n r t x :
-  trm_rigid_rec n r t ^ x = trm_rigid_rec n r (t ^ x).
+Lemma trm_rigid_rec_open n r t u :
+  trm_rigid_rec n r t ^^ u = trm_rigid_rec n r (t ^^ (trm_shift_rigid n u)).
 Proof.
   unfold trm_open.
   generalize 0.
-  revert n; induction t; simpl*; intros;
+  revert n u r; induction t; simpl*; intros;
     try now (rewrite IHt || rewrite IHt1, IHt2).
-  now case (n1 === n).
+    case (n1 === n); auto*.
+    intro; subst. rewrite* trm_rigid_shift.
+  f_equal. rewrite IHt. rewrite* (@trm_shift_rigid_comm 0).
+  rewrite* plus_comm. auto with arith.
+Qed.
+
+Set Nested Proofs Allowed.
+
+Lemma rvar_shift_open n m r r0 : m <= n ->
+                                 rvar_shift m (rvar_open n r r0) =
+                                 rvar_open (S n) (rvar_shift m r) (rvar_shift m r0).
+Proof.
+  intros; induction r0; simpl*.
+  case (n === n0).
+  + intros; subst. case le_lt_dec; try lia; intros. rewrite plus_comm. simpl.
+    case (n0 === n0); try lia. auto.
+  + intros; simpl*; repeat (case le_lt_dec in *; intros; try lia).
+    assert (n0 = n0 - 1 + 1) by lia. rewrite <- H0.
+    rewrite plus_comm; simpl*.
+    case (n === n0); try lia.
+    case le_lt_dec; try lia; simpl*.
+    rewrite* <- minus_n_O.
+Admitted.
+
+Lemma trm_ridid_rec_open' n r t u :
+  trm_rigid_rec n r (t ^^ u) = trm_rigid_rec n r t ^^ trm_rigid_rec n r u.
+Proof.
+  unfold trm_open.
+  generalize 0.
+  revert n u r; induction t; simpl*; intros;
+    try now (rewrite IHt || rewrite IHt1, IHt2).
+    case (n1 === n); auto*.
+  f_equal. rewrite IHt.
+  Lemma trm_shift_rigid_rec n m r u : m <= n ->
+     trm_shift_rigid m (trm_rigid_rec n r u) =
+    trm_rigid_rec (S n) (rvar_shift m r) (trm_shift_rigid m u).
+  Proof.
+    revert n m r. induction u; simpl*; intros;
+      try now (rewrite IHu || rewrite IHu1, IHu2).
+    + rewrite* IHu1; rewrite* IHu2.
+      Lemma tree_open_rigid_shift_rigid n m r T : m <= n ->
+        tree_shift_rigid m (tree_open_rigid n r T) =
+        tree_open_rigid (S n) (rvar_shift m r) (tree_shift_rigid m T).
+      Proof.
+        induction T; simpl*; intros; try now rewrite IHT1, IHT2.
+            
+            
+            
+      
+Lemma trm_rigid_rec_open_var n r t x :
+  trm_rigid_rec n r t ^ x = trm_rigid_rec n r (t ^ x).
+Proof.
+  apply* (trm_rigid_rec_open n r t (trm_fvar x)).
 Qed.
 
 Lemma term_rigid_of_open t r :
