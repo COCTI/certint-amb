@@ -1084,9 +1084,14 @@ Lemma trm_open_rigid_red t t' r :
 Proof.
   unfold trm_open_rigid. intros; generalize 0.
   induction H; simpl*; intros.
-  + rewrite <- trm_rigid_rec_open.
-  
-Import Lia.
+  + rewrite trm_rigid_rec_open.
+    apply red_abs.
+      apply (@term_abs (trm_fv t1)).
+      intros.
+      rewrite trm_rigid_rec_open_var.
+      apply term_rigid_rec.
+      inversions* H.
+Abort.
 
 Lemma preservation_result : preservation.
 Proof.
