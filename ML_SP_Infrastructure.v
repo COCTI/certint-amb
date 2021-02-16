@@ -1800,40 +1800,16 @@ Proof.
   induction 1; auto*.
   - split.
       destruct vl.
-      clear H; unfold const_app.
+      clear H0; unfold const_app.
       assert (term (trm_cst c)) by auto.
-      revert H; generalize (trm_cst c); induction H0; simpl*.
+      revert H0; generalize (trm_cst c); induction H1; simpl*.
     apply* Delta.term.
   - splits*.
     inversions H.
     econstructor; unfold trm_open; simpl*.
   - splits*.
-    apply (@term_abs (trm_fv t1)); intros.
-    unfold trm_open; simpl.
-    apply (@term_let (trm_fv t1)); intros.
-      repeat constructor.
-    generalize (trm_open_rec_term (trm_fvar x) H 0); simpl; intro Habs.
-    injection Habs; subst; intro Hopen.
-    rewrite <- Hopen.
-    unfold trm_open; simpl.
-    constructor.
-    apply* trm_open_term.
-  - splits*.
-    apply (@term_abs (trm_fv t1)); intros.
-    unfold trm_open; simpl.
-    apply (@term_let (trm_fv t1)); intros.
-      repeat constructor.
-    generalize (trm_open_rec_term (trm_fvar x) H 0); simpl; intro Habs.
-    injection Habs; subst; intro Hopen.
-    rewrite <- Hopen.
-    unfold trm_open; simpl.
-    constructor.
-    apply* trm_open_term.
-  - splits*.
-    apply (@term_abs (trm_fv t1)); intros.
-    unfold trm_open; simpl.
-    constructor.
-    apply* trm_open_term.
+    inversions H.
+    econstructor; unfold trm_open; simpl*.
 Qed.
 
 (* ********************************************************************** *)

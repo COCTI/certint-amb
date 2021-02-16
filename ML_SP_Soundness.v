@@ -1132,21 +1132,11 @@ Proof.
     apply* term_rigid_rec.
     apply* term_rigid_rec.
   + constructor.
-    inversions H.
-    apply* (@term_abs L); intros.
-    rewrite trm_rigid_rec_open_var.
+      inversions H.
+      apply* (@term_abs L); intros.
+      rewrite trm_rigid_rec_open_var.
+      apply* term_rigid_rec.
     apply* term_rigid_rec.
-  + constructor.
-    inversions H.
-    apply* (@term_abs L); intros.
-    rewrite trm_rigid_rec_open_var.
-    apply* term_rigid_rec.
-  + constructor.
-    inversions H.
-    apply* (@term_abs L); intros.
-    rewrite trm_rigid_rec_open_var.
-    apply* term_rigid_rec.
-  + constructor; apply* term_rigid_rec.
 Admitted.
 
 Lemma preservation_result : preservation.
@@ -1264,24 +1254,18 @@ induction Typ; introv EQ Red; subst; inversions Red;
   destruct* (H Xs).
   (* ApplyAnn2 *)
 - admit.
-  (* AnnAbs1 *)
-- admit.
-  (* AnnAbs2 *)
+  (* Delta0 *)
 - admit.
   (* Rigid *)
 - apply* (@typing_rigid (true, GcAny) Q L).
   intros.
   apply* H3.
   apply* trm_open_rigid_red.
-  (* AbsRigid *)
-- admit.
-  (* AppRigid *)
-- admit.
   (* UseEq *)
 - admit. (* destruct* Typ2.
   apply* (@typing_abs (true, GcAny) Q L K E U). inversion H1.
   admit. *)
-  (* *)
+  (* Use1 *)
 - apply* typing_use. 
 Admitted.
 
