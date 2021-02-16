@@ -593,6 +593,32 @@ Inductive trm : Set :=
   | trm_rigid : trm -> trm
   | trm_ann   : trm -> tree -> trm.
 
+(** Check if there are free rigid variables *)
+Fixpoint rclosed_rvar (r : rvar) : Prop :=
+  match r with
+  | rvar_b _ => False
+  | rvar_f _ => True
+  | rvar_attr l a => rclosed_rvar l
+  end.
+
+Fixpoint rclosed_tree (T : tree) : Prop :=
+  match T with
+  | tr_arrow T1 T2 | tr_eq T1 T2 => rclosed_tree T1 /\ rclosed_tree T2
+  | tr_rvar r => rclosed_rvar r
+  end.
+
+Fixpoint rclosed (t : trm) : Prop :=
+  match t with
+  | trm_eq | trm_bvar _ | trm_fvar _ | trm_cst _ => True
+  | trm_abs t' => rclosed t'
+  | trm_let t1 t2 | trm_app t1 t2 => rclosed t1 /\ rclosed t2
+  | trm_use t1 T1 T2 t2 =>
+    rclosed t1 /\ rclosed t2 /\
+    rclosed_tree T1 /\ rclosed_tree T2
+  | trm_rigid t => rclosed t
+  | trm_ann t T => rclosed t /\ rclosed_tree T
+  end.
+
 (** Opening term binders. *)
 
 Fixpoint trm_shift_rigid k (t : trm) : trm :=
@@ -872,6 +898,7 @@ Inductive red : trm -> trm -> Prop :=
       value t1 -> 
       red (trm_let t1 t2) (t2 ^^ t1)
   | red_delta : forall c tl vl,
+      list_forall rclosed tl ->
       red (const_app c tl) (@Delta.reduce c tl vl)
   | red_let_1 : forall t1 t1' t2, 
       term_body t2 ->

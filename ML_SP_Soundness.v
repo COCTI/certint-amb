@@ -1078,20 +1078,76 @@ Proof.
   inversions* H1.
 Qed.
 
+Lemma value_trm_open_rigid n r t :
+  value t -> value (trm_rigid_rec n r t).
+Proof.
+  unfold value.
+  intros [m Value]. exists m. revert n r.
+  induction Value; intros; simpl*.
+  apply* value_abs.
+  inversions H.
+  apply* (@term_abs L); intros.
+  rewrite trm_rigid_rec_open_var.
+  apply* term_rigid_rec.
+Qed.
+
 Lemma trm_open_rigid_red t t' r :
   t --> t' ->
   trm_open_rigid t r --> trm_open_rigid t' r.
 Proof.
-  unfold trm_open_rigid. intros; generalize 0.
-  induction H; simpl*; intros.
-  + rewrite trm_rigid_rec_open.
-    apply red_abs.
-      apply (@term_abs (trm_fv t1)).
-      intros.
-      rewrite trm_rigid_rec_open_var.
-      apply term_rigid_rec.
-      inversions* H.
-Abort.
+  unfold trm_open_rigid. intros; generalize 0; revert r.
+  induction H; simpl*; intros; try rewrite trm_rigid_rec_open.
+  + apply red_abs.
+    apply (@term_abs (trm_fv t1)).
+    intros.
+    rewrite trm_rigid_rec_open_var.
+    apply term_rigid_rec.
+    inversions* H.
+    apply* value_trm_open_rigid.
+  + apply red_let.
+    inversions H.
+    apply (@term_let L).
+    apply* term_rigid_rec.
+    intros. rewrite trm_rigid_rec_open_var.
+    apply* term_rigid_rec.
+    apply* value_trm_open_rigid.
+  + admit.
+  + apply* red_let_1.
+    inversions H. exists x. intros.
+    rewrite trm_rigid_rec_open_var.
+    apply* term_rigid_rec.
+  + apply* red_app_1.
+    inversions H. apply* value_trm_open_rigid.
+  + constructor; auto*;
+    apply* term_rigid_rec.
+  + constructor; auto*.
+    apply* term_rigid_rec.
+  + constructor; auto*; apply* term_rigid_rec.
+  + constructor; auto*.
+    apply* term_rigid_rec.
+  + constructor.
+    inversions H.
+    apply* (@term_abs L); intros.
+    rewrite trm_rigid_rec_open_var.
+    apply* term_rigid_rec.
+    apply* term_rigid_rec.
+  + constructor.
+    inversions H.
+    apply* (@term_abs L); intros.
+    rewrite trm_rigid_rec_open_var.
+    apply* term_rigid_rec.
+  + constructor.
+    inversions H.
+    apply* (@term_abs L); intros.
+    rewrite trm_rigid_rec_open_var.
+    apply* term_rigid_rec.
+  + constructor.
+    inversions H.
+    apply* (@term_abs L); intros.
+    rewrite trm_rigid_rec_open_var.
+    apply* term_rigid_rec.
+  + constructor; apply* term_rigid_rec.
+Admitted.
 
 Lemma preservation_result : preservation.
 Proof.
@@ -1111,12 +1167,12 @@ induction Typ; introv EQ Red; subst; inversions Red;
 - apply* typing_abs_inv.
   (* Delta *)
 - assert ([Q;K;E |(true,GcAny)|= trm_app t1 t2 ~: T]) by auto*.
-  use (typing_canonize H3).
-  fold (typing_gc_let Q K E (trm_app t1 t2) T) in H5.
-  rewrite <- H4 in *.
-  clear -H5.
+  use (typing_canonize H5).
+  fold (typing_gc_let Q K E (trm_app t1 t2) T) in H6.
+  rewrite <- H3 in *.
+  clear -H6.
   gen_eq (const_app c tl) as t1.
-  induction H5 using typing_gc_ind; intros; subst.
+  induction H6 using typing_gc_ind; intros; subst.
     apply* typing_gc_any.
     apply* delta_typed.
   apply* typing_gc. simpl*.
@@ -1215,8 +1271,8 @@ induction Typ; introv EQ Red; subst; inversions Red;
   (* Rigid *)
 - apply* (@typing_rigid (true, GcAny) Q L).
   intros.
-  apply* H3. 
-  admit.
+  apply* H3.
+  apply* trm_open_rigid_red.
   (* AbsRigid *)
 - admit.
   (* AppRigid *)
@@ -1310,6 +1366,7 @@ Proof.
           admit.
         left*. destruct Val2. exists* n.
         admit.
+        
         inversion H13.
       destruct (var_freshes (L \u dom K) (length Ks)) as [Xs HXs].
       destruct* (H17 Xs).
