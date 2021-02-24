@@ -128,7 +128,7 @@ End Relations.
 (* ********************************************************************** *)
 (** * Properties of Environemnts *)
 
-Hint Constructors ok : core.
+Global Hint Constructors ok : core.
 
 Local Open Scope env_scope.
 
@@ -254,7 +254,7 @@ Hint Rewrite <- concat_assoc : rew_env.
 Tactic Notation "simpl_env" :=
   autorewrite with rew_env in *.
 
-Hint Extern 1 (_ # _) => simpl_env; notin_solve : core.
+Global Hint Extern 1 (_ # _) => simpl_env; notin_solve : core.
 
 (** The [env_fix] tactic is used to convert environments
   from [(x,a)::E] to [E & x ~ a]. *)
@@ -337,9 +337,9 @@ End OkProperties.
 
 (** Automation *)
 
-Hint Resolve fresh_mid ok_map : core.
+Global Hint Resolve fresh_mid ok_map : core.
 
-(* Hint Extern 1 (ok (?E & ?G)) =>
+(* Global Hint Extern 1 (ok (?E & ?G)) =>
   match goal with H: context [E & ?F & G] |- _ =>
     apply (@ok_remove _ F) end. *)
 
@@ -518,7 +518,7 @@ End BindsProperties.
 
 Arguments binds_concat_inv [A x a E F].
 
-Hint Resolve binds_head binds_tail : core.
+Global Hint Resolve binds_head binds_tail : core.
 
 
 (* ********************************************************************** *)
@@ -557,7 +557,7 @@ Qed.
 
 End ExtendsProperties.
 
-Hint Resolve extends_self extends_push extends_binds : core.
+Global Hint Resolve extends_self extends_push extends_binds : core.
 
 
 (* ********************************************************************** *)
@@ -594,7 +594,7 @@ Qed.
 
 End IterPush.
 
-Hint Resolve ok_concat_iter_push : core.
+Global Hint Resolve ok_concat_iter_push : core.
 
 Section Fv_in.
 
@@ -681,7 +681,7 @@ Ltac binds_cases H :=
 
 (** Automation *)
 
-Hint Resolve 
+Global Hint Resolve 
   binds_concat_fresh binds_concat_ok 
   binds_prepend binds_map : core.
 

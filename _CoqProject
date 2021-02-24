@@ -1,1 +1,3 @@
+-arg -w -arg -non-recursive
+
 -R . StructPoly

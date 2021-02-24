@@ -149,7 +149,7 @@ Fixpoint fresh (L : vars) (n : nat) (xs : list var) {struct xs} : Prop :=
   | _,_ => False
   end.
 
-Hint Extern 1 (fresh _ _ _) => simpl : core.
+Global Hint Extern 1 (fresh _ _ _) => simpl : core.
 
 (** Triviality : If a list xs contains n fresh variables, then
     the length of xs is n. *)

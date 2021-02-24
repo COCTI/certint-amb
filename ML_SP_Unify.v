@@ -163,7 +163,7 @@ Proof.
   case_rewrite R (get x K).
   subst*.
 Qed.
-Hint Resolve get_kind_binds : core.
+Global Hint Resolve get_kind_binds : core.
 
 Definition unify_vars (K:kenv) (x y:var) :=
   match unify_kinds (get_kind x K) (get_kind y K) with
@@ -297,7 +297,7 @@ Proof.
   inversions* H3.
 Qed.
 
-Hint Resolve add_binding_is_subst : core.
+Global Hint Resolve add_binding_is_subst : core.
 
 Lemma typ_subst_disjoint : forall S T,
   is_subst S -> disjoint (dom S) (typ_fv (typ_subst S T)).
@@ -323,7 +323,7 @@ Proof.
   use (typ_subst_res_fresh _ H H0).
 Qed.
 
-Hint Resolve typ_subst_disjoint typ_subst_res_fresh typ_subst_res_fresh' : core.
+Global Hint Resolve typ_subst_disjoint typ_subst_res_fresh typ_subst_res_fresh' : core.
 
 Lemma binds_add_binding : forall S T0 T1 v x T,
   typ_subst S T0 = typ_fvar v ->
@@ -337,7 +337,7 @@ Proof.
   apply* binds_map.
 Qed.
 
-Hint Resolve binds_add_binding : core.
+Global Hint Resolve binds_add_binding : core.
 
 Definition id := Env.empty (A:=typ).
 
@@ -387,7 +387,7 @@ Proof.
   apply* notin_union_l.
 Qed.
 
-Hint Resolve ok_remove_env : core.
+Global Hint Resolve ok_remove_env : core.
 
 Lemma binds_remove_env : forall (A:Set) v K x (a:A),
   binds x a K -> x <> v -> binds x a (remove_env K v).
@@ -401,7 +401,7 @@ Proof.
   simpl. destruct* (x == v0).
 Qed.
 
-Hint Resolve binds_remove_env : core.
+Global Hint Resolve binds_remove_env : core.
 
 Lemma disjoint_add_binding : forall v T S (K:kenv),
   is_subst S -> ok K ->
@@ -415,7 +415,7 @@ Proof.
   simpl; rewrite* dom_map.
 Qed.
 
-Hint Resolve disjoint_add_binding : core.
+Global Hint Resolve disjoint_add_binding : core.
 
 Definition kind_entails k k' :=
   match k' with
@@ -436,13 +436,13 @@ Proof.
   apply (wk_kind H1). apply (entails_trans H2 H).
 Qed.
 
-Hint Resolve kind_entails_well_kinded : core.
+Global Hint Resolve kind_entails_well_kinded : core.
 
 Lemma neq_notin_fv : forall v v0,
   v <> v0 -> v \notin (typ_fv (typ_fvar v0)).
 Proof. simpl*. Qed.
 
-Hint Resolve neq_notin_fv : core.
+Global Hint Resolve neq_notin_fv : core.
 
 Section Soundness.
 
@@ -563,7 +563,7 @@ Proof.
   rewrite typ_subst_idem in H2; auto.
   congruence.
 Qed.
-Hint Resolve binds_subst_idem : core.
+Global Hint Resolve binds_subst_idem : core.
 
 Lemma typ_subst_extend : forall h pairs K S,
   is_subst S ->
@@ -587,7 +587,7 @@ Proof.
   simpl. congruence.
 Qed.
 
-Hint Resolve typ_subst_extend : core.
+Global Hint Resolve typ_subst_extend : core.
 
 Lemma typ_size_1 : forall T, 1 <= typ_size T.
   destruct T; simpl; lia.
@@ -1194,7 +1194,7 @@ Proof.
   intros; intro; intros; apply* H.
 Qed.
 
-Hint Resolve unifies_tl : core.
+Global Hint Resolve unifies_tl : core.
 
 Lemma unify_mgu0 : forall h pairs K0 S0 K S,
   unify h pairs K0 S0 = Some (K,S) -> is_subst S0 ->

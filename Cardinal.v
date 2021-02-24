@@ -125,7 +125,7 @@ Proof.
   intros. inversions* H.
 Qed.
 
-Hint Resolve sort_tl sort_lelistA : core.
+Global Hint Resolve sort_tl sort_lelistA : core.
 
 Lemma sort_split : forall y l2 l1,
   sort S.E.lt (l1 ++ y :: l2) -> sort S.E.lt (l1 ++ l2).

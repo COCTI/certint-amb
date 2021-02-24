@@ -44,7 +44,7 @@ Proof.
   apply* ok_combine_fresh.
 Qed.
 
-Hint Resolve kenv_ok_concat ok_kinds_open_vars : core.
+Global Hint Resolve kenv_ok_concat ok_kinds_open_vars : core.
 
 Lemma scheme_weaken Q K K' M :
   ok (K & K') -> scheme Q K M -> scheme Q (K & K') M.
@@ -85,7 +85,7 @@ Qed.
 Lemma env_ok_add_qitem' q Q K E : env_ok Q K E -> env_ok (q :: Q) K E.
 Proof. apply (env_ok_add_qitem nil). Qed.
 
-Hint Resolve scheme_weaken env_ok_weaken scheme_add_qitem
+Global Hint Resolve scheme_weaken env_ok_weaken scheme_add_qitem
      env_ok_add_qitem env_ok_add_qitem' : core.
 
 (* ********************************************************************** *)
@@ -132,7 +132,7 @@ Qed.
 Lemma kenv_ok_add_qitem' q Q K : kenv_ok Q K -> kenv_ok (q :: Q) K.
 Proof. apply (kenv_ok_add_qitem nil). Qed.
 
-Hint Resolve kenv_ok_add_qitem kenv_ok_add_qitem' : core.
+Global Hint Resolve kenv_ok_add_qitem kenv_ok_add_qitem' : core.
 
 Lemma typing_weaken_qitem gc E Q Q' q K t T :
    [Q ++ Q' ; K ; E |gc|= t ~: T] ->
@@ -221,7 +221,7 @@ Proof.
   apply* scheme_exchange.
 Qed.
 
-Hint Resolve env_ok_exchange kenv_ok_exchange : core.
+Global Hint Resolve env_ok_exchange kenv_ok_exchange : core.
 
 Lemma typing_exchange : forall gc Q K K1 K2 K' E t T,
   [ Q ; K & K1 & K2 & K'; E | gc |= t ~: T ] ->
@@ -430,7 +430,7 @@ Proof.
   use (fv_in_spec sch_fv E _ _ H).
 Qed.
 
-Hint Resolve kenv_ok_subst env_ok_subst : core.
+Global Hint Resolve kenv_ok_subst env_ok_subst : core.
 
 (* ********************************************************************** *)
 (** Type substitution preserves typing *)

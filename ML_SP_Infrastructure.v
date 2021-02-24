@@ -32,8 +32,8 @@ Ltac length_hyps :=
     (simpl in *; unfold typ_fvars, kinds_open_vars, kinds_open in *;
       try rewrite map_length in *; try rewrite app_length in *).
 
-Hint Extern 1 (_ = length _) => length_hyps; lia : core.
-Hint Extern 1 (length _ = _) => length_hyps; lia : core.
+Global Hint Extern 1 (_ = length _) => length_hyps; lia : core.
+Global Hint Extern 1 (length _ = _) => length_hyps; lia : core.
 
 Lemma dom_kinds_open_vars : forall Xs Ks,
   length Ks = length Xs ->
@@ -74,10 +74,10 @@ Ltac disjoint_solve :=
      try (rewrite dom_kinds_open_vars in * by (length_hyps; lia)));
   sets_solve.
 
-Hint Extern 1 (_ \in _) => solve [disjoint_solve] : core.
-Hint Extern 1 (_ << _) => solve [disjoint_solve] : core.
-Hint Extern 1 (_ \notin _) => solve [disjoint_solve] : core.
-Hint Extern 1 (disjoint _ _) => solve [disjoint_solve] : core.
+Global Hint Extern 1 (_ \in _) => solve [disjoint_solve] : core.
+Global Hint Extern 1 (_ << _) => solve [disjoint_solve] : core.
+Global Hint Extern 1 (_ \notin _) => solve [disjoint_solve] : core.
+Global Hint Extern 1 (disjoint _ _) => solve [disjoint_solve] : core.
 
 Lemma disjoint_fresh : forall n L1 Xs L2,
   fresh L1 n Xs ->
@@ -105,8 +105,8 @@ Ltac kenv_ok_solve :=
   kenv_ok_hyps; split4;
   [ok_solve | env_prop_solve | env_prop_solve | env_prop_solve].
 
-Hint Extern 2 (env_ok _ _ _) => solve [env_ok_solve] : core.
-Hint Extern 2 (kenv_ok _ _) => solve [kenv_ok_solve] : core.
+Global Hint Extern 2 (env_ok _ _ _) => solve [env_ok_solve] : core.
+Global Hint Extern 2 (kenv_ok _ _) => solve [kenv_ok_solve] : core.
 
 (* ====================================================================== *)
 (** * Additional Definitions used in the Proofs *)
@@ -246,17 +246,17 @@ Tactic Notation "apply_fresh" "*" constr(T) "as" ident(x) :=
 (* ********************************************************************** *)
 (** ** Automation *)
 
-Hint Constructors type term well_kinded : core.
+Global Hint Constructors type term well_kinded : core.
 
 Lemma typ_def_fresh : typ_fv typ_def = {}.
 Proof.
   auto.
 Qed.
 
-Hint Extern 1 (_ \notin typ_fv typ_def) =>
+Global Hint Extern 1 (_ \notin typ_fv typ_def) =>
   rewrite typ_def_fresh : core.
 
-Hint Extern 1 (types _ _) => split; auto : core.
+Global Hint Extern 1 (types _ _) => split; auto : core.
 
 
 (* ====================================================================== *)
@@ -466,7 +466,7 @@ Proof.
   econstructor; try auto; intros;
   unfolds trm_open; rewrite* <- trm_shift_rigid_open_var.
 Qed.
-Hint Resolve term_trm_shift_rigid : core.
+Global Hint Resolve term_trm_shift_rigid : core.
 
 Lemma trm_shift_rigid_open_rec : forall t k j u , term u ->
   trm_shift_rigid k (trm_open_rec j u t) =
@@ -524,7 +524,7 @@ Proof.
   apply_fresh* term_let as y. rewrite* trm_subst_open_var.
 Qed.
 
-Hint Resolve trm_subst_term : core.
+Global Hint Resolve trm_subst_term : core.
 
 (** Conversion from locally closed abstractions and bodies *)
 
@@ -552,9 +552,9 @@ Proof.
   intros. inversion* H.
 Qed.
 
-Hint Resolve body_to_term_abs body_to_term_let : core.
+Global Hint Resolve body_to_term_abs body_to_term_let : core.
 
-Hint Extern 1 (term_body ?t) =>
+Global Hint Extern 1 (term_body ?t) =>
   match goal with 
   | H: context [trm_abs t] |- _ => 
     apply term_abs_to_body 
@@ -570,7 +570,7 @@ Proof.
   intros. destruct H. pick_fresh y. rewrite* (@trm_subst_intro y).
 Qed.
 
-Hint Resolve trm_open_term : core.
+Global Hint Resolve trm_open_term : core.
 
 
 (* ====================================================================== *)
@@ -790,7 +790,7 @@ Qed.
 Lemma typ_subst_type : forall S T, type T -> type (typ_subst S T).
 Proof. induction 1; simpl*. Qed.
 
-Hint Resolve typ_subst_type : core.
+Global Hint Resolve typ_subst_type : core.
 
 (** List of types are stable by type substitution *)
 
@@ -895,13 +895,13 @@ Lemma entails_ckind_refl : forall k, entails_ckind k k.
 Proof.
   intros. split2*.
 Qed.
-Hint Resolve entails_ckind_refl : core.
+Global Hint Resolve entails_ckind_refl : core.
 
 Lemma entails_refl : forall k, entails k k.
 Proof.
   intros. destruct k as [[k'|] ?]; split2*; simpl*.
 Qed.
-Hint Resolve entails_refl : core.
+Global Hint Resolve entails_refl : core.
 
 Lemma entails_ckind_trans : forall k1 k2 k3,
   entails_ckind k1 k2 -> entails_ckind k2 k3 -> entails_ckind k1 k3.
@@ -936,7 +936,7 @@ Proof.
   rewrite <- e.
   apply* in_map_snd.
 Qed.
-Hint Resolve ckind_subst_entails_ckind : core.
+Global Hint Resolve ckind_subst_entails_ckind : core.
 
 Lemma kind_subst_entails : forall S k k',
   entails k' k ->
@@ -949,7 +949,7 @@ Qed.
 
 (** Properties of well-kindedness *)
 
-Hint Constructors wf_kind : core.
+Global Hint Constructors wf_kind : core.
 
 Lemma wf_kind_extend : forall K K' k,
   ok (K & K') -> wf_kind K k -> wf_kind (K & K') k.
@@ -959,7 +959,7 @@ Proof.
   apply* wf_attrs; intros. 
   destruct* (H0 l a) as [k1 [rvs1 []]].
 Qed.
-Hint Resolve wf_kind_extend : core.
+Global Hint Resolve wf_kind_extend : core.
 
 Lemma entails_wf_kind K k k' : entails k k' -> wf_kind K k -> wf_kind K k'.    
 Proof.
@@ -976,7 +976,7 @@ Qed.
 Lemma well_kinded_extend : forall K K' x T,
   ok (K & K') -> well_kinded K x T -> well_kinded (K & K') x T.
 Proof. induction 2; auto*. Qed.
-Hint Resolve well_kinded_extend : core.
+Global Hint Resolve well_kinded_extend : core.
 
 Lemma wf_kind_comm : forall K K' K'' k,
   ok (K & K' & K'') -> wf_kind (K & K' & K'') k -> wf_kind (K & K'' & K') k.
@@ -985,7 +985,7 @@ Proof.
   apply* wf_attrs; intros. 
   destruct* (H l a) as [k1 [rvs1 []]].
 Qed.
-Hint Resolve wf_kind_comm : core.
+Global Hint Resolve wf_kind_comm : core.
 
 Lemma well_kinded_comm : forall K K' K'',
   ok (K & K' & K'') ->
@@ -1007,7 +1007,7 @@ Lemma well_kinded_weaken : forall K K' K'',
 Proof.
   intros. apply* well_kinded_comm.
 Qed.
-Hint Resolve well_kinded_weaken : core.
+Global Hint Resolve well_kinded_weaken : core.
 
 (** Well substitutions *)
 
@@ -1036,7 +1036,7 @@ Proof.
   refine (entails_trans H5 _).
   apply* kind_subst_entails.
 Qed.
-Hint Resolve well_kinded_subst : core.
+Global Hint Resolve well_kinded_subst : core.
 
 (** Properties of instantiation and constants *)
 
@@ -1120,7 +1120,7 @@ Proof.
   unfold All_kind_types, kind_types. simpl*.
 Qed.
 
-Hint Resolve All_kind_types_None : core.
+Global Hint Resolve All_kind_types_None : core.
 
 Lemma All_kind_types_imp (P P' : typ -> Prop) k:
   (forall x, P x -> P' x) ->
@@ -1166,7 +1166,7 @@ Proof.
   apply* All_kind_types_imp.
 Qed.
 
-Hint Resolve All_kind_types_subst : core.
+Global Hint Resolve All_kind_types_subst : core.
 
 Lemma incr_subst_fresh : forall a t S Xs,
   fresh {{a}} (length Xs) Xs ->
@@ -1217,7 +1217,7 @@ Proof.
     rewrite* map_length.
   induction Xs; simpl*.
 Qed.
-Hint Immediate types_typ_fvars : core.
+Global Hint Immediate types_typ_fvars : core.
 
 (** Schemes are stable by type substitution. *)
 
@@ -1384,7 +1384,7 @@ Proof.
     apply* wf_kind_open_subst.
 Qed.
 
-Hint Resolve sch_subst_type : core.
+Global Hint Resolve sch_subst_type : core.
 
 (** Scheme arity is preserved by type substitution. *)
 
@@ -1409,7 +1409,7 @@ Proof.
   splits*.
 Qed.
 
-Hint Resolve sch_open_types : core.
+Global Hint Resolve sch_open_types : core.
 
 Definition kenv_ok_is_ok Q K (H : kenv_ok Q K) : ok K := proj1 H.
 Definition env_ok_is_ok Q K E (H:env_ok Q K E) := proj1 H.
@@ -1418,8 +1418,8 @@ Definition kenv_ok_qcoherent Q K (H : kenv_ok Q K) := proj43 H.
 Definition kenv_ok_wf_kind Q K (H : kenv_ok Q K) := proj44 H.
 Definition env_ok_scheme Q K E (H:env_ok Q K E) := proj2 H.
 
-Hint Immediate kenv_ok_is_ok env_ok_is_ok kenv_ok_type kenv_ok_qcoherent : core.
-Hint Immediate kenv_ok_wf_kind env_ok_scheme : core.
+Global Hint Immediate kenv_ok_is_ok env_ok_is_ok kenv_ok_type kenv_ok_qcoherent : core.
+Global Hint Immediate kenv_ok_wf_kind env_ok_scheme : core.
 
 Ltac env_hyps T :=
   match T with
@@ -1427,10 +1427,10 @@ Ltac env_hyps T :=
   | kind => kenv_ok_hyps
   end.
 
-Hint Extern 2 (@env_prop ?T _ ?E) =>
+Global Hint Extern 2 (@env_prop ?T _ ?E) =>
   progress env_hyps T; solve [env_prop_solve] : core.
 
-Hint Extern 2 (@ok ?T ?E) =>
+Global Hint Extern 2 (@ok ?T ?E) =>
   progress env_hyps T; solve [ok_solve] : core.
 
 Lemma env_prop_binds : forall (A:Set) (P:A->Prop) x (a:A) E,
@@ -1445,7 +1445,7 @@ Qed.
 Module MkJudgInfra(Delta:DeltaIntf).
 Module Judge := MkJudge(Delta).
 Import Judge.
-Hint Constructors typing valu red : core.
+Global Hint Constructors typing valu red : core.
 
 (* ********************************************************************** *)
 (** ** Regularity of relations *)
@@ -1480,7 +1480,7 @@ Proof.
   unfold qsat. assert (qsat_item Ts (qvar x)) by constructor.
   auto*.
 Qed.
-Hint Resolve qsat_remove_qvar : core.
+Global Hint Resolve qsat_remove_qvar : core.
 
 Lemma qcoherent_remove_qvar x Q k :
   qcoherent (qvar x :: Q) k -> qcoherent Q k.
@@ -1499,7 +1499,7 @@ Proof.
   induction QC; intros; subst;
   constructor; auto; introv QS; apply qsat_add_item in QS; auto*.
 Qed.
-Hint Resolve qcoherent_add_qitem : core.
+Global Hint Resolve qcoherent_add_qitem : core.
 
 Lemma rvar_shift_open n m r r0 : m <= n ->
                                  rvar_shift m (rvar_open n r r0) =
@@ -1638,7 +1638,7 @@ Proof.
   binds_cases B; auto*.
 Qed.
 
-Hint Resolve wf_kind_weaken : core.
+Global Hint Resolve wf_kind_weaken : core.
 
 Lemma wf_kind_strengthen K K' x k :
   disjoint (fv_in kind_fv K) (dom K') ->
@@ -1790,7 +1790,7 @@ Proof.
   intros. destruct H. induction H; auto.
 Qed.
 
-Hint Resolve value_regular : core.
+Global Hint Resolve value_regular : core.
 
 (** A reduction relation only holds on pairs of locally-closed terms. *)
 
@@ -1830,7 +1830,7 @@ Ltac env_ok_hyps ::=
   | H: env_ok ?Q ?K ?E |- _ => destruct H
   end.
 
-Hint Extern 1 (term ?t) =>
+Global Hint Extern 1 (term ?t) =>
   match goal with
   | H: typing _ _ _ _ t _ |- _ => apply (proj43 (typing_regular H))
   | H: red t _ |- _ => apply (proj1 (red_regular H))
@@ -1838,7 +1838,7 @@ Hint Extern 1 (term ?t) =>
   | H: value t |- _ => apply (value_regular H)
   end : core.
 
-Hint Extern 1 (type ?T) => match goal with
+Global Hint Extern 1 (type ?T) => match goal with
   | H: typing _ _ _ _ _ T |- _ => apply (proj44 (typing_regular H))
   end : core.
 

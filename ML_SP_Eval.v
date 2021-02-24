@@ -105,7 +105,7 @@ Inductive clos_ok : clos -> Prop :=
 (* Reset clos_ok_ind. *)
 Hint Constructors clos_ok : core.
 
-Hint Extern 1 (clos_ok ?x) => solve [list_forall_find clos_ok x] : core.
+Global Hint Extern 1 (clos_ok ?x) => solve [list_forall_find clos_ok x] : core.
 
 Section ClosOkInd.
 Variable  P : clos -> Prop.
@@ -120,7 +120,7 @@ Hypothesis Hconst : forall c cls,
 
 Lemma clos_ok_ind' : forall c, clos_ok c -> P c.
 Proof.
-  Hint Resolve Habs Hconst : core.
+  Global Hint Resolve Habs Hconst : core.
   intros c H; induction c using clos_ind'; inversion* H.
 Qed.
 End ClosOkInd.
@@ -206,13 +206,13 @@ Proof.
   constructor.
   auto.
 Qed.
-Hint Resolve clos_ok_def : core.
+Global Hint Resolve clos_ok_def : core.
 
 Lemma clos_ok_nil : forall c, clos_ok (clos_const c nil).
 Proof.
   intros; constructor; auto. simpl; lia.
 Qed.
-Hint Resolve clos_ok_nil : core.
+Global Hint Resolve clos_ok_nil : core.
 
 Definition trm2clos (benv : list clos) (fenv : env clos) t :=
   match t with
@@ -244,7 +244,7 @@ Proof.
   apply (list_forall_out H).
   apply* nth_In.
 Qed.
-Hint Resolve clos_ok_nth : core.
+Global Hint Resolve clos_ok_nth : core.
 
 Inductive equiv_clos : clos -> clos -> Prop :=
   | Equiv_clos_abs : forall t benv t' benv',
@@ -265,7 +265,7 @@ Proof.
   rewrite* (IHlist_forall lb).
   rewrite* (H0 b).
 Qed.
-Hint Resolve equiv_cl : core.
+Global Hint Resolve equiv_cl : core.
 
 Lemma equiv_cls : forall cls1 cls2,
   list_forall2 equiv_clos cls1 cls2 ->
@@ -284,7 +284,7 @@ Proof.
   induction cl using clos_ind'; constructor; auto.
   induction H; auto.
 Qed.
-Hint Resolve equiv_clos_refl : core.
+Global Hint Resolve equiv_clos_refl : core.
 
 Lemma equiv_cl_nth : forall n cls1 cls2,
   list_forall2 equiv_clos cls1 cls2 ->
@@ -331,7 +331,7 @@ Proof.
   apply* value_app.
   replace (S (n + length L)) with (n + S (length L)) by lia; auto.
 Qed.
-Hint Resolve clos_ok_value : core.
+Global Hint Resolve clos_ok_value : core.
 
 Lemma list_for_n_value : forall n cls,
   list_for_n clos_ok n cls ->
@@ -551,7 +551,7 @@ Proof.
   apply* typing_app_abs_let.
 Qed.
 
-Hint Resolve term_closed_0 clos_ok_term : core.
+Global Hint Resolve term_closed_0 clos_ok_term : core.
 
 Lemma term_closed_n : forall n t,
   term t -> closed_n n t.
@@ -560,7 +560,7 @@ Proof.
   apply* (@closed_n_le 0); lia.
 Qed.
 
-Hint Resolve term_closed_n : core.
+Global Hint Resolve term_closed_n : core.
 
 Lemma cln_app_trm : forall n t1 t2,
   closed_n n t1 -> closed_n n t2 -> closed_n n (app_trm t1 t2).
@@ -611,7 +611,7 @@ Proof.
   apply* term_app_trm.
 Qed.
 
-Hint Resolve term_app_trm term_app2trm : core.
+Global Hint Resolve term_app_trm term_app2trm : core.
 
 Lemma retypable_app_trm : forall E t1 t2 t3 t4,
   is_abs t1 = false ->
@@ -641,7 +641,7 @@ Proof.
   intros.
   destruct t1; simpl*.
 Qed.
-Hint Resolve is_abs_app_trm : core.
+Global Hint Resolve is_abs_app_trm : core.
 
 Lemma app2trm_app : forall t l1 l2,
   app2trm t (l1 ++ l2) = app2trm (app2trm t l1) l2.
@@ -662,7 +662,7 @@ Lemma is_abs_app2trm : forall t args,
 Proof.
   intros; unfold app2trm. apply* is_abs_fold_left_app_trm.
 Qed.
-Hint Resolve is_abs_app2trm : core.
+Global Hint Resolve is_abs_app2trm : core.
 
 Lemma retypable_app2trm : forall E t1 t2 args,
   is_abs t1 = false ->
@@ -688,7 +688,7 @@ Proof.
     rewrite* map_length.
   apply* list_forall_map.
 Qed.
-Hint Resolve term_inst_closed : core.
+Global Hint Resolve term_inst_closed : core.
 
 Lemma is_bvar_term : forall t, term t -> is_bvar t = false.
 Proof. induction 1; simpl*. Qed.
@@ -757,7 +757,7 @@ Proof.
     rewrite* H.
   destruct H; rewrite* H.
 Qed.
-Hint Resolve is_bvar_app_trm : core.
+Global Hint Resolve is_bvar_app_trm : core.
 
 Lemma typing_stack2trm_inv : forall K E fl t1 T,
   K; E |Gc|= stack2trm t1 fl ~: T ->
@@ -838,7 +838,7 @@ Proof.
   auto.
 Qed.
 
-Hint Resolve term_const_app : core.
+Global Hint Resolve term_const_app : core.
 
 Lemma clos2trm_const_eq : forall cl c tl,
   clos2trm cl = const_app c tl ->
@@ -880,9 +880,9 @@ Proof.
 Qed.
 Hint Immediate closed_n_inst : core.
 
-Hint Resolve list_forall_app : core.
+Global Hint Resolve list_forall_app : core.
 
-Hint Rewrite map_app fold_left_app : list.
+Global Hint Rewrite map_app fold_left_app : list.
 
 Lemma fold_app_eq_inv : forall t t' tl1 tl tl2,
   fold_left trm_app tl t = fold_left trm_app (tl1 ++ tl2) t' ->
@@ -924,7 +924,7 @@ Proof.
     apply (proj1 fenv_ok _ _ (binds_in H)).
   auto.
 Qed.
-Hint Resolve clos_ok_get : core.
+Global Hint Resolve clos_ok_get : core.
 
 Lemma trm2clos_regular : forall benv t,
   list_forall clos_ok benv ->
@@ -934,7 +934,7 @@ Proof.
   intros; destruct t; simpl*.
   inversions* H0.
 Qed.
-Hint Resolve trm2clos_regular : core.
+Global Hint Resolve trm2clos_regular : core.
 
 Definition eval_restart h fl res :=
   match res with
@@ -1172,7 +1172,7 @@ Proof.
   inversions H0.
   inversions* H4.
 Qed.
-Hint Resolve eval_cont_regular : core.
+Global Hint Resolve eval_cont_regular : core.
 
 Lemma eval_regular1 : forall r r',
   result_ok r ->
@@ -1223,7 +1223,7 @@ Proof.
   refine (eval_regular1 H _).
   apply* eval_spec_ok.
 Qed.
-Hint Resolve eval_regular : core.
+Global Hint Resolve eval_regular : core.
 
 Lemma concat_empty : forall (A:Set) (K:env A), empty & K = K.
 Proof. intros; symmetry; apply (app_nil_end K). Qed.
@@ -1338,7 +1338,7 @@ Proof.
   induction l using rev_ind; auto.
   rewrite* const_app_app.
 Qed.
-Hint Resolve is_abs_const_app : core.
+Global Hint Resolve is_abs_const_app : core.
 
 Lemma eval_cont_sound : forall cl fl r K T,
   K; E |Gc|= stack2trm (clos2trm cl) fl ~: T ->
@@ -1695,7 +1695,7 @@ Proof.
   rewrite* map_length.
   apply* list_forall_map.
 Qed.
-Hint Resolve equiv_trm_abs : core.
+Global Hint Resolve equiv_trm_abs : core.
 
 Inductive equiv_result : eval_res -> eval_res -> Prop :=
   | Equiv_result : forall n cl1 cl2,
@@ -1732,12 +1732,12 @@ Proof.
   induction l1; destruct l2; simpl; intros; try discriminate; auto.
   inversions* H.
 Qed.
-Hint Resolve map_clos2trm_equiv : core.
+Global Hint Resolve map_clos2trm_equiv : core.
 
-Hint Extern 1 (equiv_result _ _) => solve [constructor; simpl; auto] : core.
-Hint Extern 1 (list_forall2 _ _ _) => solve [constructor; simpl; auto] : core.
-Hint Extern 1 (equiv_clos _ _) => solve [constructor; simpl; auto] : core.
-Hint Extern 1 (equiv_frame _ _) => solve [constructor; simpl; auto] : core.
+Global Hint Extern 1 (equiv_result _ _) => solve [constructor; simpl; auto] : core.
+Global Hint Extern 1 (list_forall2 _ _ _) => solve [constructor; simpl; auto] : core.
+Global Hint Extern 1 (equiv_clos _ _) => solve [constructor; simpl; auto] : core.
+Global Hint Extern 1 (equiv_frame _ _) => solve [constructor; simpl; auto] : core.
 
 Definition eval_res_cont r :=
   match r with

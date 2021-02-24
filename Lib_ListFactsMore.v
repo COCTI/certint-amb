@@ -58,11 +58,11 @@ Proof.
   rewrite* app_length. apply* list_forall_concat.
 Qed.
 
-Hint Extern 1 (?n = length ?xs) => 
+Global Hint Extern 1 (?n = length ?xs) => 
  match goal with H: list_for_n _ ?n ?xs |- _ => 
   apply (proj1 H) end : more.
 
-Hint Extern 1 (length ?xs = ?n) => 
+Global Hint Extern 1 (length ?xs = ?n) => 
  match goal with H: list_for_n _ ?n ?xs |- _ => 
   apply (sym_eq (proj1 H)) end : more.
 

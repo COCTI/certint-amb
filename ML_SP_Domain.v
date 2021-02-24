@@ -100,7 +100,7 @@ Module Cstr.
     intro; destruct* s; right*; intro; discriminate.
   Qed.
 
-  Hint Resolve incl_tran : core.
+  Global Hint Resolve incl_tran : core.
   Lemma entails_lub : forall c1 c2 c,
     (entails c c1 /\ entails c c2) <-> entails c (lub c1 c2).
   Proof.
@@ -362,7 +362,7 @@ Module Delta.
     apply (@term_abs {}).
     intros. unfold trm_open; simpl. auto.
   Qed.
-  Hint Resolve term_default : core.
+  Global Hint Resolve term_default : core.
 
 
   Lemma value_term : forall e,
@@ -370,7 +370,7 @@ Module Delta.
   Proof.
     intros. destruct H. induction H; auto.
   Qed.
-  Hint Resolve value_term : core.
+  Global Hint Resolve value_term : core.
 
   Lemma term : forall c tl vl,
     term (@reduce c tl vl).
@@ -458,7 +458,7 @@ Module Delta.
     apply IHn; lia.
   Qed.
 
-  Hint Extern 1 (Defs.type (nth _ (typ_fvars _) typ_def)) =>
+  Global Hint Extern 1 (Defs.type (nth _ (typ_fvars _) typ_def)) =>
     solve [apply type_nth_typ_vars; lia] : core.
 
   Lemma scheme : forall c, scheme (Delta.type c).
@@ -579,7 +579,7 @@ Module SndHyp.
     apply* lt_S_n.
   Qed.
 
-  Hint Rewrite combine_length combine_nth : list.
+  Global Hint Rewrite combine_length combine_nth : list.
 
   Definition delta_typed_cst c :=
     forall tl vl K E gc T TL,
@@ -1033,7 +1033,7 @@ Module SndHyp.
     list_forall clos_ok cls ->
     list_forall clos_ok (cl' :: cls').
   Proof.
-    Hint Extern 1 (list_forall _ _) => eq_pair : core.
+    Global Hint Extern 1 (list_forall _ _) => eq_pair : core.
     destruct c; simpl; intros; auto.
     (* matches *)
     puts (clos_ok_nth (length l) H0). intuition.
@@ -1062,7 +1062,7 @@ Module SndHyp.
     let (cl',arg') := reduce_clos c args' in
     equiv_clos cl cl' /\ list_forall2 equiv_clos arg arg'.
   Proof.
-    Hint Resolve equiv_cl_nth : core.
+    Global Hint Resolve equiv_cl_nth : core.
     destruct c; simpl; intros; auto*.
     (* matches *)
     puts (equiv_cl_nth (length l) H).

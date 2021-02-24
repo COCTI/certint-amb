@@ -243,7 +243,7 @@ Proof.
   subst*.
 Qed.
 
-Hint Resolve env_prop_type_compose : core.
+Global Hint Resolve env_prop_type_compose : core.
 
 Lemma unify_rel_all_kind_types :
   forall (P:typ->Prop) k k0 kc (v1:Cstr.valid kc),
@@ -301,7 +301,7 @@ Proof.
   apply* (incl_remove_env v K).
 Qed.
 
-Hint Resolve kenv_ok_remove_env : core.
+Global Hint Resolve kenv_ok_remove_env : core.
 
 Lemma unify_type : forall K' S' h pairs K S,
   Unify.unify h pairs K S = Some (K', S') ->
@@ -466,7 +466,7 @@ Proof.
   apply* (proj2 H x).
 Qed.
 
-Hint Resolve kenv_ok_subst env_ok_map : core.
+Global Hint Resolve kenv_ok_subst env_ok_map : core.
 
 Lemma well_subst_extend : forall K S K' Ks Ys,
   env_prop type S ->
@@ -630,7 +630,7 @@ Proof.
   rewrite* (kind_subst_combine S).
 Qed.
 
-Hint Resolve well_subst_extends : core.
+Global Hint Resolve well_subst_extends : core.
 
 Lemma kind_entails_fv : forall k1 k2,
   kind_entails k1 k2 -> kind_fv k2 << kind_fv k1.
@@ -780,7 +780,7 @@ Proof.
   apply* fv_in_typ_subst.
 Qed.
 
-Hint Resolve ok_remove_env : core.
+Global Hint Resolve ok_remove_env : core.
 
 Lemma ok_remove_add_env : forall (A:Set) E v (a:A),
   ok E -> ok (remove_env E v & v ~ a).
@@ -789,7 +789,7 @@ Proof.
   rewrite* dom_remove_env.
 Qed.
 
-Hint Resolve ok_remove_add_env : core.
+Global Hint Resolve ok_remove_add_env : core.
 
 Lemma kind_subst_id : forall k, kind_subst id k = k.
 Proof.
@@ -1097,7 +1097,7 @@ Proof.
   destruct M as [T Ks]; simpl*.
 Qed.
 
-Hint Resolve kind_subst_idem : core.
+Global Hint Resolve kind_subst_idem : core.
 
 Lemma disjoint_subset : forall L1 L2 L3,
   L1 << L2 -> disjoint L2 L3 -> disjoint L1 L3.
@@ -1916,7 +1916,7 @@ Proof.
   split2*.
   clear -H; induction H; simpl*.
 Qed.
-Hint Resolve type_scheme : core.
+Global Hint Resolve type_scheme : core.
 
 Lemma moregen_scheme_weaken : forall K K' M' M,
   moregen_scheme K M' M ->

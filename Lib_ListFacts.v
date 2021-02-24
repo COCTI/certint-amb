@@ -19,7 +19,7 @@ Proof.
   induction ys; simpl; intuition.
 Qed.
 
-Hint Resolve not_in_cons : core.
+Global Hint Resolve not_in_cons : core.
 
 Lemma not_In_app :
   forall (A : Type) (xs ys : list A) x,
@@ -29,7 +29,7 @@ Proof.
   case (in_app_or _ _ _ K); auto.
 Qed.
 
-Hint Resolve not_In_app : core.
+Global Hint Resolve not_In_app : core.
 
 Lemma elim_not_In_cons :
   forall (A : Type) (y : A) (ys : list A) (x : A),
@@ -55,7 +55,7 @@ Proof.
   intros A xs a H; inversion H.
 Qed.
 
-Hint Resolve incl_nil : core.
+Global Hint Resolve incl_nil : core.
 
 Lemma incl_trans :
   forall (A : Type) (xs ys zs : list A),
@@ -64,7 +64,7 @@ Proof.
   unfold incl; firstorder.
 Qed.
 
-Hint Immediate incl_trans : core.
+Global Hint Immediate incl_trans : core.
 
 Lemma In_incl :
   forall (A : Type) (x : A) (ys zs : list A),
@@ -73,7 +73,7 @@ Proof.
   unfold incl; auto.
 Qed.
 
-Hint Immediate In_incl : core.
+Global Hint Immediate In_incl : core.
 
 Lemma elim_incl_cons :
   forall (A : Type) (x : A) (xs zs : list A),
@@ -97,14 +97,14 @@ Qed.
   It's convenient to also have them in [core].
 *)
 
-Hint Resolve in_eq : core.
-Hint Resolve in_cons : core.
-Hint Resolve incl_refl : core.
-Hint Resolve incl_nil : core.
-Hint Resolve incl_cons : core.
-Hint Resolve incl_tl : core.
-Hint Resolve incl_app : core.
-Hint Immediate incl_trans : core.
+Global Hint Resolve in_eq : core.
+Global Hint Resolve in_cons : core.
+Global Hint Resolve incl_refl : core.
+Global Hint Resolve incl_nil : core.
+Global Hint Resolve incl_cons : core.
+Global Hint Resolve incl_tl : core.
+Global Hint Resolve incl_app : core.
+Global Hint Immediate incl_trans : core.
 
 (**
   The following tactics can be used to simply hypotheses concerning lists.
@@ -154,9 +154,9 @@ Ltac simpl_list_hyps :=
     | _ => idtac
   end.
 
-Hint Extern 4 (In ?x ?L) => simpl; simpl_list_hyps : core.
-Hint Extern 4 (~ In ?x ?L) => simpl; simpl_list_hyps : core.
-Hint Extern 4 (incl ?L1 ?L2) => simpl; simpl_list_hyps : core.
+Global Hint Extern 4 (In ?x ?L) => simpl; simpl_list_hyps : core.
+Global Hint Extern 4 (~ In ?x ?L) => simpl; simpl_list_hyps : core.
+Global Hint Extern 4 (incl ?L1 ?L2) => simpl; simpl_list_hyps : core.
 
 (* ********************************************************************** *)
 (** * Setoid facts *)

@@ -157,16 +157,16 @@ Qed.
 (***************************************************************************)
 (** Automation: hints to solve "notin" subgoals automatically. *)
 
-Hint Extern 1 (_ \notin _) => notin_solve : core.
-Hint Extern 1 (_ \in _ -> False) => fold_notin : core.
-Hint Extern 1 (_ <> _ :> var) => notin_neq_solve : core.
-Hint Extern 1 (_ <> _ :> S.elt) => notin_neq_solve : core.
+Global Hint Extern 1 (_ \notin _) => notin_solve : core.
+Global Hint Extern 1 (_ \in _ -> False) => fold_notin : core.
+Global Hint Extern 1 (_ <> _ :> var) => notin_neq_solve : core.
+Global Hint Extern 1 (_ <> _ :> S.elt) => notin_neq_solve : core.
 
 
 (* ********************************************************************** *)
 (** ** Tactics for fresh *)
 
-Hint Extern 1 (fresh _ _ _) => simpl : core.
+Global Hint Extern 1 (fresh _ _ _) => simpl : core.
 
 Lemma fresh_union_r : forall xs L1 L2 n,
   fresh (L1 \u L2) n xs -> fresh L1 n xs /\ fresh L2 n xs.
@@ -304,6 +304,6 @@ Qed.
 (***************************************************************************)
 (** Automation: hints to solve "fresh" subgoals automatically. *)
 
-Hint Extern 1 (fresh _ _ _) => fresh_solve : core.
+Global Hint Extern 1 (fresh _ _ _) => fresh_solve : core.
 
 

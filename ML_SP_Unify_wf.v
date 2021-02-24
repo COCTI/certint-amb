@@ -72,7 +72,7 @@ Section Moregen.
 
 End Moregen.
 
-Hint Resolve typ_subst_idem : core.
+Global Hint Resolve typ_subst_idem : core.
 
 (** Various properties of substitutions *)
 
@@ -141,7 +141,7 @@ Proof.
   inversions* H3.
 Qed.
 
-Hint Resolve add_binding_is_subst : core.
+Global Hint Resolve add_binding_is_subst : core.
 
 Lemma typ_subst_disjoint : forall S T,
   is_subst S -> disjoint (dom S) (typ_fv (typ_subst S T)).
@@ -167,12 +167,12 @@ Proof.
   use (typ_subst_res_fresh _ H H0).
 Qed.
 
-Hint Resolve typ_subst_disjoint typ_subst_res_fresh typ_subst_res_fresh' : core.
+Global Hint Resolve typ_subst_disjoint typ_subst_res_fresh typ_subst_res_fresh' : core.
 
 Lemma neq_notin_fv : forall v v0,
   v <> v0 -> v \notin (typ_fv (typ_fvar v0)).
 Proof. simpl*. Qed.
-Hint Resolve neq_notin_fv : core.
+Global Hint Resolve neq_notin_fv : core.
 
 Lemma is_subst_compose_var : forall S x y,
   is_subst S -> x <> y -> disjoint (dom S) {{y}} ->
@@ -193,7 +193,7 @@ Proof.
   apply* binds_map.
 Qed.
 
-Hint Resolve binds_add_binding : core.
+Global Hint Resolve binds_add_binding : core.
 
 Definition id := Env.empty (A:=typ).
 
@@ -295,7 +295,7 @@ Proof.
   case_rewrite R (get x K).
   subst*.
 Qed.
-Hint Resolve get_kind_binds : core.
+Global Hint Resolve get_kind_binds : core.
 
 Lemma get_kind_subst : forall S x K,
   get_kind x (map (kind_subst S) K) = kind_subst S (get_kind x K).
@@ -412,7 +412,7 @@ Section RemoveEnv.
 
 End RemoveEnv.
 
-Hint Resolve ok_remove_env notin_remove_env : core.
+Global Hint Resolve ok_remove_env notin_remove_env : core.
 
 Lemma disjoint_add_binding : forall v T S (K:kenv),
   is_subst S -> ok K ->
@@ -426,7 +426,7 @@ Proof.
   simpl; rewrite* dom_map.
 Qed.
 
-Hint Resolve disjoint_add_binding : core.
+Global Hint Resolve disjoint_add_binding : core.
 
 (* ====================================================================== *)
 (** Start of the algorithm *)
@@ -937,7 +937,7 @@ Proof.
     apply le_n_S. apply cardinal_subset. auto.
   unfold pairs_size; simpl. omega.
 Qed.
-Hint Resolve size_pairs2_tl : core.
+Global Hint Resolve size_pairs2_tl : core.
 
 Lemma size_pairs2_comm : forall S K T1 T2 pairs,
   size_pairs2 S K ((T1,T2)::pairs) = size_pairs2 S K ((T2,T1)::pairs).
@@ -989,7 +989,7 @@ Proof.
   omega.
 Qed.
 
-Hint Resolve size_pairs2_tl size_pairs2_nv size_pairs2_arrow : core.
+Global Hint Resolve size_pairs2_tl size_pairs2_nv size_pairs2_arrow : core.
 
 Lemma unify1_decr_nv : forall v T T1 T2,
   unify_nv K S v T = Uok pairs' K' S' ->
@@ -1112,7 +1112,7 @@ Qed.
 
 End Unify1.
 
-Hint Resolve unify1_kok unify1_subst unify1_decr : core.
+Global Hint Resolve unify1_kok unify1_subst unify1_decr : core.
 
 (* Termination lemmas used directly inside the algorithm *)
 
@@ -1225,7 +1225,7 @@ Proof.
   induction 1; auto.
 Qed.
 
-Hint Resolve unify_spec_subst unify_spec_kok : core.
+Global Hint Resolve unify_spec_subst unify_spec_kok : core.
 
 Definition kind_entails k k' :=
   match k', k with
@@ -1244,13 +1244,13 @@ Proof.
   apply* (@wk_kind k'0). apply* (@entails_trans k'0 k0).
 Qed.
 
-Hint Resolve kind_entails_well_kinded : core.
+Global Hint Resolve kind_entails_well_kinded : core.
 
 Lemma unifies_nil : forall S, unifies S nil.
 Proof.
   intros; intro; intros; contradiction.
 Qed.
-Hint Resolve unifies_nil : core.
+Global Hint Resolve unifies_nil : core.
 
 Section Soundness.
 
@@ -1364,7 +1364,7 @@ Proof.
   simpl. congruence.
 Qed.
 
-Hint Resolve typ_subst_extend : core.
+Global Hint Resolve typ_subst_extend : core.
 
 Theorem unify_types : forall pairs K S,
   unify_spec pairs K S (Some (K',S')) ->

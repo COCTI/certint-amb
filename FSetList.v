@@ -1040,7 +1040,7 @@ Module Raw (X: OrderedType).
   Defined.
 
   End ForNotations. 
-  Hint Constructors lt : core.
+  Global Hint Constructors lt : core.
 
 End Raw.
 

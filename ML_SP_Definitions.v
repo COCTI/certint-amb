@@ -19,7 +19,7 @@ Module Type CstrIntf.
   Parameter lub : cstr -> cstr -> cstr.
   Parameter entails : cstr -> cstr -> Prop.
   Parameter entails_refl : forall c, entails c c.
-  Hint Resolve entails_refl : core.
+  Global Hint Resolve entails_refl : core.
   Parameter entails_trans : forall c1 c2 c3,
     entails c1 c2 -> entails c2 c3 -> entails c1 c3.
   Parameter entails_lub : forall c1 c2 c,
@@ -748,7 +748,7 @@ Inductive well_kinded : kenv -> kind -> typ -> Prop :=
       wf_kind K k' ->
       well_kinded K k (typ_fvar x).
 
-Hint Constructors well_kinded : core.
+Global Hint Constructors well_kinded : core.
 
 Definition proper_instance K Ks Us :=
   types (length Ks) Us /\

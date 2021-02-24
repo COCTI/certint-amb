@@ -20,7 +20,7 @@ Ltac case_rewrite H t :=
 
 (** Results on lists *)
 
-Hint Resolve in_or_app : core.
+Global Hint Resolve in_or_app : core.
 
 Section Lists.
 Variable A : Type.
@@ -247,7 +247,7 @@ Section Combine.
   Qed.
 End Combine.
 
-Hint Resolve split_length in_map_snd : core.
+Global Hint Resolve split_length in_map_snd : core.
 
 
 Section Map.
@@ -349,7 +349,7 @@ Section Forall.
   Qed.
 End Forall.
 
-Hint Resolve list_forall_apply : core.
+Global Hint Resolve list_forall_apply : core.
 
 Ltac list_forall_find P l :=
   match goal with
@@ -372,7 +372,7 @@ Ltac list_forall_solve :=
     destruct H; [subst x; list_forall_find P a | list_forall_find P l]
   end.
 
-Hint Extern 1 (list_forall _ _) => solve [list_forall_solve] : core.
+Global Hint Extern 1 (list_forall _ _) => solve [list_forall_solve] : core.
 
 Section Forall2.
 
@@ -490,8 +490,8 @@ Proof.
 Qed.
 End Forall2.
 
-Hint Constructors list_forall2 : core.
-Hint Resolve list_forall2_app list_forall2_length
+Global Hint Constructors list_forall2 : core.
+Global Hint Resolve list_forall2_app list_forall2_length
   list_forall2_map list_forall2_imp list_forall2_refl : core.
 
 Section Cut.
@@ -565,7 +565,7 @@ Proof.
   discriminate.
 Qed.
 
-Hint Resolve mem_3 : core.
+Global Hint Resolve mem_3 : core.
 
 Lemma in_vars_dec : forall v S, {v \in S}+{v \notin S}.
 Proof.
@@ -747,7 +747,7 @@ Proof.
   rewrite dom_concat in H4.
   use (IHF H2).
 Qed.
-Hint Resolve ok_disjoint : core.
+Global Hint Resolve ok_disjoint : core.
 
 Lemma fresh_disjoint : forall n Xs L,
   fresh L n Xs -> disjoint (mkset Xs) L.
@@ -757,7 +757,7 @@ Proof.
   sets_solve.
   apply* (IHn _ _ H0).
 Qed.
-Hint Immediate fresh_disjoint : core.
+Global Hint Immediate fresh_disjoint : core.
 
 Lemma neq_disjoint : forall x y, x <> y -> disjoint {{x}} {{y}}.
   auto*.
@@ -1103,10 +1103,10 @@ Section Fv_in.
 End Fv_in.
 End Env.
 
-Hint Resolve in_ok_binds ok_map0 ok_single : core.
-Hint Resolve list_forall_env_prop in_or_concat : core.
-Hint Immediate binds_in : core.
-Hint Unfold extends : core.
+Global Hint Resolve in_ok_binds ok_map0 ok_single : core.
+Global Hint Resolve list_forall_env_prop in_or_concat : core.
+Global Hint Immediate binds_in : core.
+Global Hint Unfold extends : core.
 
 Ltac instantiate_fail :=
   instantiate;
@@ -1134,7 +1134,7 @@ Ltac env_prop_solve :=
   | |- env_prop ?P _ => env_prop_hyps P; env_prop_solve_rec
   end.
 
-Hint Extern 2 (env_prop _ _) => env_prop_solve : core.
+Global Hint Extern 2 (env_prop _ _) => env_prop_solve : core.
 
 Lemma env_prop_solve_test : forall P (E F G : env nat) (a b : var),
   env_prop P (E & a ~ 0 & G) -> env_prop P (G & b ~ 0 & E).
@@ -1157,7 +1157,7 @@ Ltac ok_solve :=
   | |- disjoint _ _ => auto 1
   end.
 
-Hint Extern 2 (ok _) => solve [ok_solve] : core.
+Global Hint Extern 2 (ok _) => solve [ok_solve] : core.
 
 Lemma test_ok_solve : forall E F G : env nat,
   ok (E & F) -> ok (F & G) -> ok (E & G) -> ok (E & F & G).
@@ -1198,7 +1198,7 @@ Proof.
   rewrite <- (concat_empty (_ & G)), <- (concat_empty (E & G & F)).
   intros; now apply binds_exchange.
 Qed.
-Hint Immediate binds_comm : core.
+Global Hint Immediate binds_comm : core.
 
 (** Results on fresh *)
 
@@ -1300,7 +1300,7 @@ Proof.
   union_solve x; auto*.
 Qed.
 
-Hint Resolve notin_mkset : core.
+Global Hint Resolve notin_mkset : core.
 
 (** Other results on sets *)
 
