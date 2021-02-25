@@ -34,7 +34,7 @@ Inductive list_forall (A : Set) (P : A -> Prop) : list A -> Prop :=
   | list_forall_cons : forall L x,
        list_forall P L -> P x -> list_forall P (x::L).
 
-Hint Constructors list_forall : core.
+Global Hint Constructors list_forall : core.
 
 Lemma list_forall_concat : forall (A : Set) (P : A -> Prop) L1 L2,
   list_forall P L1 -> 

@@ -258,6 +258,7 @@ Definition annotation_tree (S : tree_type) :=
   (tr_arrow T (bsubst_tree T), K ++ right_tree_kinds K).
 *)
 
+
 (* Need also to define substitution of rigid variables *)
 Fixpoint rvar_open (k : nat) (u : rvar) (t : rvar) :=
   match t with
@@ -574,6 +575,30 @@ Definition typ_body Q K T Ks :=
 Definition scheme Q K M :=
    typ_body Q K (sch_type M) (sch_kinds M).
 
+(** Instantiation of a tree *)
+
+Inductive tree_instance (K : kenv) : var -> tree -> Prop :=
+  | tri_rvar : forall x k rvs rv,
+      binds x (k,rvs) K ->
+      In rv rvs ->
+      tree_instance K x (tr_rvar rv)
+  | tri_arrow : forall x ck rvs y z T1 T2,
+      binds x (Some ck, rvs) K ->
+      kind_cstr ck = Cstr.arrow ->
+      In (Cstr.arrow_dom, typ_fvar y) (kind_rel ck) ->
+      In (Cstr.arrow_cod, typ_fvar z) (kind_rel ck) ->
+      tree_instance K y T1 ->
+      tree_instance K z T2 ->
+      tree_instance K x (tr_arrow T1 T2)
+  | tri_eq : forall x ck rvs y z T1 T2,
+      binds x (Some ck, rvs) K ->
+      kind_cstr ck = Cstr.eq ->
+      In (Cstr.eq_fst, typ_fvar y) (kind_rel ck) ->
+      In (Cstr.eq_snd, typ_fvar z) (kind_rel ck) ->
+      tree_instance K y T1 ->
+      tree_instance K z T2 ->
+      tree_instance K x (tr_eq T1 T2).
+
 (* ********************************************************************** *)
 (** ** Description of terms *)
 
@@ -858,6 +883,11 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
       proper_instance K Ks Us' ->
       [ Q; K; E | gc_lower gc |= t ~: nth n Us typ_def ] ->
       [ Q; K; E | gc |= (trm_ann t T) ~: nth n Us' typ_def ]
+(*  | typing_ann : forall Q t (T : tree) K E x y,
+      tree_instance K x T ->
+      tree_instance K y T ->
+      [ Q; K; E | gc_lower gc |= t ~: trm_fvar x ] ->
+      [ Q; K; E | gc |= (trm_ann t T) ~: trm_fvar y ] *)
   | typing_rigid : forall Q L K Ks Us E t T,
       kenv_ok Q K ->
       env_ok Q K E ->
@@ -898,7 +928,6 @@ Inductive red : trm -> trm -> Prop :=
       value t1 -> 
       red (trm_let t1 t2) (t2 ^^ t1)
   | red_delta : forall c tl vl,
-      list_forall rclosed tl ->
       red (const_app c tl) (@Delta.reduce c tl vl)
   | red_let_1 : forall t1 t1' t2, 
       term_body t2 ->
@@ -920,10 +949,12 @@ Inductive red : trm -> trm -> Prop :=
       term t2 ->
       red t1 t1' ->
       red (trm_use t1 T T' t2) (trm_use t1' T T' t2)
+(*
   | red_rigid : forall t t',
       term t ->
       red t t' ->
       red (trm_rigid t) (trm_rigid t')
+*)
   | red_apply_ann_1 : forall T U t t',
       term (trm_abs t) ->
       term t' ->

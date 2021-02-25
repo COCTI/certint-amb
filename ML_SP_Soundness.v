@@ -1137,7 +1137,7 @@ Proof.
       rewrite trm_rigid_rec_open_var.
       apply* term_rigid_rec.
     apply* term_rigid_rec.
-Admitted.
+Abort.
 
 Lemma preservation_result : preservation.
 Proof.

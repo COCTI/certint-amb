@@ -1501,6 +1501,11 @@ Proof.
 Qed.
 Global Hint Resolve qcoherent_add_qitem : core.
 
+Lemma tree_eq_of_instance Q K x T1 T2 S :
+  tree_instance K x T1 -> tree_instance K x T2 -> kenv_ok Q K ->
+  qsat Q S -> tree_subst_eq S T1 T2.
+Abort.
+
 Lemma rvar_shift_open n m r r0 : m <= n ->
                                  rvar_shift m (rvar_open n r r0) =
                                  rvar_open (S n) (rvar_shift m r) (rvar_shift m r0).
@@ -1800,9 +1805,9 @@ Proof.
   induction 1; auto*.
   - split.
       destruct vl.
-      clear H0; unfold const_app.
+      clear H; unfold const_app.
       assert (term (trm_cst c)) by auto.
-      revert H0; generalize (trm_cst c); induction H1; simpl*.
+      revert H; generalize (trm_cst c); induction H0; simpl*.
     apply* Delta.term.
   - splits*.
     inversions H.
