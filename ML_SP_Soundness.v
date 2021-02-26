@@ -1123,8 +1123,7 @@ Proof.
   + constructor; auto*.
     apply* term_rigid_rec.
   + constructor; auto*; apply* term_rigid_rec.
-  + constructor; auto*.
-    apply* term_rigid_rec.
+  (* + constructor; auto*. apply* term_rigid_rec. *)
   + constructor.
     inversions H.
     apply* (@term_abs L); intros.
@@ -1157,12 +1156,12 @@ induction Typ; introv EQ Red; subst; inversions Red;
 - apply* typing_abs_inv.
   (* Delta *)
 - assert ([Q;K;E |(true,GcAny)|= trm_app t1 t2 ~: T]) by auto*.
-  use (typing_canonize H5).
-  fold (typing_gc_let Q K E (trm_app t1 t2) T) in H6.
-  rewrite <- H3 in *.
-  clear -H6.
+  use (typing_canonize H3).
+  fold (typing_gc_let Q K E (trm_app t1 t2) T) in H5.
+  rewrite <- H4 in *.
+  clear -H5.
   gen_eq (const_app c tl) as t1.
-  induction H6 using typing_gc_ind; intros; subst.
+  induction H5 using typing_gc_ind; intros; subst.
     apply* typing_gc_any.
     apply* delta_typed.
   apply* typing_gc. simpl*.
@@ -1256,11 +1255,11 @@ induction Typ; introv EQ Red; subst; inversions Red;
 - admit.
   (* Delta0 *)
 - admit.
-  (* Rigid *)
+(*  (* Rigid *)
 - apply* (@typing_rigid (true, GcAny) Q L).
   intros.
   apply* H3.
-  apply* trm_open_rigid_red.
+  apply* trm_open_rigid_red. *)
   (* UseEq *)
 - admit. (* destruct* Typ2.
   apply* (@typing_abs (true, GcAny) Q L K E U). inversion H1.
