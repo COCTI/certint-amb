@@ -143,7 +143,7 @@ Proof.
   apply* typing_use.
   apply* (IHTyp2 (qeq T1 T2 :: Q0) Q').
 Qed.
-  
+
 Lemma proper_instance_weaken : forall K K' Ks Us,
   ok (K & K') ->
   proper_instance K Ks Us ->
@@ -212,7 +212,7 @@ Proof.
 Qed.
 
 Lemma env_ok_exchange Q K K1 K2 K' E :
-  ok (K & K1 & K2 & K') ->  
+  ok (K & K1 & K2 & K') ->
   env_ok Q (K & K1 & K2 & K') E -> env_ok Q (K & K2 & K1 & K') E.
 Proof.
   intros OkK [Ok P].
@@ -271,7 +271,7 @@ Proof.
   rewrite <- (concat_empty (K & _ & _)).
   apply* typing_exchange.
 Qed.
-  
+
 Lemma tree_subst_eq_refl S t : tree_subst_eq S t t.
 Proof. induction t; simpl; constructor; auto. Qed.
 
@@ -623,7 +623,7 @@ induction Typ; introv WS EQ EQ'; subst.
     apply (proper_instance_subst _ _ _ H1); auto.
   simpl; introv [HR Fr].
   set (kov := kinds_open_vars _ Xs).
-  assert (kov = 
+  assert (kov =
      map (kind_subst S) (kinds_open_vars ((None, rvar_f R :: nil) :: Ks) Xs)).
     rewrite* kinds_subst_open_vars.
   rewrite H4.
@@ -1091,6 +1091,65 @@ Proof.
   apply* term_rigid_rec.
 Qed.
 
+Lemma trm_rigid_rec_red_delta n r c tl vl :
+  trm_rigid_rec n r (const_app c tl) --> trm_rigid_rec n r (@Delta.reduce c tl vl).
+Proof.
+  revert vl. intros [Hl Hv]. revert Hl Hv n r.
+  destruct tl; simpl*.
+  + lia.
+  + intros.
+    unfold const_app.
+    inversion Hv; subst.
+    simpl*.
+Abort.
+
+Lemma trm_rigid_rec_red n t t' r :
+  t --> t' ->
+  trm_rigid_rec n r t --> trm_rigid_rec n r t'.
+Proof.
+  intros. revert n r.
+  induction H; simpl*; intros; try rewrite trm_rigid_rec_open.
+  + apply red_abs.
+    apply (@term_abs (trm_fv t1)).
+    intros.
+    rewrite trm_rigid_rec_open_var.
+    apply term_rigid_rec.
+    inversions* H.
+    apply* value_trm_open_rigid.
+  + apply red_let.
+    inversions H.
+    apply (@term_let L).
+    apply* term_rigid_rec.
+    intros. rewrite trm_rigid_rec_open_var.
+    apply* term_rigid_rec.
+    apply* value_trm_open_rigid.
+  + admit.
+  + apply* red_let_1.
+    inversions H. exists x. intros.
+    rewrite trm_rigid_rec_open_var.
+    apply* term_rigid_rec.
+  + apply* red_app_1.
+    inversions H. apply* value_trm_open_rigid.
+  + constructor; auto*;
+    apply* term_rigid_rec.
+  + constructor; auto*.
+    apply* term_rigid_rec.
+  + constructor; auto*; apply* term_rigid_rec.
+  (* + constructor; auto*. apply* term_rigid_rec. *)
+  + constructor.
+    inversions H.
+    apply* (@term_abs L); intros.
+    rewrite trm_rigid_rec_open_var.
+    apply* term_rigid_rec.
+    apply* term_rigid_rec.
+  + constructor.
+      inversions H.
+      apply* (@term_abs L); intros.
+      rewrite trm_rigid_rec_open_var.
+      apply* term_rigid_rec.
+    apply* term_rigid_rec.
+Abort.
+
 Lemma trm_open_rigid_red t t' r :
   t --> t' ->
   trm_open_rigid t r --> trm_open_rigid t' r.
@@ -1265,7 +1324,7 @@ induction Typ; introv EQ Red; subst; inversions Red;
   apply* (@typing_abs (true, GcAny) Q L K E U). inversion H1.
   admit. *)
   (* Use1 *)
-- apply* typing_use. 
+- apply* typing_use.
 Admitted.
 
 (* ********************************************************************** *)
@@ -1349,8 +1408,9 @@ Proof.
           admit.
         left*. destruct Val2. exists* n.
         admit.
-        
-        inversion H13.
+
+(*         inversion H13. *)
+        admit.
       destruct (var_freshes (L \u dom K) (length Ks)) as [Xs HXs].
       destruct* (H17 Xs).
       admit.
