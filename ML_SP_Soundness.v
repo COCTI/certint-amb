@@ -1091,66 +1091,7 @@ Proof.
   apply* term_rigid_rec.
 Qed.
 
-Lemma trm_rigid_rec_red_delta n r c tl vl :
-  trm_rigid_rec n r (const_app c tl) --> trm_rigid_rec n r (@Delta.reduce c tl vl).
-Proof.
-  revert vl. intros [Hl Hv]. revert Hl Hv n r.
-  destruct tl; simpl*.
-  + lia.
-  + intros.
-    unfold const_app.
-    inversion Hv; subst.
-    simpl*.
-Abort.
-
-Lemma trm_rigid_rec_red n t t' r :
-  t --> t' ->
-  trm_rigid_rec n r t --> trm_rigid_rec n r t'.
-Proof.
-  intros. revert n r.
-  induction H; simpl*; intros; try rewrite trm_rigid_rec_open.
-  + apply red_abs.
-    apply (@term_abs (trm_fv t1)).
-    intros.
-    rewrite trm_rigid_rec_open_var.
-    apply term_rigid_rec.
-    inversions* H.
-    apply* value_trm_open_rigid.
-  + apply red_let.
-    inversions H.
-    apply (@term_let L).
-    apply* term_rigid_rec.
-    intros. rewrite trm_rigid_rec_open_var.
-    apply* term_rigid_rec.
-    apply* value_trm_open_rigid.
-  + admit.
-  + apply* red_let_1.
-    inversions H. exists x. intros.
-    rewrite trm_rigid_rec_open_var.
-    apply* term_rigid_rec.
-  + apply* red_app_1.
-    inversions H. apply* value_trm_open_rigid.
-  + constructor; auto*;
-    apply* term_rigid_rec.
-  + constructor; auto*.
-    apply* term_rigid_rec.
-  + constructor; auto*; apply* term_rigid_rec.
-  (* + constructor; auto*. apply* term_rigid_rec. *)
-  + constructor.
-    inversions H.
-    apply* (@term_abs L); intros.
-    rewrite trm_rigid_rec_open_var.
-    apply* term_rigid_rec.
-    apply* term_rigid_rec.
-  + constructor.
-      inversions H.
-      apply* (@term_abs L); intros.
-      rewrite trm_rigid_rec_open_var.
-      apply* term_rigid_rec.
-    apply* term_rigid_rec.
-Abort.
-
-Lemma trm_open_rigid_red t t' r :
+(* Lemma trm_open_rigid_red t t' r :
   t --> t' ->
   trm_open_rigid t r --> trm_open_rigid t' r.
 Proof.
@@ -1195,7 +1136,7 @@ Proof.
       rewrite trm_rigid_rec_open_var.
       apply* term_rigid_rec.
     apply* term_rigid_rec.
-Abort.
+Abort. *)
 
 Lemma preservation_result : preservation.
 Proof.
