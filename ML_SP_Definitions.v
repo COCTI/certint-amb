@@ -30,7 +30,7 @@ Module Type CstrIntf.
     entails c1 c2 -> valid c1 -> valid c2.
   Parameter static : cstr -> bool.
   Parameter static_entails :
-    forall c c', static c = true -> valid c' -> entails c' c -> entails c c'.
+    forall c c', static c = true -> valid c' -> entails c' c -> c = c'.
 
   (* 'a -> 'b *)
   Parameter arrow : cstr.
@@ -117,6 +117,10 @@ Definition entails (k k' : kind) :=
   end /\
   forall r, In r (snd k') -> In r (snd k).
 
+(** Definition of kinding environment *)
+
+Definition kenv := env kind.
+
 (** Type schemes. *)
 
 Record sch : Set := Sch { 
@@ -133,6 +137,30 @@ Inductive tree : Set :=
   | tr_arrow : tree -> tree -> tree
   | tr_eq : tree -> tree -> tree
   | tr_rvar : rvar -> tree.
+
+(** Instantiation of a tree *)
+
+Inductive tree_instance (K : kenv) : var -> tree -> Prop :=
+  | tri_rvar : forall x k rvs rv,
+      binds x (k,rvs) K ->
+      In rv rvs ->
+      tree_instance K x (tr_rvar rv)
+  | tri_arrow : forall x ck rvs y z T1 T2,
+      binds x (Some ck, rvs) K ->
+      kind_cstr ck = Cstr.arrow ->
+      In (Cstr.arrow_dom, typ_fvar y) (kind_rel ck) ->
+      In (Cstr.arrow_cod, typ_fvar z) (kind_rel ck) ->
+      tree_instance K y T1 ->
+      tree_instance K z T2 ->
+      tree_instance K x (tr_arrow T1 T2)
+  | tri_eq : forall x ck rvs y z T1 T2,
+      binds x (Some ck, rvs) K ->
+      kind_cstr ck = Cstr.eq ->
+      In (Cstr.eq_fst, typ_fvar y) (kind_rel ck) ->
+      In (Cstr.eq_snd, typ_fvar z) (kind_rel ck) ->
+      tree_instance K y T1 ->
+      tree_instance K z T2 ->
+      tree_instance K x (tr_eq T1 T2).
 
 (* Annotation: \( t -> t )/ *)
 
@@ -529,9 +557,7 @@ Inductive qcoherent (Q : qenv) : kind -> Prop :=
              In rv rvs -> tree_subst_eq S (tr_rvar rv) (tr_eq T1 T2)) ->
       qcoherent Q (Some k, rvs).
 
-(** Definition of kinding environments *)
-
-Definition kenv := env kind.
+(* Properties of kinding environments *)
 
 Inductive is_prefix : rvar -> rvar -> Prop :=
 | prefix_eq : forall r, is_prefix r r
@@ -574,30 +600,6 @@ Definition typ_body Q K T Ks :=
 
 Definition scheme Q K M :=
    typ_body Q K (sch_type M) (sch_kinds M).
-
-(** Instantiation of a tree *)
-
-Inductive tree_instance (K : kenv) : var -> tree -> Prop :=
-  | tri_rvar : forall x k rvs rv,
-      binds x (k,rvs) K ->
-      In rv rvs ->
-      tree_instance K x (tr_rvar rv)
-  | tri_arrow : forall x ck rvs y z T1 T2,
-      binds x (Some ck, rvs) K ->
-      kind_cstr ck = Cstr.arrow ->
-      In (Cstr.arrow_dom, typ_fvar y) (kind_rel ck) ->
-      In (Cstr.arrow_cod, typ_fvar z) (kind_rel ck) ->
-      tree_instance K y T1 ->
-      tree_instance K z T2 ->
-      tree_instance K x (tr_arrow T1 T2)
-  | tri_eq : forall x ck rvs y z T1 T2,
-      binds x (Some ck, rvs) K ->
-      kind_cstr ck = Cstr.eq ->
-      In (Cstr.eq_fst, typ_fvar y) (kind_rel ck) ->
-      In (Cstr.eq_snd, typ_fvar z) (kind_rel ck) ->
-      tree_instance K y T1 ->
-      tree_instance K z T2 ->
-      tree_instance K x (tr_eq T1 T2).
 
 (* ********************************************************************** *)
 (** ** Description of terms *)
@@ -877,17 +879,17 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
       (forall Xs, fresh L (length Ks) Xs ->
         [ Q; K & kinds_open_vars Ks Xs; E | gc |= t ~: T ]) ->
       [ Q; K; E | gc |= t ~: T ]
-  | typing_ann : forall Q t (T : tree) n Ks K E Us Us',
+(* | typing_ann : forall Q t (T : tree) n Ks K E Us Us',
       graph_of_tree_type T = (n, Ks) ->
       proper_instance K Ks Us ->
       proper_instance K Ks Us' ->
       [ Q; K; E | gc_lower gc |= t ~: nth n Us typ_def ] ->
-      [ Q; K; E | gc |= (trm_ann t T) ~: nth n Us' typ_def ]
-(*  | typing_ann : forall Q t (T : tree) K E x y,
+      [ Q; K; E | gc |= (trm_ann t T) ~: nth n Us' typ_def ] *)
+  | typing_ann : forall Q t (T : tree) K E x y,
       tree_instance K x T ->
       tree_instance K y T ->
-      [ Q; K; E | gc_lower gc |= t ~: trm_fvar x ] ->
-      [ Q; K; E | gc |= (trm_ann t T) ~: trm_fvar y ] *)
+      [ Q; K; E | gc_lower gc |= t ~: typ_fvar x ] ->
+      [ Q; K; E | gc |= (trm_ann t T) ~: typ_fvar y ]
   | typing_rigid : forall Q L K Ks Us E t T,
       kenv_ok Q K ->
       env_ok Q K E ->
@@ -896,10 +898,15 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
         [ Q; K & kinds_open_vars ((None, rvar_f R :: nil) :: Ks) Xs; E
         | gc_raise gc |= trm_open_rigid t (rvar_f R) ~: typ_open_vars T Xs ]) ->
       [ Q; K; E | gc |= trm_rigid t ~: typ_open T Us ]
-  | typing_use : forall n Ks Us Q K E t1 T1 T2 t2 T,
+(* | typing_use : forall n Ks Us Q K E t1 T1 T2 t2 T,
       graph_of_tree_type (tr_eq T1 T2) = (n, Ks) ->
       proper_instance K Ks Us ->
       [ Q; K; E | gc_raise gc |= t1 ~: nth n Us typ_def ] ->
+      [ qeq T1 T2 :: Q; K; E | gc_raise gc |= t2 ~: T ] -> 
+      [ Q; K; E | gc |= trm_use t1 T1 T2 t2 ~: T ] *)
+  | typing_use : forall Q K E t1 T1 T2 x t2 T,
+      tree_instance K x (tr_eq T1 T2) ->
+      [ Q; K; E | gc_raise gc |= t1 ~: typ_fvar x ] ->
       [ qeq T1 T2 :: Q; K; E | gc_raise gc |= t2 ~: T ] -> 
       [ Q; K; E | gc |= trm_use t1 T1 T2 t2 ~: T ]
   | typing_eq : forall Q K E x k rs T,

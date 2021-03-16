@@ -1763,12 +1763,6 @@ induction* H; try (pick_freshes (length Ks) Xs; forward~ (H1 Xs)); split4*.
   destruct* (H1 Ys) as [_ [? _]].
   apply* env_ok_strengthen_kinds.
   rewrite* dom_kinds_open_vars.
-  (* typing_ann *)
-- destruct H1 as [[]]. clear H0.
-  apply* (list_forall_out H3). apply* nth_In.
-  generalize (graph_of_tree_type_n T).
-  fold tree_kind in H.
-  now rewrite H, H1.
   (* typing_rigid *)
 - pick_freshes (1 + length Us) Xs.
   destruct Xs as [|R Xs]; try contradiction.
