@@ -53,6 +53,8 @@ Module Type CstrIntf.
   Parameter unique_fst : unique eq eq_fst = true.
   Parameter unique_snd : unique eq eq_snd = true.
   Parameter entails_eq : forall c, entails c eq -> c = eq.
+
+  Parameter arrow_eq : arrow <> eq.
 End CstrIntf.
 
 Module Type CstIntf.
@@ -571,8 +573,8 @@ Inductive wf_kind : kenv -> kind -> Prop :=
         Cstr.unique (kind_cstr ck) l = true ->
         In (l, typ_fvar a) (kind_rel ck) ->
         (exists k rvs, binds a (k, rvs) K /\
-          (forall rv, In rv r ->
-            (exists rv', In rv' rvs /\ is_prefix rv' (rvar_attr rv l))))) ->
+                       forall rv, In rv r -> In (rvar_attr rv l) rvs))
+            (*(exists rv', In rv' rvs /\ is_prefix rv' (rvar_attr rv l)))))*) ->
     wf_kind K (Some ck, r).
 
 Definition kenv_ok (Q : qenv) K :=

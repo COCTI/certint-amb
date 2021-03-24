@@ -1167,6 +1167,16 @@ Proof.
     apply* term_rigid_rec.
 Abort. *)
 
+Section in_assoc.
+Variables (A B : Set) (x : A) (y : B).
+
+Lemma in_fst l : In (x,y) l -> In x (list_fst l).
+Proof. induction l; simpl*; intros []; subst*. Qed.
+
+Lemma in_snd l : In (x,y) l -> In y (list_snd l).
+Proof. induction l; simpl*; intros []; subst*. Qed.
+End in_assoc.
+
 Lemma preservation_result : preservation.
 Proof.
 introv Typ. gen_eq (true, GcAny) as gc. gen t'.
@@ -1209,37 +1219,37 @@ induction Typ; introv EQ Red; subst; inversions Red;
   induction Typ1 using typing_gc_ind.
     split2*; intros; subst.
     inversions H; try discriminate; simpl in *.
-    inversions H12.
     inversions H13.
-    assert (HeqV := binds_func H15 H3).
-    inversions HeqV; clear HeqV H3.
-    assert (Hkud := Cstr.unique_dom).
-    rewrite <- H18 in Hkud.
-    use (kind_coherent k _ _ Hkud H19 H1); subst.
-    assert (Hkuc := Cstr.unique_cod).
-    rewrite <- H18 in Hkuc.
-    use (kind_coherent k _ _ Hkuc H20 H2); subst.
-    clear Hkud Hkuc H0 H1 H2.
-    inversions H14; try discriminate.
     assert (HeqV := binds_func H8 H3).
-    inversions HeqV; clear HeqV H8.
+    inversions HeqV; clear HeqV H3 H0.
+    assert (Hkud := Cstr.unique_dom).
+    rewrite <- H9 in Hkud.
+    use (kind_coherent k _ _ Hkud H10 H1); subst.
+    assert (Hkuc := Cstr.unique_cod).
+    rewrite <- H9 in Hkuc.
+    use (kind_coherent k _ _ Hkuc H11 H2); subst.
+    clear Hkud Hkuc H1 H2.
+    inversions H14; try discriminate.
+    inversions H12.
+    assert (HeqV := binds_func H3 H15).
+    inversions HeqV; clear HeqV H15 H18.
     assert (Hkud := Cstr.unique_dom).
     rewrite <- H4 in Hkud.
-    use (kind_coherent _ _ _ Hkud H10 H6); subst.
+    use (kind_coherent _ _ _ Hkud H6 H19); subst.
     assert (Hkuc := Cstr.unique_cod).
     rewrite <- H4 in Hkuc.
-    use (kind_coherent _ _ _ Hkuc H11 H26); subst.
-    clear Hkud Hkuc H9 H10 H11.
-    apply (@typing_let _ Q (Sch (typ_fvar y) nil) (dom K) (L \u dom E)).
+    use (kind_coherent _ _ _ Hkuc H20 H22); subst.
+    clear Hkud Hkuc H6 H22.
+    apply (@typing_let _ Q (Sch (typ_fvar y0) nil) (dom K) (L \u dom E)).
       simpl; intros.
       destruct Xs; try contradiction.
       unfold sch_open_vars; simpl.
       rewrite* typ_open_vars_nil.
     unfold trm_open; simpl; intros.
     fold (trm_open t (trm_fvar x0)).
-    apply (typing_ann _ H17 H23).
+    apply (typing_ann _ H25 H17).
     eapply typing_gc_any.
-    apply* H27.
+    apply* H21.
   split.
     pick_freshes (length Ks) Xs.
     destruct* (H Xs).
@@ -1253,7 +1263,81 @@ induction Typ; introv EQ Red; subst; inversions Red;
   apply* typing_weaken_kinds.
   destruct* (H Xs).
   (* ApplyAnn2 *)
-- admit.
+- apply typing_canonize in Typ1.
+  gen_eq (trm_ann (trm_abs t) (tr_rvar r)) as t1.
+  gen_eq (typ_fvar V) as T1.
+  fold (typing_gc_let Q K E t1 T1) in Typ1.
+  clear IHTyp1 IHTyp2.
+  revert H Typ2 Red.
+  apply (proj2 (A:=kenv_ok Q K)).
+  induction Typ1 using typing_gc_ind.
+    split2*; intros; subst.
+    inversions H; try discriminate; simpl in *.
+    inversions H13.
+    assert (HeqV := binds_func H6 H3).
+    inversions HeqV; clear HeqV H3.
+    inversions H14; try discriminate.
+    inversions H12.
+    assert (HeqV := binds_func H4 H10).
+    inversions HeqV; clear HeqV H10.
+    assert (Kok : kenv_ok Q K) by auto*.
+    destruct Kok as [_ [ATK [CohK WFK]]].
+    assert (WFk0 := WFK _ _ (binds_in H4)).
+    inversions WFk0.
+    assert (WFk := WFK _ _ (binds_in H6)).
+    inversions WFk.
+    assert (ATk := ATK _ _ (binds_in H6)).
+    apply (@typing_let _ Q (Sch U nil) (dom K) (L \u dom E)).
+      inversions H8; clear H8.
+      use (list_forall_out ATk S (in_snd _ _ _ H1)).
+      inversions H3; clear H3.
+      simpl; intros.
+      destruct Xs; try contradiction.
+      unfold sch_open_vars; simpl.
+      rewrite* typ_open_vars_nil.
+      destruct* (H16 Cstr.arrow_dom X) as [k1 [rvs1 [BX FAR]]].
+        now rewrite H11, Cstr.unique_dom.
+      assert (TIX: tree_instance K X (tr_rvar (rvar_attr r Cstr.arrow_dom))).
+        apply (tri_rvar _ BX).
+        apply* FAR.
+      destruct* (H18 Cstr.arrow_dom X0) as [k2 [rvs2 [BX0 FAR0]]].
+        now rewrite H0, Cstr.unique_dom.
+      assert (TIX0: tree_instance K X0 (tr_rvar (rvar_attr r Cstr.arrow_dom))).
+        apply (tri_rvar _ BX0).
+        apply* FAR0.
+      now apply (typing_ann _ TIX0 TIX).
+    unfold trm_open; simpl; intros.
+    fold (trm_open t (trm_fvar x0)).
+    assert (ATk0 := ATK _ _ (binds_in H4)).
+    use (list_forall_out ATk0 _ (in_snd _ _ _ H19)).
+    inversions H10; clear H10.
+    destruct* (H16 Cstr.arrow_cod X) as [k1 [rvs1 [BX FAR]]].
+      now rewrite H11, Cstr.unique_cod.
+    assert (TIX: tree_instance K X (tr_rvar (rvar_attr r Cstr.arrow_cod))).
+      apply (tri_rvar _ BX).
+      apply* FAR.
+    use (list_forall_out ATk T (in_snd _ _ _ H2)).
+    inversions H10; clear H10.
+    destruct* (H18 Cstr.arrow_cod X0) as [k2 [rvs2 [BX0 FAR0]]].
+      now rewrite H0, Cstr.unique_cod.
+    assert (TIX0: tree_instance K X0 (tr_rvar (rvar_attr r Cstr.arrow_cod))).
+      apply (tri_rvar _ BX0).
+      apply* FAR0.
+    apply (typing_ann _ TIX TIX0).
+    eapply typing_gc_any.
+    apply* H20.
+  split.
+    pick_freshes (length Ks) Xs.
+    destruct* (H Xs).
+    apply* kenv_ok_strengthen.
+    rewrite* dom_kinds_open_vars.
+  intros; subst.
+  apply (typing_gc Ks (L \u dom K \u fv_in kind_fv K)).
+    simpl*.
+  intros.
+  apply H; auto.
+  apply* typing_weaken_kinds.
+  destruct* (H Xs).
   (* Delta0 *)
 - admit.
 (*  (* Rigid *)

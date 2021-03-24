@@ -1324,10 +1324,10 @@ Proof.
     exists k'0; exists rvs'0.
     splits*.
     intros rv Hrv.
-    destruct (FA _ Hrv) as [rv' [Hrv' Hpf]].
-    exists rv'; splits*.
+    (*destruct (FA _ Hrv) as [rv' [Hrv' Hpf]].
+    exists rv'; splits*.*)
     destruct H1 as [_ EnRV].
-    now apply EnRV.
+    apply* EnRV.
   exists (fst (kind_subst S (k'',rvs''))); exists rvs''.
   assert (Ha'Xs : a' \in mkset Xs).
     puts (binds_dom B1).
