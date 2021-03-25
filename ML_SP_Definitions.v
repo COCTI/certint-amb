@@ -138,7 +138,8 @@ Inductive tree : Set :=
   (* | tr_bvar : nat -> tree *)
   | tr_arrow : tree -> tree -> tree
   | tr_eq : tree -> tree -> tree
-  | tr_rvar : rvar -> tree.
+  | tr_rvar : rvar -> tree
+  | tr_stuck : tree -> Cstr.attr -> tree.
 
 (** Instantiation of a tree *)
 
@@ -211,6 +212,8 @@ Fixpoint graph_of_tree ofs (tr : tree) : nat * list kind :=
     (ofs, (Some (eq_kind n1 n2), nil) :: g1 ++ g2)
   | tr_rvar rv =>
     (ofs, (None, rv :: nil) :: nil)
+  | tr_stuck t1 _ =>
+    graph_of_tree ofs t1
   end.
 
 Definition graph_of_tree_type S := graph_of_tree 0 S.
@@ -304,6 +307,7 @@ Fixpoint tree_open_rigid (k : nat) (u : rvar) (T : tree) :=
   | tr_arrow T1 T2 => tr_arrow (tree_open_rigid k u T1) (tree_open_rigid k u T2)
   | tr_eq T1 T2 => tr_eq (tree_open_rigid k u T1) (tree_open_rigid k u T2)
   | tr_rvar v => tr_rvar (rvar_open k u v)
+  | tr_stuck T1 l => tr_stuck (tree_open_rigid k u T1) l
   end.
 
 Definition tree_type_open_rigid (k : nat) (u : rvar) (S : tree_type) :=
@@ -322,11 +326,50 @@ Fixpoint tree_shift_rigid (k : nat) (T : tree) :=
   | tr_arrow T1 T2 => tr_arrow (tree_shift_rigid k T1) (tree_shift_rigid k T2)
   | tr_eq T1 T2 => tr_eq (tree_shift_rigid k T1) (tree_shift_rigid k T2)
   | tr_rvar v => tr_rvar (rvar_shift k v)
+  | tr_stuck T1 l => tr_stuck (tree_shift_rigid k T1) l
   end.
 
 Section tree_subst.
 Variable S : env tree.
 
+Fixpoint rvar_subst V :=
+  match V with
+  | rvar_f x =>
+    match get x S with
+    | None => tr_rvar V
+    | Some T => T
+    end
+  | rvar_b _ => tr_rvar V
+  | rvar_attr V a =>
+    let T := rvar_subst V in
+    match T with
+    | tr_arrow T1 T2 =>
+      if Cstr.eq_dec a Cstr.arrow_dom then T1 else
+        if Cstr.eq_dec a Cstr.arrow_cod then T2 else
+          tr_stuck T a
+    | tr_eq T1 T2 =>
+      if Cstr.eq_dec a Cstr.eq_fst then T1 else
+        if Cstr.eq_dec a Cstr.eq_snd then T2 else
+          tr_stuck T a
+    | tr_rvar r =>
+      tr_rvar (rvar_attr r a)
+    | _ =>
+      tr_stuck T a
+    end
+  end.
+
+Fixpoint tree_subst T :=
+  match T with
+  | tr_rvar rv     => rvar_subst rv
+  | tr_arrow T1 T2 => tr_arrow (tree_subst T1) (tree_subst T2)
+  | tr_eq T1 T2    => tr_eq (tree_subst T1) (tree_subst T2)
+  | tr_stuck T1 a  => tr_stuck (tree_subst T1) a
+  end.
+
+Definition tree_subst_eq T1 T2 :=
+  tree_subst T1 = tree_subst T2.
+
+(*
 Inductive lookup_rvar : rvar -> tree -> Prop :=
   | lr_f : forall r T,
       binds r T S ->
@@ -360,15 +403,6 @@ Inductive tree_subst_eq : tree -> tree -> Prop :=
       tree_subst_eq T1 T1' -> tree_subst_eq T2 T2' ->
       tree_subst_eq (tr_eq T1 T2) (tr_eq T1' T2')
   | tse_rvar : forall rv, tree_subst_eq (tr_rvar rv) (tr_rvar rv).
-
-(*
-Fixpoint tree_subst (T : tree) :=
-  match T with
-  | tr_bvar x => T
-  | tr_arrow T U => tr_arrow (tree_subst T) (tree_subst U)
-  | tr_eq T U => tr_eq (tree_subst T) (tree_subst U)
-  | tr_rvar r =>
-  end.
 *)
 End tree_subst.
 
@@ -549,14 +583,18 @@ Inductive qcoherent (Q : qenv) : kind -> Prop :=
   | qc_arrow : forall k rvs,
       kind_cstr k = Cstr.arrow ->
       (forall S, qsat Q S ->
-         exists T1 T2, forall rv,
-             In rv rvs -> tree_subst_eq S (tr_rvar rv) (tr_arrow T1 T2)) ->
+         forall rv, In rv rvs ->
+                    tree_subst_eq S (tr_rvar rv)
+                        (tr_arrow (tr_rvar (rvar_attr rv Cstr.arrow_dom))
+                                  (tr_rvar (rvar_attr rv Cstr.arrow_cod)))) ->
       qcoherent Q (Some k, rvs)
   | qc_eq : forall k rvs,
       kind_cstr k = Cstr.eq ->
       (forall S, qsat Q S ->
-         exists T1 T2, forall rv,
-             In rv rvs -> tree_subst_eq S (tr_rvar rv) (tr_eq T1 T2)) ->
+         forall rv, In rv rvs ->
+                    tree_subst_eq S (tr_rvar rv)
+                        (tr_arrow (tr_rvar (rvar_attr rv Cstr.eq_fst))
+                                  (tr_rvar (rvar_attr rv Cstr.eq_snd)))) ->
       qcoherent Q (Some k, rvs).
 
 (* Properties of kinding environments *)
@@ -634,6 +672,7 @@ Fixpoint rclosed_tree (T : tree) : Prop :=
   match T with
   | tr_arrow T1 T2 | tr_eq T1 T2 => rclosed_tree T1 /\ rclosed_tree T2
   | tr_rvar r => rclosed_rvar r
+  | tr_stuck T1 a => rclosed_tree T1
   end.
 
 Fixpoint rclosed (t : trm) : Prop :=

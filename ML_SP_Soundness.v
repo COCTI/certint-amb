@@ -1100,11 +1100,11 @@ Qed.
 Lemma graph_of_tree_root n Ks ofs T :
   graph_of_tree ofs T = (n, Ks) -> n = ofs.
 Proof.
-  case T; simpl; try solve [introv E; inversions* E];
-  intros T1 T2; simpl;
-  case_eq (graph_of_tree (ofs + 1) T1); intros n1 K1;
-  case_eq (graph_of_tree (ofs + length K1 + 1) T2); intros;
-  inversions* H1.
+  induction T; simpl; try solve [introv E; inversions* E];
+  try solve[ simpl;
+             case_eq (graph_of_tree (ofs + 1) T1); intros n1 K1;
+             case_eq (graph_of_tree (ofs + length K1 + 1) T2); intros;
+             inversions* H1 ].
 Qed.
 
 Lemma value_trm_open_rigid n r t :
@@ -1176,6 +1176,74 @@ Proof. induction l; simpl*; intros []; subst*. Qed.
 Lemma in_snd l : In (x,y) l -> In y (list_snd l).
 Proof. induction l; simpl*; intros []; subst*. Qed.
 End in_assoc.
+
+Lemma tree_instance_binds K x T :
+  tree_instance K x T -> exists kr, binds x kr K.
+Proof. intros []; esplit; auto*. Qed.
+
+Lemma tree_instance_subst_eq Q K x T1 T2 S :
+  kenv_ok Q K ->
+  qsat Q S ->
+  tree_instance K x T1 ->
+  tree_instance K x T2 ->
+  tree_subst_eq S T1 T2.
+Proof.
+  intros Kok QS.
+  revert x T2.
+  unfold tree_subst_eq.
+  induction T1; intros.
+- inversions H.
+  inversions H0.
+  + assert (Heq := binds_func H1 H3).
+    inversions Heq; clear Heq H3.
+    use ((proj43 Kok) _ _ (binds_in H1)).
+    inversions H3; try (elim Cstr.arrow_eq; now rewrite <- H4, <- H11).
+    rewrite (H12 _ QS _ H2); clear H12.
+    remember (tr_rvar (rvar_attr rv Cstr.arrow_dom)) as T3.
+    remember (tr_rvar (rvar_attr rv Cstr.arrow_cod)) as T4.
+    simpl.
+    rewrite (IHT1_1 _ T3 H8).
+      rewrite (IHT1_2 _ T4 H9); auto; subst.
+      destruct (tree_instance_binds H9) as [[kz rvz] Bz].
+      apply (tri_rvar _ Bz).
+      use ((proj44 Kok) _ _ (binds_in H1)).
+      inversions H7.
+      destruct (H13 Cstr.arrow_cod z); clear H13; auto.
+        now rewrite H11, Cstr.unique_cod.
+      destruct H10 as [rvz' [Bz' FAR']].
+      assert (Heq := binds_func Bz' Bz).
+      inversions* Heq.
+    destruct (tree_instance_binds H8) as [[ky rvy] By].
+    subst.
+    apply (tri_rvar _ By).
+    use ((proj44 Kok) _ _ (binds_in H1)).
+    inversions H7.
+    destruct (H13 Cstr.arrow_dom y); clear H13; auto.
+      now rewrite H11, Cstr.unique_dom.
+    destruct H10 as [rvy' [By' FAR']].
+    assert (Heq := binds_func By' By).
+    inversions* Heq.
+  + simpl.
+    assert (Heq := binds_func H1 H3).
+    inversions Heq; clear Heq H1 H2.
+    rewrite (IHT1_1 _ T1 H8).
+      rewrite* (IHT1_2 _ T0 H9).
+      assert (Hkuc := Cstr.unique_cod).
+      rewrite <- H4 in Hkuc.
+      use (kind_coherent _ _ _ Hkuc H10 H6).
+      inversions* H1.
+    assert (Hkud := Cstr.unique_dom).
+    rewrite <- H4 in Hkud.
+    use (kind_coherent _ _ _ Hkud H7 H5).
+    inversions* H1.
+  + assert (Heq := binds_func H1 H3).
+    inversions Heq; clear Heq H1.
+    elim Cstr.arrow_eq.
+    now rewrite <- H4.
+- admit.
+- admit.
+- inversion H.
+Admitted.
 
 Lemma preservation_result : preservation.
 Proof.
@@ -1346,9 +1414,29 @@ induction Typ; introv EQ Red; subst; inversions Red;
   apply* H3.
   apply* trm_open_rigid_red. *)
   (* UseEq *)
-- admit. (* destruct* Typ2.
-  apply* (@typing_abs (true, GcAny) Q L K E U). inversion H1.
-  admit. *)
+- clear IHTyp1 IHTyp2.
+  apply typing_canonize in Typ1.
+  gen_eq trm_eq as t1.
+  gen_eq (typ_fvar x) as Tx.
+  fold (typing_gc_let Q K E t1 Tx) in Typ1.
+  revert H Typ2 Red.
+  apply (proj2 (A:=kenv_ok Q K)).
+  induction Typ1 using typing_gc_ind.
+    split2*; intros; subst.  
+    simpl in Typ2.
+    admit.
+  split.
+    pick_freshes (length Ks) Xs.
+    destruct* (H Xs).
+    apply* kenv_ok_strengthen.
+    rewrite* dom_kinds_open_vars.
+  intros; subst.
+  apply (typing_gc Ks (L \u dom K \u fv_in kind_fv K)).
+    simpl*.
+  intros.
+  apply H; auto.
+  apply* typing_weaken_kinds.
+  destruct* (H Xs).
   (* Use1 *)
 - apply* typing_use.
 Admitted.

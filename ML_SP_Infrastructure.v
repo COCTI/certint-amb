@@ -143,6 +143,7 @@ Fixpoint tree_fv (T : tree) : vars :=
   | tr_arrow T1 T2
   | tr_eq T1 T2 => (tree_fv T1) \u (tree_fv T2)
   | tr_rvar r   => rvar_fv r
+  | tr_stuck T1 a => tree_fv T1
   end.
 
 Definition qitem_fv (q : qitem) : vars :=
@@ -1462,6 +1463,7 @@ Proof.
   case_eq (graph_of_tree (m + 1) T1); intros.
   case_eq (graph_of_tree (m + length l + 1) T2); intros.
   simpl*. lia.
+  apply IHT.
 Qed.
   
 Lemma graph_of_tree_type_n T :
@@ -1535,7 +1537,8 @@ Lemma tree_open_rigid_shift_rigid n m r T : m <= n ->
         tree_open_rigid (S n) (rvar_shift m r) (tree_shift_rigid m T).
 Proof.
   induction T; simpl*; intros; try now rewrite IHT1, IHT2.
-  rewrite* rvar_shift_open. 
+  - rewrite* rvar_shift_open. 
+  - rewrite* IHT.
 Qed.
 
 Lemma trm_shift_rigid_rec n m r u : m <= n ->
