@@ -1187,6 +1187,81 @@ Lemma tree_subst_eq_rvars Q k rvs rv1 rv2 S :
   tree_subst_eq S (tr_rvar rv1) (tr_rvar rv2).
 Proof. intros; inversions* H. Qed.
 
+Section tree_subst_eq.
+Variables (Q : qenv) (K : kenv) (S : Env.env tree) (x y z : var).
+Variables (ck : ckind) (rvs : list rvar) (T1 T2 : tree) (rv : rvar).
+Variables (Kok : kenv_ok Q K) (QS : qsat Q S).
+Hypothesis TI1 : tree_instance K y T1. 
+Hypothesis TI2 : tree_instance K z T2.
+Hypothesis IHT1 : forall rv rvs k,
+    binds y (k,rvs) K -> In rv rvs -> tree_subst_eq S T1 (tr_rvar rv).
+Hypothesis IHT2 : forall rv rvs k,
+    binds z (k,rvs) K -> In rv rvs -> tree_subst_eq S T2 (tr_rvar rv).
+Hypothesis Bx : binds x (Some ck, rvs) K.
+Hypothesis Hrv : In rv rvs.
+Let Cohx := (proj43 Kok) _ _ (binds_in Bx).
+
+Lemma tree_subst_eq_arrow_rvar :
+  kind_cstr ck = Cstr.arrow ->
+  In (Cstr.arrow_dom, typ_fvar y) (kind_rel ck) ->
+  In (Cstr.arrow_cod, typ_fvar z) (kind_rel ck) ->
+  tree_subst S (tr_arrow T1 T2) = tree_subst S (tr_rvar rv).
+Proof.
+  intros.
+  inversions Cohx; try (elim Cstr.arrow_eq; now rewrite <- H, <- H4).
+  rewrite (H6 _ _ QS Hrv); clear H6 H4.
+  remember (tr_rvar (rvar_attr rv Cstr.arrow_dom)) as T3.
+  remember (tr_rvar (rvar_attr rv Cstr.arrow_cod)) as T4.
+  simpl.
+  destruct (tree_instance_binds TI1) as [[ky rvy] By].
+  destruct (tree_instance_binds TI2) as [[kz rvz] Bz]; subst.
+  use ((proj44 Kok) _ _ (binds_in Bx)).
+  inversions H2; clear H2.
+  rewrite* (IHT1 (rvar_attr rv Cstr.arrow_dom) By).
+    rewrite* (IHT2 (rvar_attr rv Cstr.arrow_cod) Bz).
+    destruct (H6 Cstr.arrow_cod z); clear H6; auto.
+      now rewrite H, Cstr.unique_cod.
+    destruct H2 as [rvz' [Bz' FAR']].
+    assert (Heq := binds_func Bz' Bz).
+    inversions* Heq.
+  destruct (H6 Cstr.arrow_dom y); clear H6; auto.
+    now rewrite H, Cstr.unique_dom.
+  destruct H2 as [rvy' [By' FAR']].
+  assert (Heq := binds_func By' By).
+  inversions* Heq.
+Qed.
+
+Lemma tree_subst_eq_eq_rvar :
+  kind_cstr ck = Cstr.eq ->
+  In (Cstr.eq_fst, typ_fvar y) (kind_rel ck) ->
+  In (Cstr.eq_snd, typ_fvar z) (kind_rel ck) ->
+  tree_subst S (tr_eq T1 T2) = tree_subst S (tr_rvar rv).
+Proof.
+  intros.
+  inversions Cohx; try (elim Cstr.arrow_eq; now rewrite <- H, <- H4).
+  rewrite (H6 _ _ QS Hrv); clear H6 H4.
+  remember (tr_rvar (rvar_attr rv Cstr.eq_fst)) as T3.
+  remember (tr_rvar (rvar_attr rv Cstr.eq_snd)) as T4.
+  simpl.
+  destruct (tree_instance_binds TI1) as [[ky rvy] By].
+  destruct (tree_instance_binds TI2) as [[kz rvz] Bz]; subst.
+  use ((proj44 Kok) _ _ (binds_in Bx)).
+  inversions H2; clear H2.
+  rewrite* (IHT1 (rvar_attr rv Cstr.eq_fst) By).
+    rewrite* (IHT2 (rvar_attr rv Cstr.eq_snd) Bz).
+    destruct (H6 Cstr.eq_snd z); clear H6; auto.
+      now rewrite H, Cstr.unique_snd.
+    destruct H2 as [rvz' [Bz' FAR']].
+    assert (Heq := binds_func Bz' Bz).
+    inversions* Heq.
+  destruct (H6 Cstr.eq_fst y); clear H6; auto.
+    now rewrite H, Cstr.unique_fst.
+  destruct H2 as [rvy' [By' FAR']].
+  assert (Heq := binds_func By' By).
+  inversions* Heq.
+Qed.
+End tree_subst_eq.
+
 Lemma tree_instance_subst_eq Q K x T1 T2 S :
   kenv_ok Q K ->
   qsat Q S ->
@@ -1198,85 +1273,22 @@ Proof.
   unfold tree_subst_eq.
   revert T2 TI2; induction TI1; intros.
 - revert rv rvs k H H0.
-  induction TI2; intros; assert (Cohx := (proj43 Kok) _ _ (binds_in H)).
-  + assert (Heq := binds_func H1 H);
-    inversions Heq; clear Heq H1.
+  induction TI2; intros; symmetry.
+  + assert (Heq := binds_func H1 H).
+    inversions Heq.
+    assert (Cohx := (proj43 Kok) _ _ (binds_in H)).
     apply* tree_subst_eq_rvars.
-  + inversions Cohx; try (elim Cstr.arrow_eq; now rewrite <- H0, <- H7).
-    assert (Heq := binds_func H3 H).
-    inversions* Heq; clear Heq H3 H0.
-    rewrite (H9 _ _ QS H4); clear H9.
-    remember (tr_rvar (rvar_attr rv Cstr.arrow_dom)) as T3.
-    remember (tr_rvar (rvar_attr rv Cstr.arrow_cod)) as T4.
-    simpl; subst.
-    destruct (tree_instance_binds TI2_1) as [[ky rvy] By].
-    destruct (tree_instance_binds TI2_2) as [[kz rvz] Bz].
-    use ((proj44 Kok) _ _ (binds_in H)).
-    inversions H0; clear H0.
-    destruct (H6 Cstr.arrow_dom y); auto.
-      now rewrite H7, Cstr.unique_dom.
-    destruct H0 as [rvy' [By' FAR]].
-    assert (Heq := binds_func By' By).
-    inversions* Heq; clear Heq By'.
-    rewrite* (IHTI2_1 (rvar_attr rv Cstr.arrow_dom) _ _ By).
-    destruct (H6 Cstr.arrow_cod z); auto.
-      now rewrite H7, Cstr.unique_cod.
-    destruct H0 as [rvz' [Bz' FAR']].
-    assert (Heq := binds_func Bz' Bz).
-    inversions* Heq; clear Heq Bz'.
-    rewrite* (IHTI2_2 (rvar_attr rv Cstr.arrow_cod) _ _ Bz).
-  + inversions Cohx; try (elim Cstr.arrow_eq; now rewrite <- H0, <- H7).
-    assert (Heq := binds_func H3 H).
-    inversions* Heq; clear Heq H3 H0.
-    rewrite (H9 _ _ QS H4); clear H9.
-    remember (tr_rvar (rvar_attr rv Cstr.eq_fst)) as T3.
-    remember (tr_rvar (rvar_attr rv Cstr.eq_snd)) as T4.
-    simpl; subst.
-    destruct (tree_instance_binds TI2_1) as [[ky rvy] By].
-    destruct (tree_instance_binds TI2_2) as [[kz rvz] Bz].
-    use ((proj44 Kok) _ _ (binds_in H)).
-    inversions H0; clear H0.
-    destruct (H6 Cstr.eq_fst y); auto.
-      now rewrite H7, Cstr.unique_fst.
-    destruct H0 as [rvy' [By' FAR]].
-    assert (Heq := binds_func By' By).
-    inversions* Heq; clear Heq By'.
-    rewrite* (IHTI2_1 (rvar_attr rv Cstr.eq_fst) _ _ By).
-    destruct (H6 Cstr.eq_snd z); auto.
-      now rewrite H7, Cstr.unique_snd.
-    destruct H0 as [rvz' [Bz' FAR']].
-    assert (Heq := binds_func Bz' Bz).
-    inversions* Heq; clear Heq Bz'.
-    rewrite* (IHTI2_2 (rvar_attr rv Cstr.eq_snd) _ _ Bz).
-- assert (Cohx := (proj43 Kok) _ _ (binds_in H)).
-  inversions TI2;
-    assert (Heq := binds_func H3 H); inversions* Heq; clear Heq H3.
-  + inversions Cohx; try (elim Cstr.arrow_eq; now rewrite <- H0, <- H6).
-    rewrite (H8 _ _ QS H4); clear H8 H6.
-    remember (tr_rvar (rvar_attr rv Cstr.arrow_dom)) as T3.
-    remember (tr_rvar (rvar_attr rv Cstr.arrow_cod)) as T4.
-    simpl.
-    rewrite (IHTI1_1 T3).
-      rewrite (IHTI1_2 T4); auto; subst.
-      destruct (tree_instance_binds TI1_2) as [[kz rvz] Bz].
-      apply (tri_rvar _ Bz).
-      use ((proj44 Kok) _ _ (binds_in H)).
-      inversions H3.
-      destruct (H8 Cstr.arrow_cod z); clear H8; auto.
-        now rewrite H0, Cstr.unique_cod.
-      destruct H5 as [rvz' [Bz' FAR']].
-      assert (Heq := binds_func Bz' Bz).
-      inversions* Heq.
-    destruct (tree_instance_binds TI1_1) as [[ky rvy] By].
-    subst.
-    apply (tri_rvar _ By).
-    use ((proj44 Kok) _ _ (binds_in H)).
-    inversions H3.
-    destruct (H8 Cstr.arrow_dom y); clear H8; auto.
-      now rewrite H0, Cstr.unique_dom.
-    destruct H5 as [rvy' [By' FAR']].
-    assert (Heq := binds_func By' By).
-    inversions* Heq.
+  + assert (Heq := binds_func H3 H).
+    inversions Heq.
+    apply* tree_subst_eq_arrow_rvar; intros; symmetry; auto*.
+  + assert (Heq := binds_func H3 H).
+    inversions Heq.
+    apply* tree_subst_eq_eq_rvar; intros; symmetry; auto*.
+- inversions TI2;
+    assert (Heq := binds_func H3 H); inversions* Heq; clear Heq H3 TI2.
+  + apply* tree_subst_eq_arrow_rvar; intros.
+      apply IHTI1_1. apply* tri_rvar.
+    apply IHTI1_2. apply* tri_rvar.
   + simpl.
     clear H4.
     rewrite (IHTI1_1 T3).
@@ -1284,42 +1296,18 @@ Proof.
       assert (Hkuc := Cstr.unique_cod).
       rewrite <- H0 in Hkuc.
       use (kind_coherent _ _ _ Hkuc H6 H2).
-      inversions* H3.
+      now inversions H3.
     assert (Hkud := Cstr.unique_dom).
     rewrite <- H0 in Hkud.
     use (kind_coherent _ _ _ Hkud H5 H1).
-    inversions* H3.
+    now inversions H3.
   + elim Cstr.arrow_eq.
     now rewrite <- H0.
-- assert (Cohx := (proj43 Kok) _ _ (binds_in H)).
-  inversions TI2;
-    assert (Heq := binds_func H3 H); inversions* Heq; clear Heq H3.
-  + inversions Cohx; try (elim Cstr.arrow_eq; now rewrite <- H0, <- H6).
-    rewrite (H8 _ _ QS H4); clear H8 H6.
-    remember (tr_rvar (rvar_attr rv Cstr.eq_fst)) as T3.
-    remember (tr_rvar (rvar_attr rv Cstr.eq_snd)) as T4.
-    simpl.
-    rewrite (IHTI1_1 T3).
-      rewrite (IHTI1_2 T4); auto; subst.
-      destruct (tree_instance_binds TI1_2) as [[kz rvz] Bz].
-      apply (tri_rvar _ Bz).
-      use ((proj44 Kok) _ _ (binds_in H)).
-      inversions H3.
-      destruct (H8 Cstr.eq_snd z); clear H8; auto.
-        now rewrite H0, Cstr.unique_snd.
-      destruct H5 as [rvz' [Bz' FAR']].
-      assert (Heq := binds_func Bz' Bz).
-      inversions* Heq.
-    destruct (tree_instance_binds TI1_1) as [[ky rvy] By].
-    subst.
-    apply (tri_rvar _ By).
-    use ((proj44 Kok) _ _ (binds_in H)).
-    inversions H3.
-    destruct (H8 Cstr.eq_fst y); clear H8; auto.
-      now rewrite H0, Cstr.unique_fst.
-    destruct H5 as [rvy' [By' FAR']].
-    assert (Heq := binds_func By' By).
-    inversions* Heq.
+- inversions TI2;
+    assert (Heq := binds_func H3 H); inversions* Heq; clear Heq H3 TI2.
+  + apply* tree_subst_eq_eq_rvar; intros.
+      apply IHTI1_1. apply* tri_rvar.
+    apply IHTI1_2. apply* tri_rvar.
   + elim Cstr.arrow_eq.
     now rewrite <- H0.
   + simpl.
@@ -1329,11 +1317,11 @@ Proof.
       assert (Hkuc := Cstr.unique_snd).
       rewrite <- H0 in Hkuc.
       use (kind_coherent _ _ _ Hkuc H6 H2).
-      inversions* H3.
+      now inversions H3.
     assert (Hkud := Cstr.unique_fst).
     rewrite <- H0 in Hkud.
     use (kind_coherent _ _ _ Hkud H5 H1).
-    inversions* H3.
+    now inversions H3.
 Qed.
 
 Section qcoherent.
@@ -1362,11 +1350,11 @@ Proof.
   apply* (H rv1 rv2).
   apply* qsat_strengthen.
 - apply (qc_arrow k rvs); auto.
-  intros; apply* H0.
-  apply* qsat_strengthen.
+  intros; apply* H0; apply* qsat_strengthen.
+  intros; apply* H1; apply* qsat_strengthen.
 - apply (qc_eq k rvs); auto.
-  intros; apply* H0.
-  apply* qsat_strengthen.
+  intros; apply* H0; apply* qsat_strengthen.
+  intros; apply* H1; apply* qsat_strengthen.
 Qed.
 
 Lemma qcoherent_strengthen_kenv Q1 K :
@@ -1390,7 +1378,7 @@ Proof.
   intros; apply* qcoherent_strengthen.
 Qed.
 
-Local Hint Resolve qcoherent_strengthen_kenv qcoherent_strengthen_env : base.
+Hint Resolve qcoherent_strengthen_kenv qcoherent_strengthen_env : base.
 
 Lemma qcoherent_strengthen_typing Q1 K E t T :
   [ Q1 ++ qeq T1 T2 :: Q2 ; K ; E | (true, GcAny) |= t ~: T ] ->
@@ -1579,7 +1567,11 @@ induction Typ; introv EQ Red; subst; inversions Red;
   apply* typing_weaken_kinds.
   destruct* (H Xs).
   (* Delta0 *)
-- admit.
+- destruct vl.
+  elimtype False; clear -H3 e.
+  unfold const_app in H3.
+  induction tl using rev_ind; try discriminate.
+  now rewrite fold_left_app in H3.
 (*  (* Rigid *)
 - apply* (@typing_rigid (true, GcAny) Q L).
   intros.
@@ -1609,7 +1601,6 @@ induction Typ; introv EQ Red; subst; inversions Red;
       rewrite <- H10 in Hkuc.
       use (kind_coherent k _ _ Hkuc H13 H11); subst.
       inversions H2.
-      clear Hkud Hkuc H7 H11 H2.
       apply* (@tree_instance_subst_eq Q K y).
     apply* (qcoherent_strengthen_typing H1 nil).
   split.
@@ -1626,7 +1617,7 @@ induction Typ; introv EQ Red; subst; inversions Red;
   destruct* (H Xs).
   (* Use1 *)
 - apply* typing_use.
-Admitted.
+Qed.
 
 (* ********************************************************************** *)
 (** Progress: typed terms are values or can reduce *)
