@@ -582,19 +582,21 @@ Inductive qcoherent (Q : qenv) : kind -> Prop :=
       qcoherent Q (None, rvs)
   | qc_arrow : forall k rvs,
       kind_cstr k = Cstr.arrow ->
-      (forall S, qsat Q S ->
-         forall rv, In rv rvs ->
-                    tree_subst_eq S (tr_rvar rv)
+      (forall rv1 rv2 S, qsat Q S -> In rv1 rvs -> In rv2 rvs ->
+          tree_subst_eq S (tr_rvar rv1) (tr_rvar rv2)) ->
+      (forall rv S, qsat Q S -> In rv rvs ->
+        tree_subst_eq S (tr_rvar rv)
                         (tr_arrow (tr_rvar (rvar_attr rv Cstr.arrow_dom))
                                   (tr_rvar (rvar_attr rv Cstr.arrow_cod)))) ->
       qcoherent Q (Some k, rvs)
   | qc_eq : forall k rvs,
       kind_cstr k = Cstr.eq ->
-      (forall S, qsat Q S ->
-         forall rv, In rv rvs ->
-                    tree_subst_eq S (tr_rvar rv)
-                        (tr_arrow (tr_rvar (rvar_attr rv Cstr.eq_fst))
-                                  (tr_rvar (rvar_attr rv Cstr.eq_snd)))) ->
+      (forall rv1 rv2 S, qsat Q S -> In rv1 rvs -> In rv2 rvs ->
+          tree_subst_eq S (tr_rvar rv1) (tr_rvar rv2)) ->
+      (forall rv S, qsat Q S -> In rv rvs ->
+        tree_subst_eq S (tr_rvar rv)
+                        (tr_eq (tr_rvar (rvar_attr rv Cstr.eq_fst))
+                               (tr_rvar (rvar_attr rv Cstr.eq_snd)))) ->
       qcoherent Q (Some k, rvs).
 
 (* Properties of kinding environments *)
