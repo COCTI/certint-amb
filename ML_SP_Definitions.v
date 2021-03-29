@@ -802,7 +802,6 @@ Inductive red : trm -> trm -> Prop :=
       term t2 ->
       red (trm_use trm_eq T T' t2) t2
   | red_use_1 : forall t1 t1' T T' t2,
-      term t1 ->
       term t2 ->
       red t1 t1' ->
       red (trm_use t1 T T' t2) (trm_use t1' T T' t2)
@@ -822,7 +821,10 @@ Inductive red : trm -> trm -> Prop :=
       term t' ->
       red (trm_app (trm_ann (trm_abs t) (tr_rvar r)) t')
         (trm_let (trm_ann t' (tr_rvar (rvar_attr r Cstr.arrow_dom)))
-                 (trm_ann t (tr_rvar (rvar_attr r Cstr.arrow_cod)))).
+                 (trm_ann t (tr_rvar (rvar_attr r Cstr.arrow_cod))))
+  | red_ann_1 : forall T t1 t1',
+      red t1 t1' ->
+      red (trm_ann t1 T) (trm_ann t1' T).
 (*
   | red_ann_abs_1 : forall T U t1,
       term (trm_abs t1) ->

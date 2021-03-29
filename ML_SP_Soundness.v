@@ -1385,6 +1385,9 @@ induction Typ; introv EQ Red; subst; inversions Red;
   intros.
   apply* H3.
   apply* trm_open_rigid_red. *)
+  (* Ann1 *)
+- apply (typing_ann _ H H0).
+  apply* IHTyp.
   (* UseEq *)
 - clear IHTyp1 IHTyp2.
   apply typing_canonize in Typ1.
