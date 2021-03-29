@@ -647,7 +647,7 @@ Inductive valu : nat -> trm -> Prop :=
       valu n2 t2 ->
       valu n (trm_app t1 t2)
   | value_eq  : valu 0 trm_eq
-  | value_ann : forall n t T, valu n t -> valu n (trm_ann t T)
+  | value_ann : forall n t T, valu n t -> valu 0 (trm_ann t T)
   | value_rigid : forall n t, valu n t -> valu n (trm_rigid t)
   | value_use : forall t1 T1 T2 n t2,
       valu 0 t1 -> valu n t2 -> valu n (trm_use t1 T1 T2 t2).
@@ -813,11 +813,10 @@ Inductive red : trm -> trm -> Prop :=
       red (trm_rigid t) (trm_rigid t')
 *)
   | red_apply_ann_1 : forall T U t t',
-      term (trm_abs t) ->
+      term t ->
       term t' ->
-      red (trm_app (trm_ann (trm_abs t) (tr_arrow T U)) t')
-          (trm_let (trm_ann t' T)
-                   (trm_ann t U))
+      red (trm_app (trm_ann t (tr_arrow T U)) t')
+          (trm_ann (trm_app t (trm_ann t' T)) U)
   | red_apply_ann_2 : forall r t t',
       term (trm_abs t) ->
       term t' ->

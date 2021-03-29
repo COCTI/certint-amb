@@ -1262,7 +1262,7 @@ induction Typ; introv EQ Red; subst; inversions Red;
 - auto*.
   (* ApplyAnn1 *)
 - apply typing_canonize in Typ1.
-  gen_eq (trm_ann (trm_abs t) (tr_arrow T0 U)) as t1.
+  gen_eq (trm_ann t (tr_arrow T0 U)) as t1.
   gen_eq (typ_fvar V) as T1.
   fold (typing_gc_let Q K E t1 T1) in Typ1.
   clear IHTyp1 IHTyp2.
@@ -1281,27 +1281,11 @@ induction Typ; introv EQ Red; subst; inversions Red;
     rewrite <- H9 in Hkuc.
     use (kind_coherent k _ _ Hkuc H11 H2); subst.
     clear Hkud Hkuc H1 H2.
-    inversions H14; try discriminate.
     inversions H12.
-    assert (HeqV := binds_func H3 H15).
-    inversions HeqV; clear HeqV H15 H18.
-    assert (Hkud := Cstr.unique_dom).
-    rewrite <- H4 in Hkud.
-    use (kind_coherent _ _ _ Hkud H6 H19); subst.
-    assert (Hkuc := Cstr.unique_cod).
-    rewrite <- H4 in Hkuc.
-    use (kind_coherent _ _ _ Hkuc H20 H22); subst.
-    clear Hkud Hkuc H6 H22.
-    apply (@typing_let _ Q (Sch (typ_fvar y0) nil) (dom K) (L \u dom E)).
-      simpl; intros.
-      destruct Xs; try contradiction.
-      unfold sch_open_vars; simpl.
-      rewrite* typ_open_vars_nil.
-    unfold trm_open; simpl; intros.
-    fold (trm_open t (trm_fvar x0)).
-    apply (typing_ann _ H25 H17).
-    eapply typing_gc_any.
-    apply* H21.
+    apply (typing_ann _ H19 H17).
+    apply (typing_app _ (S:=typ_fvar y0) (typ_fvar z0) H2); auto; simpl.
+      eapply typing_gc_any; apply H14.
+    now apply (typing_ann _ H16 H18).
   split.
     pick_freshes (length Ks) Xs.
     destruct* (H Xs).
