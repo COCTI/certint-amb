@@ -1061,13 +1061,11 @@ Proof.
     destruct (H4 Cstr.arrow_cod z); clear H4; auto.
       now rewrite H, Cstr.unique_cod.
     destruct H2 as [rvz' [Bz' FAR']].
-    assert (Heq := binds_func Bz' Bz).
-    inversions* Heq.
+    injection (binds_func Bz' Bz); intros; subst*.
   destruct (H4 Cstr.arrow_dom y); clear H4; auto.
     now rewrite H, Cstr.unique_dom.
   destruct H2 as [rvy' [By' FAR']].
-  assert (Heq := binds_func By' By).
-  inversions* Heq.
+  injection (binds_func By' By); intros; subst*.
 Qed.
 
 Lemma tree_subst_eq_eq_rvar :
@@ -1090,13 +1088,11 @@ Proof.
     destruct (H4 Cstr.eq_snd z); clear H4; auto.
       now rewrite H, Cstr.unique_snd.
     destruct H2 as [rvz' [Bz' FAR']].
-    assert (Heq := binds_func Bz' Bz).
-    inversions* Heq.
+    injection (binds_func Bz' Bz); intros; subst*.
   destruct (H4 Cstr.eq_fst y); clear H4; auto.
     now rewrite H, Cstr.unique_fst.
   destruct H2 as [rvy' [By' FAR']].
-  assert (Heq := binds_func By' By).
-  inversions* Heq.
+  injection (binds_func By' By); intros; subst*.
 Qed.
 End tree_subst_eq.
 
@@ -1112,18 +1108,15 @@ Proof.
   revert T2 TI2; induction TI1; intros.
 - revert rv rvs k H H0.
   induction TI2; intros; symmetry.
-  + assert (Heq := binds_func H1 H).
-    inversions Heq.
+  + injection (binds_func H1 H); intros; subst.
     assert (Cohx := (proj43 Kok) _ _ (binds_in H)).
     apply* tree_subst_eq_rvars.
-  + assert (Heq := binds_func H3 H).
-    inversions Heq.
+  + injection (binds_func H3 H); intros; subst.
     apply* tree_subst_eq_arrow_rvar; intros; symmetry; auto*.
-  + assert (Heq := binds_func H3 H).
-    inversions Heq.
+  + injection (binds_func H3 H); intros; subst.
     apply* tree_subst_eq_eq_rvar; intros; symmetry; auto*.
 - inversions TI2;
-    assert (Heq := binds_func H3 H); inversions* Heq; clear Heq H3 TI2.
+    injection (binds_func H3 H); intros; subst; clear H3 TI2.
   + apply* tree_subst_eq_arrow_rvar; intros.
       apply IHTI1_1. apply* tri_rvar.
     apply IHTI1_2. apply* tri_rvar.
@@ -1141,8 +1134,7 @@ Proof.
     now inversions H3.
   + elim Cstr.arrow_eq.
     now rewrite <- H0.
-- inversions TI2;
-    assert (Heq := binds_func H3 H); inversions* Heq; clear Heq H3 TI2.
+- inversions TI2; injection (binds_func H3 H); intros; subst; clear H3 TI2.
   + apply* tree_subst_eq_eq_rvar; intros.
       apply IHTI1_1. apply* tri_rvar.
     apply IHTI1_2. apply* tri_rvar.
@@ -1286,8 +1278,7 @@ induction Typ; introv EQ Red; subst; inversions Red;
     split2*; intros; subst.
     inversions H; try discriminate; simpl in *.
     inversions H13.
-    assert (HeqV := binds_func H8 H3).
-    inversions HeqV; clear HeqV H3 H0.
+    injection (binds_func H8 H3); intros; subst; clear H3 H0.
     assert (Hkud := Cstr.unique_dom).
     rewrite <- H9 in Hkud.
     use (kind_coherent k _ _ Hkud H10 H1); subst.
@@ -1324,12 +1315,10 @@ induction Typ; introv EQ Red; subst; inversions Red;
     split2*; intros; subst.
     inversions H; try discriminate; simpl in *.
     inversions H13.
-    assert (HeqV := binds_func H6 H3).
-    inversions HeqV; clear HeqV H3.
+    injection (binds_func H6 H3); intros; subst; clear H3.
     inversions H14; try discriminate.
     inversions H12.
-    assert (HeqV := binds_func H4 H10).
-    inversions HeqV; clear HeqV H10.
+    injection (binds_func H4 H10); intros; subst; clear H10.
     assert (Kok : kenv_ok Q K) by auto*.
     destruct Kok as [_ [ATK [CohK WFK]]].
     assert (WFk0 := WFK _ _ (binds_in H4)).
@@ -1417,8 +1406,7 @@ induction Typ; introv EQ Red; subst; inversions Red;
       intros.
       inversions H; try discriminate.
       inversions H0.
-      assert (Heq := binds_func H9 H6).
-      inversions Heq; clear Heq H9.
+      injection (binds_func H9 H6); intros; subst; clear H9.
       assert (Hkud := Cstr.unique_fst).
       rewrite <- H10 in Hkud.
       use (kind_coherent k _ _ Hkud H7 H12); subst.
