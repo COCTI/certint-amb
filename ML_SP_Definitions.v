@@ -191,106 +191,6 @@ destruct H.
   contradiction.
 contradiction.
 Qed.
-    
-Definition arrow_kind (m n : nat) :=
-  Kind Cstr.valid_arrow
-       (coherent_pair (T:=typ_bvar m) (T':=typ_bvar n) Cstr.arrow_attrs).
-Definition eq_kind (m n : nat) :=
-  Kind Cstr.valid_eq
-       (coherent_pair (T:=typ_bvar m) (T':=typ_bvar n) Cstr.eq_attrs).
-
-Fixpoint graph_of_tree ofs (tr : tree) : nat * list kind :=
-  match tr with
-  (* | tr_bvar n => (n, nil) *)
-  | tr_arrow t1 t2 =>
-    let '(n1, g1) := graph_of_tree (ofs + 1) t1 in
-    let '(n2, g2) := graph_of_tree (ofs + length g1 + 1) t2 in
-    (ofs, (Some (arrow_kind n1 n2), nil) :: g1 ++ g2)
-  | tr_eq t1 t2 =>
-    let '(n1, g1) := graph_of_tree (ofs + 1) t1 in
-    let '(n2, g2) := graph_of_tree (ofs + length g1 + 1) t2 in
-    (ofs, (Some (eq_kind n1 n2), nil) :: g1 ++ g2)
-  | tr_rvar rv =>
-    (ofs, (None, rv :: nil) :: nil)
-  | tr_stuck t1 _ =>
-    graph_of_tree ofs t1
-  end.
-
-Definition graph_of_tree_type S := graph_of_tree 0 S.
-
-Definition annotation_tree (S : tree) := tr_arrow S S.
-
-(*
-Fixpoint graph_of_kinds ofs (Ks : list tree_kind) : list kind * list kind :=
-  match Ks with
-  | nil => (nil, nil)
-  | (None,rvs) :: rem =>
-    let '(K, K') := graph_of_kinds ofs rem in
-    ((None,rvs) :: K, K')
-  | (Some(kc,kr),rvs) :: rem =>
-    let K' := fold_left
-                (fun K' atr =>
-                   let '(_, K'') :=
-                       graph_of_tree (ofs + length K') (snd atr) in
-                   K' ++ K'')
-                kr nil
-    in
-    let '(K, K'') := graph_of_kinds (ofs + length K') rem in
-    (K, K' ++ K'')
-  end.
-  
-Definition graph_of_tree_type (S : tree_type) : nat * list kind :=
-  let '(T,Ks) := S in
-  let '(K,K') := graph_of_kinds (length Ks) Ks in
-  let '(n,K'') := graph_of_tree (length K + length K') T in
-  (n, K ++ K' ++ K'').
-
-Eval compute in
-  graph_of_tree_type (tr_arrow (tr_rvar (rvar_b 0)) (tr_rvar (rvar_b 1)), nil).
-
-Definition static_tree_kind (k : tree_kind) :=
-  match k with
-  | (None,nil) => false
-  | (None,_) => true
-  | (Some (kc,kr),_) => Cstr.static kc
-  end.
-
-Fixpoint build_right_map pos ofs (Ks : list tree_kind) n :=
-  match Ks with
-  | nil => n
-  | k :: rem =>
-    if static_tree_kind k then
-      if n === pos then ofs else build_right_map (S pos) (S ofs) rem n
-    else build_right_map (S pos) ofs rem n
-  end.
-
-Section right_tree.
-Variable V : nat -> nat.
-Fixpoint bsubst_tree (T : tree) :=
-  match T with
-  (* | tr_bvar x => tr_bvar (V x) *)
-  | tr_arrow T U => tr_arrow (bsubst_tree T) (bsubst_tree U)
-  | tr_eq T U => tr_eq (bsubst_tree T) (bsubst_tree U)
-  | tr_rvar r => T
-  end.
-
-Definition bsubst_tree_kind (k : tree_kind) :=
-  match k with
-  | (Some (c, trees), rvars) =>
-    (Some (c, List.map (fun p => (fst p, bsubst_tree (snd p))) trees), rvars)
-  | (None, rvars) => k
-  end.
-
-Definition right_tree_kinds :=
-  map (fun k => if static_tree_kind k then bsubst_tree_kind k else k).
-End right_tree.
-
-Definition annotation_tree (S : tree_type) :=
-  let '(T,K) := S in
-  let V := build_right_map 0 (length K) K in
-  (tr_arrow T (bsubst_tree T), K ++ right_tree_kinds K).
-*)
-
 
 (* Need also to define substitution of rigid variables *)
 Fixpoint rvar_open (k : nat) (u : rvar) (t : rvar) :=
@@ -366,75 +266,9 @@ Fixpoint tree_subst T :=
   | tr_stuck T1 a  => tr_stuck (tree_subst T1) a
   end.
 
-Definition tree_subst_eq T1 T2 :=
-  tree_subst T1 = tree_subst T2.
+Definition tree_subst_eq T1 T2 := tree_subst T1 = tree_subst T2.
 
-(*
-Inductive lookup_rvar : rvar -> tree -> Prop :=
-  | lr_f : forall r T,
-      binds r T S ->
-      lookup_rvar (rvar_f r) T
-  | lr_attr_dom : forall rv T1 T2,
-      lookup_rvar rv (tr_arrow T1 T2) ->
-      lookup_rvar (rvar_attr rv Cstr.arrow_dom) T1
-  | lr_attr_cod : forall rv T1 T2,
-      lookup_rvar rv (tr_arrow T1 T2) ->
-      lookup_rvar (rvar_attr rv Cstr.arrow_cod) T2
-  | lr_attr_fst : forall rv T1 T2,
-      lookup_rvar rv (tr_eq T1 T2) ->
-      lookup_rvar (rvar_attr rv Cstr.eq_fst) T1
-  | lr_attr_snd : forall rv T1 T2,
-      lookup_rvar rv (tr_eq T1 T2) ->
-      lookup_rvar (rvar_attr rv Cstr.eq_snd) T2.
-
-Inductive tree_subst_eq : tree -> tree -> Prop :=
-  | tse_var1 : forall rv T1 T2,
-      lookup_rvar rv T1 ->
-      tree_subst_eq T1 T2 ->
-      tree_subst_eq (tr_rvar rv) T2
-  | tse_var2 : forall rv T1 T2,
-      lookup_rvar rv T2 ->
-      tree_subst_eq T1 T2 ->
-      tree_subst_eq T1 (tr_rvar rv)
-  | tse_arrow : forall T1 T2 T1' T2',
-      tree_subst_eq T1 T1' -> tree_subst_eq T2 T2' ->
-      tree_subst_eq (tr_arrow T1 T2) (tr_arrow T1' T2')
-  | tse_eq : forall T1 T2 T1' T2',
-      tree_subst_eq T1 T1' -> tree_subst_eq T2 T2' ->
-      tree_subst_eq (tr_eq T1 T2) (tr_eq T1' T2')
-  | tse_rvar : forall rv, tree_subst_eq (tr_rvar rv) (tr_rvar rv).
-*)
 End tree_subst.
-
-Eval compute in
-  graph_of_tree_type (
-  annotation_tree (tr_arrow (tr_rvar (rvar_b 0)) (tr_rvar (rvar_b 1)))).
-
-(* Eval compute in
-  annotation_tree (tr_arrow (tr_rvar (rvar_b 0)) (tr_bvar 0),
-                   (None, rvar_b 1 :: nil) :: nil). 
-
-Eval compute in
-  graph_of_tree_type (
-  annotation_tree (tr_arrow (tr_rvar (rvar_b 0)) (tr_bvar 0),
-                   (None, rvar_b 1 :: nil) :: nil)). *)
-
-(*
-\/ 'a::int, 'b. eq('a, 'b)
-Sch (tr_eq (tr_bvar 0) (tr_bvar 1)) [({sch_cstr:=int;...},nil); (None,nil)]
-
-[({sch_cstr:=int;...},nil); (None,nil); ({sch_cstr:=int;...},nil)]
-Vl : 0 => 0, 1 => 1
-Vr : 0 => 2, 1 => 1
-
-graph_of_tree Vl 3 s = (3, [(eq,{fst=>typ_bvar 0; snd=>typ_bar 2},nil)]) 
-graph_of_tree Vr 4 s = (4, [(eq,{fst=>typ_bvar 1; snd=>typ_bar 2},nil)])
-(typ_bvar 5,
-[({sch_cstr:=int;...},nil); (None,nil); ({sch_cstr:=int;...},nil);
- (eq,{fst=>typ_bvar 0; snd=>typ_bvar 1},nil);
- (eq,{fst=>typ_bvar 2; snd=>typ_bvar 1},nil);
- (arrow,{left=>typ_bvar 3; right=> typ_bvar 4}, nil)]
-*)
 
 (** Opening body of type schemes. *)
 
@@ -661,33 +495,6 @@ Inductive trm : Set :=
   | trm_use   : trm -> tree -> tree -> trm -> trm
   | trm_rigid : trm -> trm
   | trm_ann   : trm -> tree -> trm.
-
-(** Check if there are free rigid variables *)
-Fixpoint rclosed_rvar (r : rvar) : Prop :=
-  match r with
-  | rvar_b _ => False
-  | rvar_f _ => True
-  | rvar_attr l a => rclosed_rvar l
-  end.
-
-Fixpoint rclosed_tree (T : tree) : Prop :=
-  match T with
-  | tr_arrow T1 T2 | tr_eq T1 T2 => rclosed_tree T1 /\ rclosed_tree T2
-  | tr_rvar r => rclosed_rvar r
-  | tr_stuck T1 a => rclosed_tree T1
-  end.
-
-Fixpoint rclosed (t : trm) : Prop :=
-  match t with
-  | trm_eq | trm_bvar _ | trm_fvar _ | trm_cst _ => True
-  | trm_abs t' => rclosed t'
-  | trm_let t1 t2 | trm_app t1 t2 => rclosed t1 /\ rclosed t2
-  | trm_use t1 T1 T2 t2 =>
-    rclosed t1 /\ rclosed t2 /\
-    rclosed_tree T1 /\ rclosed_tree T2
-  | trm_rigid t => rclosed t
-  | trm_ann t T => rclosed t /\ rclosed_tree T
-  end.
 
 (** Opening term binders. *)
 

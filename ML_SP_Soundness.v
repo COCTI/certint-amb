@@ -500,85 +500,6 @@ Proof.
   apply (in_map_snd (typ_subst S) _ _ _ H2).
 Qed.
 
-Lemma graph_of_tree_subst ofs tr S :
-  let Ks := snd (graph_of_tree ofs tr) in
-  List.map (kind_subst S) Ks = Ks.
-Proof.
-  revert ofs; induction tr; simpl; intros; auto.
-  - specialize (IHtr1 (ofs+1)); revert IHtr1.
-    case_eq (graph_of_tree (ofs + 1) tr1); simpl; introv Htr1 IHtr1.
-    specialize (IHtr2 (ofs+length l+1)); revert IHtr2.
-    case_eq (graph_of_tree (ofs + length l + 1) tr2); simpl; introv Htr2 IHtr2.
-    rewrite map_app, IHtr1, IHtr2.
-    unfold kind_subst, kind_map.
-    f_equal.
-    f_equal.
-    now apply kind_pi.
-  - specialize (IHtr1 (ofs+1)); revert IHtr1.
-    case_eq (graph_of_tree (ofs + 1) tr1); simpl; introv Htr1 IHtr1.
-    specialize (IHtr2 (ofs+length l+1)); revert IHtr2.
-    case_eq (graph_of_tree (ofs + length l + 1) tr2); simpl; introv Htr2 IHtr2.
-    rewrite map_app, IHtr1, IHtr2.
-    unfold kind_subst, kind_map.
-    f_equal.
-    f_equal.
-    now apply kind_pi.
-Qed.
-
-Lemma graph_of_tree_type_subst n Ks tr S :
-  graph_of_tree_type tr = (n, Ks) ->
-  List.map (kind_subst S) Ks = Ks.
-Proof.
-  unfold graph_of_tree_type.
-  case_eq (graph_of_tree 0 tr); introv HK E.
-  injection E; intros; subst.
-  generalize (graph_of_tree_subst 0 tr S); simpl.
-  now rewrite HK.
-Qed.
-
-(*
-Lemma graph_of_kinds_subst ofs TKs S :
-  let (Ks, Ks') := graph_of_kinds ofs TKs in
-  List.map (kind_subst S) Ks = Ks /\ List.map (kind_subst S) Ks' = Ks'.
-Proof.
-  revert ofs.
-  induction TKs; simpl; intros; auto.
-  destruct a as [[[]|] rvs].
-    set (ofs' := ofs + _).
-    specialize (IHTKs ofs'); revert IHTKs.
-    case_eq (graph_of_kinds ofs' TKs); introv HG; intros [E1 E2].
-    splits*.
-    rewrite map_app, E2.
-    f_equal.
-    assert (List.map (kind_subst S) nil = nil) by auto.
-    revert H; generalize (@nil kind).
-    clear; induction l; simpl; intros; auto.
-    generalize (graph_of_tree_subst (ofs + length l0) (snd a) S).
-    case_eq (graph_of_tree (ofs + length l0) (snd a)); simpl; intros.
-    apply IHl.
-    now rewrite map_app, H, H1.
-  specialize (IHTKs ofs); revert IHTKs.
-  case_eq (graph_of_kinds ofs TKs); simpl; introv HG; intros [E1 E2].
-  unfold kind_subst at 1, kind_map; simpl.
-  now rewrite E1, E2.
-Qed.
-
-Lemma graph_of_tree_type_subst n Ks tr S :
-  graph_of_tree_type tr = (n, Ks) ->
-  List.map (kind_subst S) Ks = Ks.
-Proof.
-  simpl.
-  unfold graph_of_tree_type.
-  destruct tr as [T K].
-  generalize (graph_of_kinds_subst (length K) K S).
-  case_eq (graph_of_kinds (length K) K); simpl; introv HG; intros [E1 E2].
-  generalize (graph_of_tree_subst (length l + length l0) T S).
-  case_eq (graph_of_tree (length l + length l0) T); simpl; introv HT E E'.
-  injection E'; intros; subst.
-  now rewrite map_app, map_app, E1, E2, E.
-Qed.
-*)
-
 Lemma typing_typ_subst : forall gc Q F K'' S K K' E t T,
   disjoint (dom S) (env_fv E \u fv_in kind_fv K \u dom K) ->
   dom K' << dom S -> disjoint (dom K') (fv_in (fun v:var => {{v}}) S) ->
@@ -1008,103 +929,6 @@ Proof.
   puts (H0 Xs H2); clear H0.
   apply* H1.
   apply* typing_weaken_kinds.
-Qed.
-
-Section set_nth.
-Variable A : Type.
-Fixpoint set_nth (n : nat) (x : A) l def :=
-  match n with
-  | 0 => x :: tl l
-  | S n => hd def l :: set_nth n x (tl l) def
-  end.
-
-Lemma set_nth_same n x l def def' : nth n (set_nth n x l def) def' = x.
-Proof. revert l; induction n; simpl*. Qed.
-
-Lemma set_nth_other n' x l def n :
-  n' <> n -> nth n (set_nth n' x l def) def = nth n l def.
-Proof.
-revert n l; induction n'; destruct l; destruct n; simpl; intros; auto;
-  try contradiction.
-- now destruct n.
-- rewrite IHn'. now destruct n. intro N; elim H; now rewrite N.
-Qed.
-
-Lemma length_set_nth n x l def : length l <= length (set_nth n x l def).
-Proof.
-  revert n; induction l; simpl; intros; auto with arith.
-  destruct n; simpl; auto with arith.
-Qed.
-End set_nth.
-
-Lemma extract_unique_attr K V k rvs k' rvs' a T S n Ks Us :
-  binds V (Some k, rvs) K ->
-  proper_instance K Ks Us ->
-  nth n Us typ_def = typ_fvar V ->
-  nth n Ks (None, nil) = (Some k', rvs') ->
-  In (a, T) (kind_rel k) ->
-  In (a, S) (kind_rel k') ->
-  Cstr.unique (kind_cstr k) a = true ->
-  typ_open S Us = T.
-Proof.
-  intros B PI nUs nKs HT HS HU.
-  apply (@kind_coherent k a); auto.
-  destruct PI.
-  destruct (le_lt_dec (length Ks) n).
-    rewrite (nth_overflow _ _ l) in nKs; discriminate.
-  forward~ (list_forall2_nth (n:=n) (kind_open (Some k', rvs') nil) typ_def H0)
-      as WK.
-    unfold kinds_open; now rewrite map_length.
-  inversions WK; clear WK.
-  rewrite nUs in H1; inversions H1; clear H1.
-  puts (binds_func B H2); subst.
-  destruct H3. revert H1.
-  unfold kinds_open; simpl.
-  rewrite (nth_indep _ _ (kind_open (None, nil) Us));
-    try now rewrite map_length.
-  rewrite (map_nth (fun k => kind_open k Us)), nKs.
-  simpl; intros [_ Erel].
-  forward~ (Erel (a, typ_open S Us)).
-  rewrite kind_rel_map.
-  now apply (in_map_snd (fun T => typ_open T Us)).
-Qed.
-
-Lemma graph_of_tr_arrow n Ks ofs T1 T2 :
-  graph_of_tree ofs (tr_arrow T1 T2) = (n, Ks) ->
-  exists m1, exists Ks1, exists m2, exists Ks2,
-      Ks = (Some (arrow_kind m1 m2), nil) :: Ks1 ++ Ks2 /\
-      graph_of_tree (ofs+1) T1 = (m1, Ks1) /\
-      graph_of_tree (ofs+length Ks1+1) T2 = (m2, Ks2).
-Proof.
-  simpl.
-  case_eq (graph_of_tree (ofs + 1) T1); intros m1 Ks1 HT1.
-  case_eq (graph_of_tree (ofs + length Ks1 + 1) T2); intros m2 Ks2 HT2 E.
-  inversions E; clear E.
-  now repeat esplit.
-Qed.
-
-Lemma graph_of_tr_eq n Ks ofs T1 T2 :
-  graph_of_tree ofs (tr_eq T1 T2) = (n, Ks) ->
-  exists m1, exists Ks1, exists m2, exists Ks2,
-      Ks = (Some (eq_kind m1 m2), nil) :: Ks1 ++ Ks2 /\
-      graph_of_tree (ofs+1) T1 = (m1, Ks1) /\
-      graph_of_tree (ofs+length Ks1+1) T2 = (m2, Ks2).
-Proof.
-  simpl.
-  case_eq (graph_of_tree (ofs + 1) T1); intros m1 Ks1 HT1.
-  case_eq (graph_of_tree (ofs + length Ks1 + 1) T2); intros m2 Ks2 HT2 E.
-  inversions E; clear E.
-  now repeat esplit.
-Qed.
-
-Lemma graph_of_tree_root n Ks ofs T :
-  graph_of_tree ofs T = (n, Ks) -> n = ofs.
-Proof.
-  induction T; simpl; try solve [introv E; inversions* E];
-  try solve[ simpl;
-             case_eq (graph_of_tree (ofs + 1) T1); intros n1 K1;
-             case_eq (graph_of_tree (ofs + length K1 + 1) T2); intros;
-             inversions* H1 ].
 Qed.
 
 Lemma value_trm_open_rigid n r t :
@@ -1669,14 +1493,14 @@ Proof.
   poses Typ' Typ.
   induction Typ; intros; subst;
     try (pick_freshes (length Ks) Xs; apply* (H0 Xs)).
-  inversions H1.
-  left*. exists* 0.
-  right*. pick_freshes (sch_arity M) Ys.
+- inversions H1.
+- left*. exists* 0.
+- right*. pick_freshes (sch_arity M) Ys.
     destructi~ (@H0 Ys) as [[n Val1] | [t1' Red1]].
       assert (value t1). exists* n.
       exists* (t2 ^^ t1).
       exists* (trm_let t1' t2).
-  destruct~ IHTyp2 as [Val2 | [t2' Red2]].
+- destruct~ IHTyp2 as [Val2 | [t2' Red2]].
     destruct~ IHTyp1 as [Val1 | [t1' Red1]].
       use (typing_canonize Typ').
       remember (empty(A:=sch)) as E.
@@ -1687,53 +1511,49 @@ Proof.
       induction H3 using typing_gc_ind.
         split2*; intros; subst.
         destruct Val1 as [n Val1]; inversions Val1.
-        right*; exists* (t0 ^^ t2).
-        case_eq (Const.arity c); intros.
+      + right*; exists* (t0 ^^ t2).
+      + case_eq (Const.arity c); intros.
           right*. rewrite H4 in Val1.
           assert (list_for_n value 1 (t2 :: nil)) by split2*.
           rewrite <- H4 in H5.
           exists (Delta.reduce H5).
           apply (red_delta H5).
         left*. exists n. rewrite H4 in Val1. destruct* Val2.
-        destruct n.
+      + destruct n.
           right*; apply* progress_delta.
           admit.
         left*. destruct Val2. exists* n.
-        admit.
-
-(*         inversion H13. *)
-        admit.
-      destruct (var_freshes (L \u dom K) (length Ks)) as [Xs HXs].
-      destruct* (H17 Xs).
+      + admit.
+      + admit.
+      + admit.
+      + admit.
+    + destruct (var_freshes (L \u dom K) (length Ks)) as [Xs HXs].
+      destruct* (H3 Xs).
       admit.
-      right*; exists* (trm_app t1' t2).
-    right*; exists* (trm_app t1 t2').
-  left*; exists* (Const.arity c).
-  destruct (var_freshes L (length Ks)) as [Xs HXs].
+    + right*; exists* (trm_app t1' t2).
+  + right*; exists* (trm_app t1 t2').
+- left*; exists* (Const.arity c).
+- destruct (var_freshes L (length Ks)) as [Xs HXs].
   apply* (H1 Xs).
-Qed.
+Abort.
 
 Lemma value_irreducible : forall t t',
   value t -> ~(t --> t').
 Proof.
   induction t; introv HV; destruct HV as [k HV']; inversions HV';
-    intro R; inversions R.
-       destruct (const_app_inv c tl) as [eq | [t1' [t2' eq]]];
-         rewrite eq in *; discriminate.
-      inversions H2.
-     destruct (value_app_const HV').
-     destruct H as [vl' [Hl [He Hv]]].
-     rewrite He in H0; clear He.
-     destruct (const_app_eq _ _ _ _ H0). subst.
-     clear -vl Hl; destruct vl.
-     Lia.lia.
-    elim (IHt1 t1'). exists* (S k). auto.
-   elim (IHt2 t2'). exists* n2. auto.
-  clear -vl H0.
-  destruct vl.
-  destruct (const_app_inv c0 tl) as [eq | [t1' [t2' eq]]];
-    rewrite eq in *; discriminate.
-Qed.
+    intro R; inversions R;
+      try (destruct (const_app_inv c tl) as [eq | [t1' [t2' eq]]];
+           rewrite eq in *; discriminate).
+- inversions H2.
+- destruct (value_app_const HV').
+  destruct H as [vl' [Hl [He Hv]]].
+  rewrite He in H0; clear He.
+  destruct (const_app_eq _ _ _ _ H0). subst.
+  clear -vl Hl; destruct vl.
+  Lia.lia.
+- elim (IHt1 t1'). exists* (S k). auto.
+- elim (IHt2 t2'). exists* n2. auto.
+Abort.
 
 End Mk3.
 

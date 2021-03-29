@@ -1452,29 +1452,6 @@ Global Hint Constructors typing valu red : core.
 (** ** Regularity of relations *)
 
 (** A typing relation is restricted to well-formed objects. *)
-Lemma graph_of_tree_n m T :
-  let '(n, Ks) := graph_of_tree m T in
-  n < length Ks + m.
-Proof.
-  revert m. induction T; intros; simpl*.
-  case_eq (graph_of_tree (m + 1) T1); intros.
-  case_eq (graph_of_tree (m + length l + 1) T2); intros.
-  simpl*. lia.
-  case_eq (graph_of_tree (m + 1) T1); intros.
-  case_eq (graph_of_tree (m + length l + 1) T2); intros.
-  simpl*. lia.
-  apply IHT.
-Qed.
-  
-Lemma graph_of_tree_type_n T :
-  let '(n, Ks) := graph_of_tree_type T in
-  n < length Ks.
-Proof.
-  unfold graph_of_tree_type.
-  case_eq (graph_of_tree 0 T); intros.
-  generalize (graph_of_tree_n 0 T).
-  rewrite H. lia.
-Qed.
 
 Lemma qsat_remove_qvar x Q Ts :
    qsat Q Ts -> qsat (qvar x :: Q) Ts.
