@@ -875,10 +875,37 @@ Qed.
 (* ********************************************************************** *)
 (** Extra hypotheses for main results *)
 
+Lemma valu_rigid_rec n r d t :
+  valu d t -> valu d (trm_rigid_rec n r t).
+Proof.
+  intros Val.
+  revert n r; induction Val; simpl*; intros.
+  inversions H.
+  apply value_abs.
+  apply (@term_abs L); intros.
+  rewrite trm_rigid_rec_open_var.
+  apply* term_rigid_rec.
+Qed.
+
+Lemma value_trm_open_rigid n r t : value t -> value (trm_rigid_rec n r t).
+Proof. intros []. exists x. now apply valu_rigid_rec. Qed.
+
+Lemma trm_rigid_rec_app c tl n r :
+  trm_rigid_rec n r (const_app c tl) =
+  const_app c (List.map (trm_rigid_rec n r) tl).
+Proof.
+  unfold const_app; induction tl using rev_ind; simpl*.
+  rewrite fold_left_app, map_app, fold_left_app; simpl.
+  now rewrite IHtl.
+Qed.
+
 Module Type SndHypIntf.
   Parameter delta_typed : forall c tl vl Q K E gc T,
     [ Q ; K ; E |(false,gc)|= const_app c tl ~: T ] ->
     [ Q ; K ; E |(false,gc)|= @Delta.reduce c tl vl ~: T ].
+  Parameter delta_rigid : forall c tl vl n r vl',
+      @Delta.reduce c (List.map (trm_rigid_rec n r) tl) vl' =
+      trm_rigid_rec n r (@Delta.reduce c tl vl).
 End SndHypIntf.
 
 Module Mk3(SH:SndHypIntf).
@@ -931,20 +958,7 @@ Proof.
   apply* typing_weaken_kinds.
 Qed.
 
-Lemma value_trm_open_rigid n r t :
-  value t -> value (trm_rigid_rec n r t).
-Proof.
-  unfold value.
-  intros [m Value]. exists m. revert n r.
-  induction Value; intros; simpl*.
-  apply* value_abs.
-  inversions H.
-  apply* (@term_abs L); intros.
-  rewrite trm_rigid_rec_open_var.
-  apply* term_rigid_rec.
-Qed.
-
-(* Lemma trm_open_rigid_red t t' r :
+Lemma trm_open_rigid_red t t' r :
   t --> t' ->
   trm_open_rigid t r --> trm_open_rigid t' r.
 Proof.
@@ -964,7 +978,14 @@ Proof.
     intros. rewrite trm_rigid_rec_open_var.
     apply* term_rigid_rec.
     apply* value_trm_open_rigid.
-  + admit.
+  + assert (vl' : list_for_n value (S(Const.arity c))
+                             (List.map (trm_rigid_rec n r) tl)).
+      destruct vl; splits*.
+      apply* (list_forall_map (P:=value)); intros.
+      apply* value_trm_open_rigid.
+    rewrite <- (delta_rigid vl n r vl').
+    rewrite trm_rigid_rec_app.
+    apply red_delta.
   + apply* red_let_1.
     inversions H. exists x. intros.
     rewrite trm_rigid_rec_open_var.
@@ -976,20 +997,14 @@ Proof.
   + constructor; auto*.
     apply* term_rigid_rec.
   + constructor; auto*; apply* term_rigid_rec.
-  (* + constructor; auto*. apply* term_rigid_rec. *)
-  + constructor.
-    inversions H.
-    apply* (@term_abs L); intros.
-    rewrite trm_rigid_rec_open_var.
-    apply* term_rigid_rec.
-    apply* term_rigid_rec.
+  + constructor; apply* term_rigid_rec.
   + constructor.
       inversions H.
       apply* (@term_abs L); intros.
       rewrite trm_rigid_rec_open_var.
       apply* term_rigid_rec.
     apply* term_rigid_rec.
-Abort. *)
+Qed.
 
 Section in_assoc.
 Variables (A B : Set) (x : A) (y : B).
@@ -1024,6 +1039,7 @@ Hypothesis IHT2 : forall rv rvs k,
 Hypothesis Bx : binds x (Some ck, rvs) K.
 Hypothesis Hrv : In rv rvs.
 Let Cohx := (proj43 Kok) _ _ (binds_in Bx).
+Let Wfx := (proj44 Kok) _ _ (binds_in Bx).
 
 Lemma tree_subst_eq_arrow_rvar :
   kind_cstr ck = Cstr.arrow ->
@@ -1033,22 +1049,21 @@ Lemma tree_subst_eq_arrow_rvar :
 Proof.
   intros.
   inversions Cohx; try (elim Cstr.arrow_eq; now rewrite <- H, <- H4).
-  rewrite (H6 _ _ QS Hrv); clear H6 H4.
+  rewrite (H6 _ _ QS Hrv); clear H6 H4 Cohx.
   remember (tr_rvar (rvar_attr rv Cstr.arrow_dom)) as T3.
   remember (tr_rvar (rvar_attr rv Cstr.arrow_cod)) as T4.
   simpl.
   destruct (tree_instance_binds TI1) as [[ky rvy] By].
   destruct (tree_instance_binds TI2) as [[kz rvz] Bz]; subst.
-  use ((proj44 Kok) _ _ (binds_in Bx)).
-  inversions H2; clear H2.
+  inversions Wfx; clear Wfx.
   rewrite* (IHT1 (rvar_attr rv Cstr.arrow_dom) By).
     rewrite* (IHT2 (rvar_attr rv Cstr.arrow_cod) Bz).
-    destruct (H6 Cstr.arrow_cod z); clear H6; auto.
+    destruct (H4 Cstr.arrow_cod z); clear H4; auto.
       now rewrite H, Cstr.unique_cod.
     destruct H2 as [rvz' [Bz' FAR']].
     assert (Heq := binds_func Bz' Bz).
     inversions* Heq.
-  destruct (H6 Cstr.arrow_dom y); clear H6; auto.
+  destruct (H4 Cstr.arrow_dom y); clear H4; auto.
     now rewrite H, Cstr.unique_dom.
   destruct H2 as [rvy' [By' FAR']].
   assert (Heq := binds_func By' By).
@@ -1069,16 +1084,15 @@ Proof.
   simpl.
   destruct (tree_instance_binds TI1) as [[ky rvy] By].
   destruct (tree_instance_binds TI2) as [[kz rvz] Bz]; subst.
-  use ((proj44 Kok) _ _ (binds_in Bx)).
-  inversions H2; clear H2.
+  inversions Wfx; clear Wfx.
   rewrite* (IHT1 (rvar_attr rv Cstr.eq_fst) By).
     rewrite* (IHT2 (rvar_attr rv Cstr.eq_snd) Bz).
-    destruct (H6 Cstr.eq_snd z); clear H6; auto.
+    destruct (H4 Cstr.eq_snd z); clear H4; auto.
       now rewrite H, Cstr.unique_snd.
     destruct H2 as [rvz' [Bz' FAR']].
     assert (Heq := binds_func Bz' Bz).
     inversions* Heq.
-  destruct (H6 Cstr.eq_fst y); clear H6; auto.
+  destruct (H4 Cstr.eq_fst y); clear H4; auto.
     now rewrite H, Cstr.unique_fst.
   destruct H2 as [rvy' [By' FAR']].
   assert (Heq := binds_func By' By).
@@ -1380,14 +1394,14 @@ induction Typ; introv EQ Red; subst; inversions Red;
   unfold const_app in H3.
   induction tl using rev_ind; try discriminate.
   now rewrite fold_left_app in H3.
-(*  (* Rigid *)
-- apply* (@typing_rigid (true, GcAny) Q L).
-  intros.
-  apply* H3.
-  apply* trm_open_rigid_red. *)
   (* Ann1 *)
 - apply (typing_ann _ H H0).
   apply* IHTyp.
+  (* Rigid *)
+- apply* (@typing_rigid (true, GcAny) Q L).
+  intros.
+  apply* H3.
+  apply* trm_open_rigid_red.
   (* UseEq *)
 - clear IHTyp1 IHTyp2.
   apply typing_canonize in Typ1.
@@ -1432,6 +1446,8 @@ Qed.
 
 (* ********************************************************************** *)
 (** Progress: typed terms are values or can reduce *)
+
+(* Left for future use. The current system does not satisy progress. *)
 
 Lemma value_app_const : forall t1 t2 n,
   valu n (trm_app t1 t2) ->

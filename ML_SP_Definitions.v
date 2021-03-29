@@ -805,12 +805,9 @@ Inductive red : trm -> trm -> Prop :=
       term t2 ->
       red t1 t1' ->
       red (trm_use t1 T T' t2) (trm_use t1' T T' t2)
-(*
-  | red_rigid : forall t t',
-      term t ->
-      red t t' ->
-      red (trm_rigid t) (trm_rigid t')
-*)
+  | red_rigid_1 : forall t1 t1',
+      red t1 t1' ->
+      red (trm_rigid t1) (trm_rigid t1')
   | red_apply_ann_1 : forall T U t t',
       term t ->
       term t' ->
