@@ -141,6 +141,23 @@ Inductive tree : Set :=
   | tr_rvar : rvar -> tree
   | tr_stuck : tree -> Cstr.attr -> tree.
 
+(* Relation of tree type constructors with kinds *)
+
+Record tycon_info := mkTycon
+  { ty_con : tree -> tree -> tree;
+    ty_cstr : Cstr.cstr;
+    ty_attr1 : Cstr.attr;
+    ty_attr2 : Cstr.attr;
+    ty_unique1 : Cstr.unique ty_cstr ty_attr1 = true;
+    ty_unique2 : Cstr.unique ty_cstr ty_attr2 = true;
+    ty_static : Cstr.static ty_cstr = true }.
+
+Variant tycon_kind : tycon_info -> Prop :=
+| tk_arrow : tycon_kind
+    (mkTycon tr_arrow Cstr.unique_dom Cstr.unique_cod Cstr.static_arrow)
+| tk_eq    : tycon_kind
+    (mkTycon tr_eq Cstr.unique_fst Cstr.unique_snd Cstr.static_eq).
+
 (** Instantiation of a tree *)
 
 Inductive tree_instance (K : kenv) : var -> tree -> Prop :=
@@ -148,22 +165,15 @@ Inductive tree_instance (K : kenv) : var -> tree -> Prop :=
       binds x (k,rvs) K ->
       In rv rvs ->
       tree_instance K x (tr_rvar rv)
-  | tri_arrow : forall x ck rvs y z T1 T2,
+  | tri_tycon : forall x ck rvs y z ty T1 T2,
       binds x (Some ck, rvs) K ->
-      kind_cstr ck = Cstr.arrow ->
-      In (Cstr.arrow_dom, typ_fvar y) (kind_rel ck) ->
-      In (Cstr.arrow_cod, typ_fvar z) (kind_rel ck) ->
+      tycon_kind ty ->
+      kind_cstr ck = ty_cstr ty ->
+      In (ty_attr1 ty, typ_fvar y) (kind_rel ck) ->
+      In (ty_attr2 ty, typ_fvar z) (kind_rel ck) ->
       tree_instance K y T1 ->
       tree_instance K z T2 ->
-      tree_instance K x (tr_arrow T1 T2)
-  | tri_eq : forall x ck rvs y z T1 T2,
-      binds x (Some ck, rvs) K ->
-      kind_cstr ck = Cstr.eq ->
-      In (Cstr.eq_fst, typ_fvar y) (kind_rel ck) ->
-      In (Cstr.eq_snd, typ_fvar z) (kind_rel ck) ->
-      tree_instance K y T1 ->
-      tree_instance K z T2 ->
-      tree_instance K x (tr_eq T1 T2).
+      tree_instance K x (ty_con ty T1 T2).
 
 (* Annotation: \( t -> t )/ *)
 
@@ -411,23 +421,11 @@ Definition qcoherent_rvars rvs :=
   forall rv1 rv2 S, qsat S -> In rv1 rvs -> In rv2 rvs ->
                     tree_subst_eq S (tr_rvar rv1) (tr_rvar rv2).
 
-Record tycon_info := mkTycon
-  { ty_con : tree -> tree -> tree;
-    ty_cstr : Cstr.cstr;
-    ty_attr1 : Cstr.attr;
-    ty_attr2 : Cstr.attr;
-    ty_unique1 : Cstr.unique ty_cstr ty_attr1 = true;
-    ty_unique2 : Cstr.unique ty_cstr ty_attr2 = true }.
-
 Definition qcoherent_tycon ty rvs :=
   forall rv S, qsat S -> In rv rvs ->
                tree_subst_eq S (tr_rvar rv)
                      (ty_con ty (tr_rvar (rvar_attr rv (ty_attr1 ty)))
                                 (tr_rvar (rvar_attr rv (ty_attr2 ty)))).
-
-Variant tycon_kind : tycon_info -> Prop :=
-| tk_arrow : tycon_kind (mkTycon tr_arrow Cstr.unique_dom Cstr.unique_cod)
-| tk_eq    : tycon_kind (mkTycon tr_eq Cstr.unique_fst Cstr.unique_snd).
 
 Inductive qcoherent : kind -> Prop :=
   | qc_var : forall rvs,

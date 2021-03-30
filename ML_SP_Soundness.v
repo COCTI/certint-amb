@@ -468,36 +468,21 @@ Proof.
     destruct k' as [k' rvs'].
 - destruct H3 as [_ H3].
   econstructor; auto*.
-- destruct H7; simpl in H5, H7.
+- destruct H8; simpl in H6, H8.
   destruct* k'.
-  destruct H5 as [Hc Hrel].
-  rewrite kind_cstr_map, H0 in Hc.
-  apply* tri_arrow.
+  destruct H6 as [Hc Hrel].
+  rewrite kind_cstr_map, H1 in Hc.
+  apply* tri_tycon.
     symmetry.
     apply* Cstr.static_entails.
-      apply Cstr.static_arrow.
+      apply* ty_static.
     apply kind_valid.
    apply Hrel.
    rewrite kind_rel_map.
-   apply (in_map_snd (typ_subst S) _ _ _ H1).
+   apply (in_map_snd (typ_subst S) _ _ _ H2).
   apply Hrel.
   rewrite kind_rel_map.
-  apply (in_map_snd (typ_subst S) _ _ _ H2).
-- destruct H7; simpl in H5, H7.
-  destruct* k'.
-  destruct H5 as [Hc Hrel].
-  rewrite kind_cstr_map, H0 in Hc.
-  apply* tri_eq.
-    symmetry.
-    apply* Cstr.static_entails.
-      apply Cstr.static_eq.
-    apply kind_valid.
-   apply Hrel.
-   rewrite kind_rel_map.
-   apply (in_map_snd (typ_subst S) _ _ _ H1).
-  apply Hrel.
-  rewrite kind_rel_map.
-  apply (in_map_snd (typ_subst S) _ _ _ H2).
+  apply (in_map_snd (typ_subst S) _ _ _ H3).
 Qed.
 
 Lemma typing_typ_subst : forall gc Q F K'' S K K' E t T,
@@ -1058,6 +1043,12 @@ Proof.
 Qed.
 End tree_subst_eq.
 
+Lemma ty_cstr_inj ty ty' :
+  tycon_kind ty -> tycon_kind ty' -> ty_cstr ty = ty_cstr ty' -> ty = ty'.
+Proof.
+  induction 1; induction 1; auto; simpl; intros; now elim Cstr.arrow_eq.
+Qed.
+
 Lemma tree_instance_subst_eq Q K x T1 T2 S :
   kenv_ok Q K ->
   qsat Q S ->
@@ -1071,59 +1062,31 @@ Proof.
     assert (Cohx := (proj43 Kok) _ _ (binds_in H)).
 - clear Cohx; revert rv rvs k H H0.
   induction TI2; intros; symmetry;
-    assert (Cohx := (proj43 Kok) _ _ (binds_in H));
-    try (injection (binds_func H3 H); intros; subst;
-         inversions Cohx; set (ty' := ty);
-         inversions H7; rewrite H0 in H8;
-         try (elim Cstr.arrow_eq; now rewrite H8); clear H8).
+    assert (Cohx := (proj43 Kok) _ _ (binds_in H)).
   + injection (binds_func H1 H); intros; subst.
     apply* tree_subst_eq_rvars.
-  + replace tr_arrow with (ty_con ty') by auto.
+  + injection (binds_func H4 H); intros; subst.
+    inversions Cohx.
+    rewrite H1 in H9. apply ty_cstr_inj in H9; auto; subst ty0.
     apply* tree_subst_eq_tycon_rvar; intros; symmetry; auto*.
-  + replace tr_eq with (ty_con ty') by auto.
-    apply* tree_subst_eq_tycon_rvar; intros; symmetry; auto*.
-- inversions TI2; injection (binds_func H3 H); intros; subst; clear H3 TI2.
-  + inversions Cohx; set (ty' := ty).
-    inversions H6; rewrite H0 in H7; try (elim Cstr.arrow_eq; now rewrite H7).
-    replace tr_arrow with (ty_con ty') by auto.
+- inversions TI2; injection (binds_func H4 H); intros; subst; clear H4 TI2.
+  + inversions Cohx.
+    rewrite H1 in H8. apply ty_cstr_inj in H8; auto; subst ty0.
     apply* tree_subst_eq_tycon_rvar; intros.
       apply IHTI1_1. apply* tri_rvar.
     apply IHTI1_2. apply* tri_rvar.
-  + simpl.
-    clear H4.
+  + repeat rewrite* tree_subst_tycon.
+    rewrite H1 in H6. apply ty_cstr_inj in H6; auto; subst ty0.
     rewrite (IHTI1_1 T3).
       rewrite* (IHTI1_2 T4).
-      assert (Hkuc := Cstr.unique_cod).
-      rewrite <- H0 in Hkuc.
-      use (kind_coherent _ _ _ Hkuc H6 H2).
-      now inversions H3.
-    assert (Hkud := Cstr.unique_dom).
-    rewrite <- H0 in Hkud.
-    use (kind_coherent _ _ _ Hkud H5 H1).
-    now inversions H3.
-  + elim Cstr.arrow_eq.
-    now rewrite <- H0.
-- inversions TI2; injection (binds_func H3 H); intros; subst; clear H3 TI2.
-  + inversions Cohx; set (ty' := ty).
-    inversions H6; rewrite H0 in H7; try (elim Cstr.arrow_eq; now rewrite H7).
-    replace tr_eq with (ty_con ty') by auto.
-    apply* tree_subst_eq_tycon_rvar; intros.
-      apply IHTI1_1. apply* tri_rvar.
-    apply IHTI1_2. apply* tri_rvar.
-  + elim Cstr.arrow_eq.
-    now rewrite <- H0.
-  + simpl.
-    clear H4.
-    rewrite (IHTI1_1 T3).
-      rewrite* (IHTI1_2 T4).
-      assert (Hkuc := Cstr.unique_snd).
-      rewrite <- H0 in Hkuc.
-      use (kind_coherent _ _ _ Hkuc H6 H2).
-      now inversions H3.
-    assert (Hkud := Cstr.unique_fst).
-    rewrite <- H0 in Hkud.
-    use (kind_coherent _ _ _ Hkud H5 H1).
-    now inversions H3.
+      assert (Hkuc := ty_unique2 ty).
+      rewrite <- H1 in Hkuc.
+      use (kind_coherent _ _ _ Hkuc H8 H3).
+      now inversions H4.
+    assert (Hkud := ty_unique1 ty).
+    rewrite <- H1 in Hkud.
+    use (kind_coherent _ _ _ Hkud H7 H2).
+    now inversions H4.
 Qed.
 
 Section qcoherent.
@@ -1247,7 +1210,8 @@ induction Typ; introv EQ Red; subst; inversions Red;
     split2*; intros; subst.
     inversions H; try discriminate; simpl in *.
     inversions H13.
-    injection (binds_func H8 H3); intros; subst; clear H3 H0.
+    inversions H8; clear H8; simpl in *; try discriminate.
+    injection (binds_func H6 H3); intros; subst; clear H3 H0.
     assert (Hkud := Cstr.unique_dom).
     rewrite <- H9 in Hkud.
     use (kind_coherent k _ _ Hkud H10 H1); subst.
@@ -1256,10 +1220,12 @@ induction Typ; introv EQ Red; subst; inversions Red;
     use (kind_coherent k _ _ Hkuc H11 H2); subst.
     clear Hkud Hkuc H1 H2.
     inversions H12.
-    apply (typing_ann _ H19 H17).
-    apply (typing_app _ (S:=typ_fvar y0) (typ_fvar z0) H2); auto; simpl.
+    inversions H2; clear H2; simpl in *; try discriminate.
+    injection H0; injection H4; intros; subst.
+    apply (typing_ann _ H20 H17).
+    apply (typing_app _ (S:=typ_fvar y0) (typ_fvar z0) H1); auto; simpl.
       eapply typing_gc_any; apply H14.
-    now apply (typing_ann _ H16 H18).
+    now apply (typing_ann _ H15 H18).
   split.
     pick_freshes (length Ks) Xs.
     destruct* (H Xs).
@@ -1283,10 +1249,10 @@ induction Typ; introv EQ Red; subst; inversions Red;
   induction Typ1 using typing_gc_ind.
     split2*; intros; subst.
     inversions H; try discriminate; simpl in *.
-    inversions H13.
+    inversions H13; try (inversions H8; discriminate).
     injection (binds_func H6 H3); intros; subst; clear H3.
     inversions H14; try discriminate.
-    inversions H12.
+    inversions H12; try (inversions H16; discriminate).
     injection (binds_func H4 H10); intros; subst; clear H10.
     assert (Kok : kenv_ok Q K) by auto*.
     destruct Kok as [_ [ATK [CohK WFK]]].
@@ -1375,14 +1341,14 @@ induction Typ; introv EQ Red; subst; inversions Red;
       intros.
       inversions H; try discriminate.
       inversions H0.
-      injection (binds_func H9 H6); intros; subst; clear H9.
+      inversions H9; clear H9; try discriminate; simpl in *.
+      injection H2; injection (binds_func H8 H6); intros; subst; clear H2 H8.
       assert (Hkud := Cstr.unique_fst).
       rewrite <- H10 in Hkud.
       use (kind_coherent k _ _ Hkud H7 H12); subst.
       assert (Hkuc := Cstr.unique_snd).
       rewrite <- H10 in Hkuc.
-      use (kind_coherent k _ _ Hkuc H13 H11); subst.
-      inversions H2.
+      injection (kind_coherent k _ _ Hkuc H13 H11); intros; subst.
       apply* (@tree_instance_subst_eq Q K y).
     apply* (qcoherent_strengthen_typing H1 nil).
   split.
