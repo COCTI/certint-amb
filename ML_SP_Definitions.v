@@ -397,41 +397,53 @@ Definition env_fv :=
 
 (** Coherence *)
 
-Inductive qitem :=
-  | qvar : var -> qitem
-  | qeq : tree -> tree -> qitem.
+Inductive qsat_item (S : env tree) : tree * tree -> Prop :=
+| qsat_qeq : forall T1 T2, tree_subst_eq S T1 T2 -> qsat_item S (T1, T2).
 
-Definition qenv := list qitem.
+Definition qenv := list (tree * tree).
 
-Inductive qsat_item (S : env tree) : qitem -> Prop :=
-| qsat_qvar : forall x, qsat_item S (qvar x)
-| qsat_qeq : forall T1 T2, tree_subst_eq S T1 T2 -> qsat_item S (qeq T1 T2).
+Section qcoherent.
+Variable Q : qenv.
 
-Definition qsat Q S := list_forall (qsat_item S) Q.
+Definition qsat S := list_forall (qsat_item S) Q.
 
-Inductive qcoherent (Q : qenv) : kind -> Prop :=
+Definition qcoherent_rvars rvs :=
+  forall rv1 rv2 S, qsat S -> In rv1 rvs -> In rv2 rvs ->
+                    tree_subst_eq S (tr_rvar rv1) (tr_rvar rv2).
+
+Record tycon_info := mkTycon
+  { ty_con : tree -> tree -> tree;
+    ty_cstr : Cstr.cstr;
+    ty_attr1 : Cstr.attr;
+    ty_attr2 : Cstr.attr;
+    ty_unique1 : Cstr.unique ty_cstr ty_attr1 = true;
+    ty_unique2 : Cstr.unique ty_cstr ty_attr2 = true }.
+
+Definition qcoherent_tycon ty rvs :=
+  forall rv S, qsat S -> In rv rvs ->
+               tree_subst_eq S (tr_rvar rv)
+                     (ty_con ty (tr_rvar (rvar_attr rv (ty_attr1 ty)))
+                                (tr_rvar (rvar_attr rv (ty_attr2 ty)))).
+
+Variant tycon_kind : tycon_info -> Prop :=
+| tk_arrow : tycon_kind (mkTycon tr_arrow Cstr.unique_dom Cstr.unique_cod)
+| tk_eq    : tycon_kind (mkTycon tr_eq Cstr.unique_fst Cstr.unique_snd).
+
+Inductive qcoherent : kind -> Prop :=
   | qc_var : forall rvs,
-      (forall rv1 rv2 S, qsat Q S -> In rv1 rvs -> In rv2 rvs ->
-          tree_subst_eq S (tr_rvar rv1) (tr_rvar rv2)) ->
-      qcoherent Q (None, rvs)
-  | qc_arrow : forall k rvs,
-      kind_cstr k = Cstr.arrow ->
-      (forall rv1 rv2 S, qsat Q S -> In rv1 rvs -> In rv2 rvs ->
-          tree_subst_eq S (tr_rvar rv1) (tr_rvar rv2)) ->
-      (forall rv S, qsat Q S -> In rv rvs ->
-        tree_subst_eq S (tr_rvar rv)
-                        (tr_arrow (tr_rvar (rvar_attr rv Cstr.arrow_dom))
-                                  (tr_rvar (rvar_attr rv Cstr.arrow_cod)))) ->
-      qcoherent Q (Some k, rvs)
-  | qc_eq : forall k rvs,
-      kind_cstr k = Cstr.eq ->
-      (forall rv1 rv2 S, qsat Q S -> In rv1 rvs -> In rv2 rvs ->
-          tree_subst_eq S (tr_rvar rv1) (tr_rvar rv2)) ->
-      (forall rv S, qsat Q S -> In rv rvs ->
-        tree_subst_eq S (tr_rvar rv)
-                        (tr_eq (tr_rvar (rvar_attr rv Cstr.eq_fst))
-                               (tr_rvar (rvar_attr rv Cstr.eq_snd)))) ->
-      qcoherent Q (Some k, rvs).
+      qcoherent_rvars rvs ->
+      qcoherent (None, rvs)
+  | qc_tycon : forall ty k rvs,
+      tycon_kind ty ->
+      kind_cstr k = ty_cstr ty ->
+      qcoherent_rvars rvs ->
+      qcoherent_tycon ty rvs ->
+      qcoherent (Some k, rvs).
+
+Lemma tree_subst_eq_rvars k rvs : qcoherent (k, rvs) -> qcoherent_rvars rvs.
+Proof. intros; inversions* H. Qed.
+
+End qcoherent.
 
 (* Properties of kinding environments *)
 
@@ -757,7 +769,7 @@ Inductive typing (gc:gc_info) : qenv -> kenv -> env -> trm -> typ -> Prop :=
   | typing_use : forall Q K E t1 T1 T2 x t2 T,
       tree_instance K x (tr_eq T1 T2) ->
       [ Q; K; E | gc_raise gc |= t1 ~: typ_fvar x ] ->
-      [ qeq T1 T2 :: Q; K; E | gc_raise gc |= t2 ~: T ] -> 
+      [ (T1, T2) :: Q; K; E | gc_raise gc |= t2 ~: T ] -> 
       [ Q; K; E | gc |= trm_use t1 T1 T2 t2 ~: T ]
   | typing_eq : forall Q K E x k rs T,
       kenv_ok Q K ->

@@ -141,7 +141,7 @@ Proof.
   intros Typ; gen_eq (Q ++ Q') as Q0.
   revert Q Q'; induction Typ; intros; subst; auto*.
   apply* typing_use.
-  apply* (IHTyp2 (qeq T1 T2 :: Q0) Q').
+  apply* (IHTyp2 ((T1, T2) :: Q0) Q').
 Qed.
 
 Lemma proper_instance_weaken : forall K K' Ks Us,
@@ -599,10 +599,9 @@ induction Typ; introv WS EQ EQ'; subst.
   apply* (H3 R Xs); auto.
   + forward~ (H2 R Xs) as Typ.
     destruct (typing_regular Typ).
-    apply (well_subst_fresh (Q:=qvar R :: Q)); trivial.
-      destruct H1 as [[] _]; simpl in *.
-      rewrite* H1.
-    apply* kenv_ok_add_qitem'.
+    apply (well_subst_fresh (Q:=Q)); trivial.
+    destruct H1 as [[] _]; simpl in *.
+    rewrite* H1.
   + rewrite* concat_assoc.
   + auto.
   (* Use *)
@@ -1020,15 +1019,15 @@ Lemma tree_instance_binds K x T :
   tree_instance K x T -> exists kr, binds x kr K.
 Proof. intros []; esplit; auto*. Qed.
 
-Lemma tree_subst_eq_rvars Q k rvs rv1 rv2 S :
-  qcoherent Q (k, rvs) ->
-  qsat Q S -> In rv1 rvs -> In rv2 rvs ->
-  tree_subst_eq S (tr_rvar rv1) (tr_rvar rv2).
-Proof. intros; inversions* H. Qed.
+Lemma tree_subst_tycon ty S T1 T2 :
+  tycon_kind ty ->
+  tree_subst S (ty_con ty T1 T2) =
+  ty_con ty (tree_subst S T1) (tree_subst S T2).
+Proof. intros []; simpl*. Qed.
 
 Section tree_subst_eq.
-Variables (Q : qenv) (K : kenv) (S : Env.env tree) (x y z : var).
-Variables (ck : ckind) (rvs : list rvar) (T1 T2 : tree) (rv : rvar).
+Variables (Q : qenv) (K : kenv) (S : Env.env tree) (x y z : var) (ck : ckind). 
+Variables (ty : tycon_info) (rvs : list rvar) (T1 T2 : tree) (rv : rvar).
 Variables (Kok : kenv_ok Q K) (QS : qsat Q S).
 Hypothesis TI1 : tree_instance K y T1. 
 Hypothesis TI2 : tree_instance K z T2.
@@ -1038,61 +1037,34 @@ Hypothesis IHT2 : forall rv rvs k,
     binds z (k,rvs) K -> In rv rvs -> tree_subst_eq S T2 (tr_rvar rv).
 Hypothesis Bx : binds x (Some ck, rvs) K.
 Hypothesis Hrv : In rv rvs.
-Let Cohx := (proj43 Kok) _ _ (binds_in Bx).
 Let Wfx := (proj44 Kok) _ _ (binds_in Bx).
 
-Lemma tree_subst_eq_arrow_rvar :
-  kind_cstr ck = Cstr.arrow ->
-  In (Cstr.arrow_dom, typ_fvar y) (kind_rel ck) ->
-  In (Cstr.arrow_cod, typ_fvar z) (kind_rel ck) ->
-  tree_subst S (tr_arrow T1 T2) = tree_subst S (tr_rvar rv).
+Lemma tree_subst_eq_tycon_rvar :
+  tycon_kind ty ->
+  kind_cstr ck = ty_cstr ty ->
+  qcoherent_rvars Q rvs ->
+  qcoherent_tycon Q ty rvs ->
+  In (ty_attr1 ty, typ_fvar y) (kind_rel ck) ->
+  In (ty_attr2 ty, typ_fvar z) (kind_rel ck) ->
+  tree_subst S (ty_con ty T1 T2) = tree_subst S (tr_rvar rv).
 Proof.
   intros.
-  inversions Cohx; try (elim Cstr.arrow_eq; now rewrite <- H, <- H4).
-  rewrite (H6 _ _ QS Hrv); clear H6 H4 Cohx.
-  remember (tr_rvar (rvar_attr rv Cstr.arrow_dom)) as T3.
-  remember (tr_rvar (rvar_attr rv Cstr.arrow_cod)) as T4.
-  simpl.
-  destruct (tree_instance_binds TI1) as [[ky rvy] By].
-  destruct (tree_instance_binds TI2) as [[kz rvz] Bz]; subst.
+  rewrite* H2.
+  repeat rewrite* tree_subst_tycon.
   inversions Wfx; clear Wfx.
-  rewrite* (IHT1 (rvar_attr rv Cstr.arrow_dom) By).
-    rewrite* (IHT2 (rvar_attr rv Cstr.arrow_cod) Bz).
-    destruct (H4 Cstr.arrow_cod z); clear H4; auto.
-      now rewrite H, Cstr.unique_cod.
-    destruct H2 as [rvz' [Bz' FAR']].
-    injection (binds_func Bz' Bz); intros; subst*.
-  destruct (H4 Cstr.arrow_dom y); clear H4; auto.
-    now rewrite H, Cstr.unique_dom.
-  destruct H2 as [rvy' [By' FAR']].
-  injection (binds_func By' By); intros; subst*.
-Qed.
-
-Lemma tree_subst_eq_eq_rvar :
-  kind_cstr ck = Cstr.eq ->
-  In (Cstr.eq_fst, typ_fvar y) (kind_rel ck) ->
-  In (Cstr.eq_snd, typ_fvar z) (kind_rel ck) ->
-  tree_subst S (tr_eq T1 T2) = tree_subst S (tr_rvar rv).
-Proof.
-  intros.
-  inversions Cohx; try (elim Cstr.arrow_eq; now rewrite <- H, <- H4).
-  rewrite (H6 _ _ QS Hrv); clear H6 H4.
-  remember (tr_rvar (rvar_attr rv Cstr.eq_fst)) as T3.
-  remember (tr_rvar (rvar_attr rv Cstr.eq_snd)) as T4.
-  simpl.
-  destruct (tree_instance_binds TI1) as [[ky rvy] By].
-  destruct (tree_instance_binds TI2) as [[kz rvz] Bz]; subst.
-  inversions Wfx; clear Wfx.
-  rewrite* (IHT1 (rvar_attr rv Cstr.eq_fst) By).
-    rewrite* (IHT2 (rvar_attr rv Cstr.eq_snd) Bz).
-    destruct (H4 Cstr.eq_snd z); clear H4; auto.
-      now rewrite H, Cstr.unique_snd.
-    destruct H2 as [rvz' [Bz' FAR']].
-    injection (binds_func Bz' Bz); intros; subst*.
-  destruct (H4 Cstr.eq_fst y); clear H4; auto.
-    now rewrite H, Cstr.unique_fst.
-  destruct H2 as [rvy' [By' FAR']].
-  injection (binds_func By' By); intros; subst*.
+  f_equal.
+    destruct (tree_instance_binds TI1) as [[ky rvy] By].
+    apply* IHT1.
+    destruct (H7 (ty_attr1 ty) y); clear H7; auto.
+      now rewrite H0, (ty_unique1 ty).
+    destruct H5 as [rvy' [By' FAR']].
+    injection (binds_func By' By); intros; subst*.
+  destruct (tree_instance_binds TI2) as [[kz rvz] Bz].
+  apply* IHT2.
+  destruct (H7 (ty_attr2 ty) z); clear H7; auto.
+    now rewrite H0, (ty_unique2 ty).
+  destruct H5 as [rvz' [Bz' FAR']].
+  injection (binds_func Bz' Bz); intros; subst*.
 Qed.
 End tree_subst_eq.
 
@@ -1105,19 +1077,27 @@ Lemma tree_instance_subst_eq Q K x T1 T2 S :
 Proof.
   intros Kok QS TI1 TI2.
   unfold tree_subst_eq.
-  revert T2 TI2; induction TI1; intros.
-- revert rv rvs k H H0.
-  induction TI2; intros; symmetry.
-  + injection (binds_func H1 H); intros; subst.
+  revert T2 TI2; induction TI1; intros;
     assert (Cohx := (proj43 Kok) _ _ (binds_in H)).
+- clear Cohx; revert rv rvs k H H0.
+  induction TI2; intros; symmetry;
+    assert (Cohx := (proj43 Kok) _ _ (binds_in H));
+    try (injection (binds_func H3 H); intros; subst;
+         inversions Cohx; set (ty' := ty);
+         inversions H7; rewrite H0 in H8;
+         try (elim Cstr.arrow_eq; now rewrite H8)).
+  + injection (binds_func H1 H); intros; subst.
     apply* tree_subst_eq_rvars.
-  + injection (binds_func H3 H); intros; subst.
-    apply* tree_subst_eq_arrow_rvar; intros; symmetry; auto*.
-  + injection (binds_func H3 H); intros; subst.
-    apply* tree_subst_eq_eq_rvar; intros; symmetry; auto*.
+  + replace tr_arrow with (ty_con ty') by auto.
+    apply* tree_subst_eq_tycon_rvar; intros; symmetry; auto*.
+  + replace tr_eq with (ty_con ty') by auto.
+    apply* tree_subst_eq_tycon_rvar; intros; symmetry; auto*.
 - inversions TI2;
     injection (binds_func H3 H); intros; subst; clear H3 TI2.
-  + apply* tree_subst_eq_arrow_rvar; intros.
+  + inversions Cohx; set (ty' := ty).
+    inversions H6; rewrite H0 in H7; try (elim Cstr.arrow_eq; now rewrite H7).
+    replace tr_arrow with (ty_con ty') by auto.
+    apply* tree_subst_eq_tycon_rvar; intros.
       apply IHTI1_1. apply* tri_rvar.
     apply IHTI1_2. apply* tri_rvar.
   + simpl.
@@ -1135,7 +1115,10 @@ Proof.
   + elim Cstr.arrow_eq.
     now rewrite <- H0.
 - inversions TI2; injection (binds_func H3 H); intros; subst; clear H3 TI2.
-  + apply* tree_subst_eq_eq_rvar; intros.
+  + inversions Cohx; set (ty' := ty).
+    inversions H6; rewrite H0 in H7; try (elim Cstr.arrow_eq; now rewrite H7).
+    replace tr_eq with (ty_con ty') by auto.
+    apply* tree_subst_eq_tycon_rvar; intros.
       apply IHTI1_1. apply* tri_rvar.
     apply IHTI1_2. apply* tri_rvar.
   + elim Cstr.arrow_eq.
@@ -1160,7 +1143,7 @@ Hypothesis QT12 : forall S, qsat Q2 S -> tree_subst_eq S T1 T2.
 
 Lemma qsat_strengthen Q1 S :
   qsat (Q1 ++ Q2) S ->
-  qsat (Q1 ++ qeq T1 T2 :: Q2) S.
+  qsat (Q1 ++ (T1, T2) :: Q2) S.
 Proof.
   unfold qsat.
   induction Q1; simpl; intros.
@@ -1172,23 +1155,20 @@ Proof.
 Qed.
 
 Lemma qcoherent_strengthen Q1 k :
-  qcoherent (Q1 ++ qeq T1 T2 :: Q2) k ->
+  qcoherent (Q1 ++ (T1, T2) :: Q2) k ->
   qcoherent (Q1 ++ Q2) k.
 Proof.
   induction 1; intros.
-- apply (qc_var rvs); intros.
+- apply* qc_var; intro; intros.
   apply* (H rv1 rv2).
   apply* qsat_strengthen.
-- apply (qc_arrow k rvs); auto.
-  intros; apply* H0; apply* qsat_strengthen.
-  intros; apply* H1; apply* qsat_strengthen.
-- apply (qc_eq k rvs); auto.
-  intros; apply* H0; apply* qsat_strengthen.
-  intros; apply* H1; apply* qsat_strengthen.
+- apply* qc_tycon; intro; intros.
+    apply* H1; apply* qsat_strengthen.
+  apply* H2; apply* qsat_strengthen.
 Qed.
 
 Lemma qcoherent_strengthen_kenv Q1 K :
-  kenv_ok (Q1 ++ qeq T1 T2 :: Q2) K ->
+  kenv_ok (Q1 ++ (T1, T2) :: Q2) K ->
   kenv_ok (Q1 ++ Q2) K.
 Proof.
   intros [Kok [Ktype [Kcoh Kwf]]].
@@ -1199,7 +1179,7 @@ Proof.
 Qed.
 
 Lemma qcoherent_strengthen_env Q1 K E :
-  env_ok (Q1 ++ qeq T1 T2 :: Q2) K E ->
+  env_ok (Q1 ++ (T1, T2) :: Q2) K E ->
   env_ok (Q1 ++ Q2) K E.
 Proof.
   intros [Eok Esch].
@@ -1211,11 +1191,11 @@ Qed.
 Hint Resolve qcoherent_strengthen_kenv qcoherent_strengthen_env : base.
 
 Lemma qcoherent_strengthen_typing Q1 K E t T :
-  [ Q1 ++ qeq T1 T2 :: Q2 ; K ; E | (true, GcAny) |= t ~: T ] ->
+  [ Q1 ++ (T1, T2) :: Q2 ; K ; E | (true, GcAny) |= t ~: T ] ->
   [ Q1 ++ Q2 ; K ; E | (true, GcAny) |= t ~: T ].
 Proof.
   intros Typ.
-  gen_eq (Q1 ++ qeq T1 T2 :: Q2) as Q.
+  gen_eq (Q1 ++ (T1, T2) :: Q2) as Q.
   revert Q1.
   induction Typ; intros; subst; auto*.
 - apply* typing_var.
@@ -1228,7 +1208,7 @@ Proof.
   apply* qcoherent_strengthen_kenv.
   apply* qcoherent_strengthen_env.
 - apply* typing_use.
-  apply* (IHTyp2 (qeq T0 T3 :: Q1)).
+  apply* (IHTyp2 ((T0, T3) :: Q1)).
 - apply* typing_eq.
   apply* qcoherent_strengthen_kenv.
   apply* qcoherent_strengthen_env.

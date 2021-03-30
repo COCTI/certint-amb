@@ -146,16 +146,10 @@ Fixpoint tree_fv (T : tree) : vars :=
   | tr_stuck T1 a => tree_fv T1
   end.
 
-Definition qitem_fv (q : qitem) : vars :=
-  match q with
-  | qvar x    => {{x}}
-  | qeq T1 T2 => (tree_fv T1) \u (tree_fv T2)
-  end.
-
 Fixpoint qenv_fv (Q : qenv) : vars :=
   match Q with
   | nil => {}
-  | q :: Q' => (qitem_fv q) \u (qenv_fv Q')
+  | (T1, T2) :: Q' => (tree_fv T1) \u (tree_fv T2) \u (qenv_fv Q')
   end.
 
 Definition var_fv (x : var) : vars := {{x}}.
@@ -1262,9 +1256,7 @@ Lemma qcoherent_subst Q S k :
 Proof.
   induction 1.
   - constructor. auto.
-  - constructor; simpls*.
-    now rewrite kind_cstr_map.
-  - apply qc_eq; simpls*.
+  - apply (qc_tycon (ckind_map (typ_subst S) k) H); auto.
     now rewrite kind_cstr_map.
 Qed.
     
@@ -1453,21 +1445,6 @@ Global Hint Constructors typing valu red : core.
 
 (** A typing relation is restricted to well-formed objects. *)
 
-Lemma qsat_remove_qvar x Q Ts :
-   qsat Q Ts -> qsat (qvar x :: Q) Ts.
-Proof.
-  unfold qsat. assert (qsat_item Ts (qvar x)) by constructor.
-  auto*.
-Qed.
-Global Hint Resolve qsat_remove_qvar : core.
-
-Lemma qcoherent_remove_qvar x Q k :
-  qcoherent (qvar x :: Q) k -> qcoherent Q k.
-Proof.
-  remember (qvar x :: Q) as Q'.
-  induction 1; subst Q'; solve [constructor; auto*].
-Qed.
-
 Lemma qsat_add_item Q q Q' S : qsat (Q ++ q :: Q') S -> qsat (Q ++ Q') S.
 Proof. induction Q; simpl; intros; inversions* H; constructor; auto*. Qed.
 
@@ -1476,14 +1453,9 @@ Lemma qcoherent_add_qitem Q q Q' k :
 Proof.
   intros QC; gen_eq (Q ++ Q') as Q0; gen Q.
   induction QC; intros; subst;
-  constructor; auto; introv QS; apply qsat_add_item in QS; auto*.
+  econstructor; auto*; introv QS; apply qsat_add_item in QS; auto*.
 Qed.
 Global Hint Resolve qcoherent_add_qitem : core.
-
-Lemma tree_eq_of_instance Q K x T1 T2 S :
-  tree_instance K x T1 -> tree_instance K x T2 -> kenv_ok Q K ->
-  qsat Q S -> tree_subst_eq S T1 T2.
-Abort.
 
 Lemma rvar_shift_open n m r r0 : m <= n ->
                                  rvar_shift m (rvar_open n r r0) =
