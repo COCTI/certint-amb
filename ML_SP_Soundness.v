@@ -1005,16 +1005,6 @@ Proof.
     apply* term_rigid_rec.
 Qed.
 
-Section in_assoc.
-Variables (A B : Set) (x : A) (y : B).
-
-Lemma in_fst l : In (x,y) l -> In x (list_fst l).
-Proof. induction l; simpl*; intros []; subst*. Qed.
-
-Lemma in_snd l : In (x,y) l -> In y (list_snd l).
-Proof. induction l; simpl*; intros []; subst*. Qed.
-End in_assoc.
-
 Lemma tree_instance_binds K x T :
   tree_instance K x T -> exists kr, binds x kr K.
 Proof. intros []; esplit; auto*. Qed.
@@ -1077,7 +1067,7 @@ Lemma tree_instance_subst_eq Q K x T1 T2 S :
 Proof.
   intros Kok QS TI1 TI2.
   unfold tree_subst_eq.
-  revert T2 TI2; induction TI1; intros;
+  gen T2; induction TI1; intros;
     assert (Cohx := (proj43 Kok) _ _ (binds_in H)).
 - clear Cohx; revert rv rvs k H H0.
   induction TI2; intros; symmetry;
@@ -1085,15 +1075,14 @@ Proof.
     try (injection (binds_func H3 H); intros; subst;
          inversions Cohx; set (ty' := ty);
          inversions H7; rewrite H0 in H8;
-         try (elim Cstr.arrow_eq; now rewrite H8)).
+         try (elim Cstr.arrow_eq; now rewrite H8); clear H8).
   + injection (binds_func H1 H); intros; subst.
     apply* tree_subst_eq_rvars.
   + replace tr_arrow with (ty_con ty') by auto.
     apply* tree_subst_eq_tycon_rvar; intros; symmetry; auto*.
   + replace tr_eq with (ty_con ty') by auto.
     apply* tree_subst_eq_tycon_rvar; intros; symmetry; auto*.
-- inversions TI2;
-    injection (binds_func H3 H); intros; subst; clear H3 TI2.
+- inversions TI2; injection (binds_func H3 H); intros; subst; clear H3 TI2.
   + inversions Cohx; set (ty' := ty).
     inversions H6; rewrite H0 in H7; try (elim Cstr.arrow_eq; now rewrite H7).
     replace tr_arrow with (ty_con ty') by auto.

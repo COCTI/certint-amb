@@ -179,6 +179,9 @@ Section Combine.
     rewrite* IHl1.
   Qed.
 
+  Lemma in_snd (x : A) (y : B) l : In (x,y) l -> In y (list_snd l).
+  Proof. induction l; simpl*; intros []; subst*. Qed.
+
   Definition map_snd (f:B->B) :=
     List.map (fun p:A*B => (fst p, f (snd p))).
 
