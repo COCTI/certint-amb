@@ -175,33 +175,6 @@ Inductive tree_instance (K : kenv) : var -> tree -> Prop :=
       tree_instance K z T2 ->
       tree_instance K x (ty_con ty T1 T2).
 
-(* Annotation: \( t -> t )/ *)
-
-Definition tree_kind : Set :=
-  option (Cstr.cstr * list (Cstr.attr*tree)) * list rvar.
-
-Definition tree_type : Set :=
-  tree * list tree_kind.
-
-Lemma coherent_pair k (a b : Cstr.attr) (T T' : typ) :
-  a <> b -> coherent k ((a,T) :: (b,T') :: nil).
-Proof.
-intros ab x U U' _; simpl.
-destruct 1.
-  destruct 1.
-    inversions H; now inversions H0.
-  destruct H0.
-    inversions H; inversions H0. contradiction.
-  contradiction.
-destruct H.
-  destruct 1.
-    inversions H; inversions H0; contradiction.
-  destruct H0.
-    inversions H; now inversions H0.
-  contradiction.
-contradiction.
-Qed.
-
 (* Need also to define substitution of rigid variables *)
 Fixpoint rvar_open (k : nat) (u : rvar) (t : rvar) :=
   match t with
@@ -219,9 +192,6 @@ Fixpoint tree_open_rigid (k : nat) (u : rvar) (T : tree) :=
   | tr_rvar v => tr_rvar (rvar_open k u v)
   | tr_stuck T1 l => tr_stuck (tree_open_rigid k u T1) l
   end.
-
-Definition tree_type_open_rigid (k : nat) (u : rvar) (S : tree_type) :=
-  (tree_open_rigid k u (fst S), snd S).
 
 Fixpoint rvar_shift (k : nat) (t : rvar) :=
   match t with

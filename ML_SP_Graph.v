@@ -12,7 +12,37 @@ Module MkGraph(Cstr:CstrIntf)(Const:CstIntf).
 Module Infra := MkInfra(Cstr)(Const).
 Import Infra Defs.
 
-(* Definitions *)
+(* Annotation: \( t -> t )/ *)
+
+Definition tree_kind : Set :=
+  option (Cstr.cstr * list (Cstr.attr*tree)) * list rvar.
+
+Definition tree_type : Set :=
+  tree * list tree_kind.
+
+Definition tree_type_open_rigid (k : nat) (u : rvar) (S : tree_type) :=
+  (tree_open_rigid k u (fst S), snd S).
+
+(* Translation *)
+
+Lemma coherent_pair k (a b : Cstr.attr) (T T' : typ) :
+  a <> b -> coherent k ((a,T) :: (b,T') :: nil).
+Proof.
+intros ab x U U' _; simpl.
+destruct 1.
+  destruct 1.
+    inversions H; now inversions H0.
+  destruct H0.
+    inversions H; inversions H0. contradiction.
+  contradiction.
+destruct H.
+  destruct 1.
+    inversions H; inversions H0; contradiction.
+  destruct H0.
+    inversions H; now inversions H0.
+  contradiction.
+contradiction.
+Qed.
 
 Definition arrow_kind (m n : nat) :=
   Kind Cstr.valid_arrow
