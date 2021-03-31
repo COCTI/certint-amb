@@ -34,12 +34,11 @@ Proof.
   apply* kenv_ok_wf_kind.
 Qed.
 
-Lemma ok_kinds_open_vars : forall K Ks Xs,
+Lemma ok_kinds_open_vars K Ks Xs :
   ok K -> fresh (dom K) (length Ks) Xs ->
   ok (K & kinds_open_vars Ks Xs).
 Proof.
   intros.
-  unfold kinds_open_vars.
   apply* disjoint_ok.
   apply* ok_combine_fresh.
 Qed.
@@ -285,9 +284,6 @@ Proof.
   rewrite <- (concat_empty (K & _ & _)).
   apply* typing_exchange.
 Qed.
-
-Lemma tree_subst_eq_refl S t : tree_subst_eq S t t.
-Proof. induction t; simpl; constructor; auto. Qed.
 
 Lemma typing_weaken_kinds : forall gc Q K K' E t T,
   [ Q ; K; E | gc |= t ~: T ] ->
@@ -631,21 +627,6 @@ Definition has_scheme gc Q K E t M := forall Us,
 (* ********************************************************************** *)
 (** Type schemes of terms can be instanciated *)
 
-Lemma kind_subst_open_combine : forall Xs Vs Ks,
-  fresh (kind_fv_list Ks) (length Vs) Xs ->
-  forall k : kind,
-    In k Ks ->
-    kind_open k (typ_fvars Vs) =
-    kind_subst (combine Xs Vs) (kind_open k (typ_fvars Xs)).
-Proof.
-  introv Fr. intros.
-  rewrite* kind_subst_open.
-  rewrite* kind_subst_fresh.
-    rewrite* (fresh_subst {}).
-  rewrite* dom_combine.
-  use (kind_fv_fresh _ _ _ _ H Fr).
-Qed.
-
 Lemma well_subst_open_vars : forall Q (K:kenv) Vs (Ks:list kind) Xs,
   kenv_ok Q K ->
   fresh (fv_in kind_fv K) (length Ks) Xs ->
@@ -859,30 +840,6 @@ Qed.
 (* ********************************************************************** *)
 (** Extra hypotheses for main results *)
 
-Lemma valu_rigid_rec n r d t :
-  valu d t -> valu d (trm_rigid_rec n r t).
-Proof.
-  intros Val.
-  revert n r; induction Val; simpl*; intros.
-  inversions H.
-  apply value_abs.
-  apply (@term_abs L); intros.
-  rewrite trm_rigid_rec_open_var.
-  apply* term_rigid_rec.
-Qed.
-
-Lemma value_trm_open_rigid n r t : value t -> value (trm_rigid_rec n r t).
-Proof. intros []. exists x. now apply valu_rigid_rec. Qed.
-
-Lemma trm_rigid_rec_app c tl n r :
-  trm_rigid_rec n r (const_app c tl) =
-  const_app c (List.map (trm_rigid_rec n r) tl).
-Proof.
-  unfold const_app; induction tl using rev_ind; simpl*.
-  rewrite fold_left_app, map_app, fold_left_app; simpl.
-  now rewrite IHtl.
-Qed.
-
 Module Type SndHypIntf.
   Parameter delta_typed : forall c tl vl Q K E gc T,
     [ Q ; K ; E |(false,gc)|= const_app c tl ~: T ] ->
@@ -897,13 +854,6 @@ Import SH.
 
 (* ********************************************************************** *)
 (** Preservation: typing is preserved by reduction *)
-
-Lemma typ_open_vars_nil : forall T,
-  type T -> typ_open_vars T nil = T.
-Proof.
-  induction T; unfold typ_open_vars; simpl; intros; auto*.
-  inversion H.
-Qed.
 
 Lemma typing_abs_inv : forall gc Q K E V rvs k t1 t2 T1 T2,
   binds V (Some k, rvs) K ->
@@ -933,8 +883,9 @@ Proof.
     pick_fresh x'.
     rewrite* (@trm_subst_intro x').
     apply_empty* (@typing_trm_subst gc).
-    exists {}. intro. unfold kinds_open_vars, sch_open_vars; simpl.
-    destruct Xs; simpl*. rewrite* typ_open_vars_nil.
+    exists {}; intro.
+    unfold kinds_open_vars, sch_open_vars, typ_open_vars; simpl.
+    destruct Xs; simpl*. now rewrite typ_open_type.
   apply (@typing_gc (gc,GcAny) Q Ks L). simpl*.
   intros.
   puts (H0 Xs H2); clear H0.
@@ -997,7 +948,7 @@ Lemma binds_rvar_attr x ck rv rvs y ky rvy a :
   In (rvar_attr rv a) rvy.
 Proof.
   intros Bx Irv Ia Ua By.
-  assert (Wfx := (proj44 Kok) _ _ (binds_in Bx)); inversions Wfx.
+  assert (Wfx := kenv_ok_wf_kind Kok _ _ (binds_in Bx)); inversions Wfx.
   destruct (H1 a y) as [k [rvy' [By' FAR']]]; auto.
   injection (binds_func By' By); intros; subst*.
 Qed.
@@ -1038,11 +989,10 @@ Lemma tree_instance_subst_eq x T1 T2 :
 Proof.
   intros TI1 TI2.
   unfold tree_subst_eq.
-  gen T2; induction TI1; intros;
-    assert (Cohx := (proj43 Kok) _ _ (binds_in H)).
-- clear Cohx; revert rv rvs k H H0.
+  gen T2; induction TI1; intros.
+- revert rv rvs k H H0.
   induction TI2; intros; symmetry;
-    assert (Cohx := (proj43 Kok) _ _ (binds_in H)).
+    assert (Cohx := kenv_ok_qcoherent Kok _ _ (binds_in H)).
   + injection (binds_func H1 H); intros; subst.
     apply* tree_subst_eq_rvars.
   + injection (binds_func H4 H); intros; subst.
@@ -1050,13 +1000,14 @@ Proof.
     rewrite H1 in H9; apply ty_cstr_inj in H9; auto; subst ty0.
     apply* tree_subst_eq_tycon_rvar; intros; symmetry; auto*.
 - inversions TI2; injection (binds_func H4 H); intros; subst; clear H4 TI2.
-  + inversions Cohx.
-    rewrite H1 in H8. apply ty_cstr_inj in H8; auto; subst ty0.
+  + assert (Cohx := kenv_ok_qcoherent Kok _ _ (binds_in H)).
+    inversions Cohx.
+    rewrite H1 in H8; apply ty_cstr_inj in H8; auto; subst ty0.
     apply* tree_subst_eq_tycon_rvar; intros.
-      apply IHTI1_1. apply* tri_rvar.
-    apply IHTI1_2. apply* tri_rvar.
+      apply IHTI1_1; apply* tri_rvar.
+    apply IHTI1_2; apply* tri_rvar.
   + repeat rewrite* tree_subst_tycon.
-    rewrite H1 in H6. apply ty_cstr_inj in H6; auto; subst ty0.
+    rewrite H1 in H6; apply ty_cstr_inj in H6; auto; subst ty0.
     rewrite (IHTI1_1 T3).
       rewrite* (IHTI1_2 T4).
       assert (Hkuc := ty_unique2 ty).
@@ -1248,8 +1199,7 @@ induction Typ; introv EQ Red; subst; inversions Red;
       inversions H3; clear H3.
       simpl; intros.
       destruct Xs; try contradiction.
-      unfold sch_open_vars; simpl.
-      rewrite* typ_open_vars_nil.
+      unfold sch_open_vars, typ_open_vars; simpl.
       destruct* (H16 Cstr.arrow_dom X) as [k1 [rvs1 [BX FAR]]].
         now rewrite H11, Cstr.unique_dom.
       assert (TIX: tree_instance K X (tr_rvar (rvar_attr r Cstr.arrow_dom))).

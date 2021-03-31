@@ -588,11 +588,8 @@ Qed.
 
 (** Open on a type is the identity. *)
 
-Lemma typ_open_type : forall T Us,
-  type T -> T = typ_open T Us.
-Proof.
-  introv W. induction T; simpls; inversions W; f_equal*.
-Qed.
+Lemma typ_open_type T Us : type T -> typ_open T Us = T.
+Proof. introv W. induction T; simpls; inversions W; f_equal*. Qed.
 
 (** Substitution for a fresh name is identity. *)
 
@@ -637,6 +634,29 @@ Proof.
   use (IHxs H1).
 Qed.
 
+Lemma incr_subst_fresh : forall a t S Xs,
+  fresh {{a}} (length Xs) Xs ->
+  List.map (typ_subst ((a, t) :: S)) (typ_fvars Xs) =
+  List.map (typ_subst S) (typ_fvars Xs).
+Proof.
+  induction Xs; simpl; intros. auto.
+  unfold var_subst; simpl.
+  destruct* (eq_var_dec a0 a).
+    rewrite e in H. destruct* H. elim H. auto.
+  rewrite* IHXs.
+Qed.
+
+Lemma fresh_subst : forall L Xs Vs,
+  fresh L (length Vs) Xs ->
+  List.map (typ_subst (combine Xs Vs)) (typ_fvars Xs) = List.map typ_fvar Vs.
+Proof.
+  induction Xs; destruct Vs; intros; try contradiction; simpl*.
+  unfold var_subst; simpl in *.
+  destruct* (eq_var_dec a a).
+  rewrite incr_subst_fresh. rewrite* IHXs.
+  destruct* H.
+Qed.
+
 (** Substitution distributes on the open operation. *)
 
 Lemma typ_subst_open S T1 T2 :
@@ -645,6 +665,31 @@ Lemma typ_subst_open S T1 T2 :
 Proof.
   induction T1; simpl; f_equal*.
   apply list_map_nth. apply* typ_subst_fresh.
+Qed.
+
+(** Distributivity of type substitution on opening of kinds. *)
+
+Lemma kind_subst_open S k Us :
+  kind_subst S (kind_open k Us) =
+  kind_open (kind_subst S k) (List.map (typ_subst S) Us).
+Proof.
+  intros.
+  destruct* k as  [[[kc kv kr kh]|] rvs].
+  unfold kind_subst, kind_open, kind_map, ckind_map. simpl; f_equal*.
+  apply* kind_pi; simpl.
+  clear kh; induction* kr.
+  simpl. rewrite <- IHkr.
+  rewrite* typ_subst_open.
+Qed.
+
+Lemma kinds_subst_open S Ks Us :
+  List.map (kind_subst S) (kinds_open Ks Us) =
+  kinds_open (List.map (kind_subst S) Ks) (List.map (typ_subst S) Us).
+Proof.
+  unfold kinds_open.
+  induction* Ks.
+  simpl; rewrite <- IHKs.
+  rewrite* kind_subst_open.
 Qed.
 
 (** Substitution and open_var for distinct names commute. *)
@@ -667,14 +712,36 @@ Lemma kind_subst_open_vars S k Xs :
   kind_open (kind_subst S k) (typ_fvars Xs).
 Proof.
   intros Fr.
-  destruct* k as [[[kc kv kr kh]|] rvs]. 
-  unfold kind_subst, kind_open, kind_map, ckind_map.
-  simpl. f_equal*.
-  apply* kind_pi; simpl.
-  clear kh; induction* kr.
-  simpl. fold (typ_open_vars (snd a) Xs).
-  rewrite* <- typ_subst_open_vars.
-  rewrite* IHkr.
+  rewrite kind_subst_open.
+  rewrite* <- typ_subst_fresh_trm_fvars.
+Qed.
+
+Lemma kind_fv_fresh : forall k Ks n Xs,
+  In k Ks ->
+  fresh (kind_fv_list Ks) n Xs ->
+  fresh (typ_fv_list (kind_types k)) n Xs.
+Proof.
+  induction Ks; intros. elim H.
+  simpl in H; destruct H.
+    rewrite H in H0; destruct (fresh_union_r _ _ _ _ H0).
+    unfold kind_fv in H1. auto.
+  apply* IHKs.
+  simpls; auto*.
+Qed.
+
+Lemma kind_subst_open_combine : forall Xs Vs Ks,
+  fresh (kind_fv_list Ks) (length Vs) Xs ->
+  forall k : kind,
+    In k Ks ->
+    kind_open k (typ_fvars Vs) =
+    kind_subst (combine Xs Vs) (kind_open k (typ_fvars Xs)).
+Proof.
+  introv Fr. intros.
+  rewrite* kind_subst_open.
+  rewrite* kind_subst_fresh.
+    rewrite* (fresh_subst {}).
+  rewrite* dom_combine.
+  use (kind_fv_fresh _ _ _ _ H Fr).
 Qed.
 
 Lemma map_combine {A B : Set} (f : A->B) Xs Ys :
@@ -857,31 +924,6 @@ Lemma sch_subst_open_vars S M Xs :
 Proof.
   unfold sch_open_vars. intros. destruct M.
   rewrite* <- typ_subst_open_vars.
-Qed.
-
-(** Distributivity of type substitution on opening of kinds. *)
-
-Lemma kind_subst_open S k Us :
-  kind_subst S (kind_open k Us) =
-  kind_open (kind_subst S k) (List.map (typ_subst S) Us).
-Proof.
-  intros.
-  destruct* k as  [[[kc kv kr kh]|] rvs].
-  unfold kind_subst, kind_open, kind_map, ckind_map. simpl; f_equal*.
-  apply* kind_pi; simpl.
-  clear kh; induction* kr.
-  simpl. rewrite <- IHkr.
-  rewrite* typ_subst_open.
-Qed.
-
-Lemma kinds_subst_open S Ks Us :
-  List.map (kind_subst S) (kinds_open Ks Us) =
-  kinds_open (List.map (kind_subst S) Ks) (List.map (typ_subst S) Us).
-Proof.
-  unfold kinds_open.
-  induction* Ks.
-  simpl; rewrite <- IHKs.
-  rewrite* kind_subst_open.
 Qed.
 
 (** Properties of entailment. *)
@@ -1162,42 +1204,6 @@ Proof.
 Qed.
 
 Global Hint Resolve All_kind_types_subst : core.
-
-Lemma incr_subst_fresh : forall a t S Xs,
-  fresh {{a}} (length Xs) Xs ->
-  List.map (typ_subst ((a, t) :: S)) (typ_fvars Xs) =
-  List.map (typ_subst S) (typ_fvars Xs).
-Proof.
-  induction Xs; simpl; intros. auto.
-  unfold var_subst; simpl.
-  destruct* (eq_var_dec a0 a).
-    rewrite e in H. destruct* H. elim H. auto.
-  rewrite* IHXs.
-Qed.
-
-Lemma fresh_subst : forall L Xs Vs,
-  fresh L (length Vs) Xs ->
-  List.map (typ_subst (combine Xs Vs)) (typ_fvars Xs) = List.map typ_fvar Vs.
-Proof.
-  induction Xs; destruct Vs; intros; try contradiction; simpl*.
-  unfold var_subst; simpl in *.
-  destruct* (eq_var_dec a a).
-  rewrite incr_subst_fresh. rewrite* IHXs.
-  destruct* H.
-Qed.
-
-Lemma kind_fv_fresh : forall k Ks n Xs,
-  In k Ks ->
-  fresh (kind_fv_list Ks) n Xs ->
-  fresh (typ_fv_list (kind_types k)) n Xs.
-Proof.
-  induction Ks; intros. elim H.
-  simpl in H; destruct H.
-    rewrite H in H0; destruct (fresh_union_r _ _ _ _ H0).
-    unfold kind_fv in H1. auto.
-  apply* IHKs.
-  simpls; auto*.
-Qed.
 
 Lemma typ_fvars_app : forall Xs Ys,
   typ_fvars (Xs++Ys) = typ_fvars Xs ++ typ_fvars Ys.
@@ -1534,28 +1540,6 @@ Proof.
   apply* (trm_rigid_rec_open_shift n r t (trm_fvar x)).
 Qed.
 
-(* This could not be right, so the next lemma must not be right...*)
-(* Lemma rvar_open_shift n u r : rvar_open (S n) (rvar_shift 0 u) r = r.
-Proof.
-  revert n u.
-  induction r; intros; simpl*.
-  + destruct n; auto*.
-    case (n0 === n); simpl*; intros. admit.
-    destruct le_lt_dec; simpl*. admit.
-  + rewrite* IHr.
-Admitted.
-
-Lemma tree_open_rigid_rvar_shift n r T :
-  tree_open_rigid (S n) (rvar_shift 0 r) T = T.
-Proof.
-  About tree_open_rigid_shift_rigid.
-  revert n r.
-  induction T; intros; simpl*.
-  + rewrite IHT1, IHT2. auto*.
-  + rewrite IHT1, IHT2. auto*.
-  + f_equal.
-Admitted. *)
-
 Lemma term_rigid_of_open n t r :
   term (trm_rigid_rec n r t) -> term t.
 Proof.
@@ -1579,6 +1563,30 @@ Proof.
     rewrite* trm_rigid_rec_open_var.
   - apply* (@term_let L); intros.
     rewrite* trm_rigid_rec_open_var.
+Qed.
+
+Lemma valu_rigid_rec n r d t :
+  valu d t -> valu d (trm_rigid_rec n r t).
+Proof.
+  intros Val.
+  revert n r; induction Val; simpl*; intros.
+  inversions H.
+  apply value_abs.
+  apply (@term_abs L); intros.
+  rewrite trm_rigid_rec_open_var.
+  apply* term_rigid_rec.
+Qed.
+
+Lemma value_trm_open_rigid n r t : value t -> value (trm_rigid_rec n r t).
+Proof. intros []. exists x. now apply valu_rigid_rec. Qed.
+
+Lemma trm_rigid_rec_app c tl n r :
+  trm_rigid_rec n r (const_app c tl) =
+  const_app c (List.map (trm_rigid_rec n r) tl).
+Proof.
+  unfold const_app; induction tl using rev_ind; simpl*.
+  rewrite fold_left_app, map_app, fold_left_app; simpl.
+  now rewrite IHtl.
 Qed.
 
 Lemma wf_kind_weaken K K' K'' k :

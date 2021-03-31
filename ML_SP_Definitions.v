@@ -263,6 +263,9 @@ Lemma tree_subst_tycon ty T1 T2 :
   tree_subst (ty_con ty T1 T2) =
   ty_con ty (tree_subst T1) (tree_subst T2).
 Proof. intros []; simpl*. Qed.
+
+Lemma tree_subst_eq_refl T : tree_subst_eq T T.
+Proof. induction T; simpl; constructor; auto. Qed.
 End tree_subst.
 
 (** Opening body of type schemes. *)
