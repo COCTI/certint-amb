@@ -855,6 +855,7 @@ Import SH.
 (* ********************************************************************** *)
 (** Preservation: typing is preserved by reduction *)
 
+(** Beta *)
 Lemma typing_abs_inv : forall gc Q K E V rvs k t1 t2 T1 T2,
   binds V (Some k, rvs) K ->
   kind_cstr k = Cstr.arrow ->
@@ -893,6 +894,7 @@ Proof.
   apply* typing_weaken_kinds.
 Qed.
 
+(** Rigid *)
 Lemma trm_open_rigid_red t t' r :
   t --> t' ->
   trm_open_rigid t r --> trm_open_rigid t' r.
@@ -936,6 +938,7 @@ Proof.
     apply* term_rigid_rec.
 Qed.
 
+(** UseEq *)
 Section tree_instance_subst_eq.
 Variables (Q : qenv) (K : kenv) (S : Env.env tree).
 Hypotheses (Kok : kenv_ok Q K) (QS : qsat Q S).
