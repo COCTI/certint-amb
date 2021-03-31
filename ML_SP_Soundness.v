@@ -1021,6 +1021,25 @@ Proof.
 Qed.
 End tree_instance_subst_eq.
 
+Lemma tree_subst_eq_trm_eq Q K E x T1 T2 :
+  [Q; K; E | (false, GcLet) |= trm_eq ~: typ_fvar x] ->
+  tree_instance K x (tr_eq T1 T2) ->
+  forall S, qsat Q S -> tree_subst_eq S T1 T2.
+Proof.
+  intros.
+  inversions H; try discriminate.
+  inversions H0.
+  inversions H8; clear H8; try discriminate; simpl in *.
+  injection H2; injection (binds_func H7 H5); intros; subst; clear H2 H7.
+  assert (Hkud := Cstr.unique_fst).
+  rewrite <- H9 in Hkud.
+  use (kind_coherent k _ _ Hkud H6 H11); subst.
+  assert (Hkuc := Cstr.unique_snd).
+  rewrite <- H9 in Hkuc.
+  injection (kind_coherent k _ _ Hkuc H12 H10); intros; subst.
+  apply* tree_instance_subst_eq.
+Qed.
+
 Section qcoherent.
 Variables (T1 T2 : tree) (Q2 : qenv).
 Hypothesis QT12 : forall S, qsat Q2 S -> tree_subst_eq S T1 T2.
@@ -1246,9 +1265,8 @@ induction Typ; introv EQ Red; subst; inversions Red;
   (* Delta0 *)
 - destruct vl.
   elimtype False; clear -H3 e.
-  unfold const_app in H3.
   induction tl using rev_ind; try discriminate.
-  now rewrite fold_left_app in H3.
+  now rewrite const_app_app in H3.
   (* Ann1 *)
 - apply (typing_ann _ H H0).
   apply* IHTyp.
@@ -1268,19 +1286,7 @@ induction Typ; introv EQ Red; subst; inversions Red;
   induction Typ1 using typing_gc_ind.
     split2*; intros; subst.  
     simpl in Typ2.
-    assert (forall S, qsat Q S -> tree_subst_eq S T1 T2).
-      intros.
-      inversions H; try discriminate.
-      inversions H0.
-      inversions H9; clear H9; try discriminate; simpl in *.
-      injection H2; injection (binds_func H8 H6); intros; subst; clear H2 H8.
-      assert (Hkud := Cstr.unique_fst).
-      rewrite <- H10 in Hkud.
-      use (kind_coherent k _ _ Hkud H7 H12); subst.
-      assert (Hkuc := Cstr.unique_snd).
-      rewrite <- H10 in Hkuc.
-      injection (kind_coherent k _ _ Hkuc H13 H11); intros; subst.
-      apply* tree_instance_subst_eq.
+    use (tree_subst_eq_trm_eq H H0).
     apply* (qcoherent_strengthen_typing H1 nil).
   split.
     pick_freshes (length Ks) Xs.
