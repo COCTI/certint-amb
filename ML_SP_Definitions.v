@@ -158,6 +158,12 @@ Variant tycon_kind : tycon_info -> Prop :=
 | tk_eq    : tycon_kind
     (mkTycon tr_eq Cstr.unique_fst Cstr.unique_snd Cstr.static_eq).
 
+Lemma ty_cstr_inj ty ty' :
+  tycon_kind ty -> tycon_kind ty' -> ty_cstr ty = ty_cstr ty' -> ty = ty'.
+Proof.
+  induction 1; induction 1; auto; simpl; intros; now elim Cstr.arrow_eq.
+Qed.
+
 (** Instantiation of a tree *)
 
 Inductive tree_instance (K : kenv) : var -> tree -> Prop :=
@@ -174,6 +180,10 @@ Inductive tree_instance (K : kenv) : var -> tree -> Prop :=
       tree_instance K y T1 ->
       tree_instance K z T2 ->
       tree_instance K x (ty_con ty T1 T2).
+
+Lemma tree_instance_binds K x T :
+  tree_instance K x T -> exists kr, binds x kr K.
+Proof. intros []; esplit; auto*. Qed.
 
 (* Need also to define substitution of rigid variables *)
 Fixpoint rvar_open (k : nat) (u : rvar) (t : rvar) :=
@@ -248,6 +258,11 @@ Fixpoint tree_subst T :=
 
 Definition tree_subst_eq T1 T2 := tree_subst T1 = tree_subst T2.
 
+Lemma tree_subst_tycon ty T1 T2 :
+  tycon_kind ty ->
+  tree_subst (ty_con ty T1 T2) =
+  ty_con ty (tree_subst T1) (tree_subst T2).
+Proof. intros []; simpl*. Qed.
 End tree_subst.
 
 (** Opening body of type schemes. *)

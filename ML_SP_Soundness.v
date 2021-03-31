@@ -947,7 +947,8 @@ Lemma trm_open_rigid_red t t' r :
   trm_open_rigid t r --> trm_open_rigid t' r.
 Proof.
   unfold trm_open_rigid. intros; generalize 0; revert r.
-  induction H; simpl*; intros; try rewrite trm_rigid_rec_open.
+  induction H; simpl*; intros; try rewrite trm_rigid_rec_open;
+    try (constructor; auto*; apply* term_rigid_rec).
   + apply red_abs.
     apply (@term_abs (trm_fv t1)).
     intros.
@@ -976,34 +977,12 @@ Proof.
     apply* term_rigid_rec.
   + apply* red_app_1.
     inversions H. apply* value_trm_open_rigid.
-  + constructor; auto*;
-    apply* term_rigid_rec.
-  + constructor; auto*.
-    apply* term_rigid_rec.
-  + constructor; auto*; apply* term_rigid_rec.
-  + constructor; apply* term_rigid_rec.
   + constructor.
       inversions H.
       apply* (@term_abs L); intros.
       rewrite trm_rigid_rec_open_var.
       apply* term_rigid_rec.
     apply* term_rigid_rec.
-Qed.
-
-Lemma tree_instance_binds K x T :
-  tree_instance K x T -> exists kr, binds x kr K.
-Proof. intros []; esplit; auto*. Qed.
-
-Lemma tree_subst_tycon ty S T1 T2 :
-  tycon_kind ty ->
-  tree_subst S (ty_con ty T1 T2) =
-  ty_con ty (tree_subst S T1) (tree_subst S T2).
-Proof. intros []; simpl*. Qed.
-
-Lemma ty_cstr_inj ty ty' :
-  tycon_kind ty -> tycon_kind ty' -> ty_cstr ty = ty_cstr ty' -> ty = ty'.
-Proof.
-  induction 1; induction 1; auto; simpl; intros; now elim Cstr.arrow_eq.
 Qed.
 
 Section tree_instance_subst_eq.
