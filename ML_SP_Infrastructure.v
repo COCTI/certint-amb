@@ -1077,20 +1077,18 @@ Global Hint Resolve well_kinded_subst : core.
 
 (** Properties of instantiation and constants *)
 
-Lemma trm_inst_nil : forall t, trm_inst t nil = t.
+Lemma trm_inst_nil t : trm_inst t nil = t.
 Proof.
-  unfold trm_inst; intros.
+  unfold trm_inst.
   generalize 0; induction t; intros; simpl*;
     try solve [rewrite* IHt | rewrite IHt1; rewrite* IHt2].
-  destruct* (Compare_dec.le_lt_dec n0 n).
+  destruct* le_lt_dec.
   destruct* (n-n0).
 Qed.
 
-Lemma const_app_app : forall c l l',
+Lemma const_app_app c l l' :
   const_app c (l++l') = fold_left trm_app l' (const_app c l).
-Proof.
-  intros. unfold const_app. apply fold_left_app.
-Qed.
+Proof. apply fold_left_app. Qed.
 
 Lemma trm_inst_app : forall c tl pl,
   trm_inst_rec 0 tl (const_app c pl) =
@@ -1109,46 +1107,36 @@ Lemma const_app_inv : forall c pl,
   pl = nil \/
   exists t1, exists t2, const_app c pl = trm_app t1 t2.
 Proof.
-  intros.
-  destruct* pl.
-  right*.
-  destruct* (exists_last (l:=t::pl)). intro; discriminate.
-  destruct s. rewrite e.
-  rewrite const_app_app. simpl.
-  esplit; esplit; reflexivity.
+  destruct pl using rev_ind; [auto | right*].
+  destruct IHpl as [Eq | [t1 [t2 Eq]]];
+    [rewrite Eq | rewrite const_app_app];
+    simpl; esplit; esplit; reflexivity.
 Qed.
   
-Lemma trm_inst_app_inv : forall c pl tl,
+Lemma trm_inst_app_inv c pl tl :
   pl = nil \/
   exists t1, exists t2,
     trm_inst (const_app c pl) tl = trm_app t1 t2.
 Proof.
-  intros.
-  destruct* (const_app_inv c pl).
-  right*.
-  destruct H as [x1 [x2 e]].
-  rewrite e.
-  exists (trm_inst x1 tl).
-  exists* (trm_inst x2 tl).
+  destruct (const_app_inv c pl) as [Eq | [t1 [t2 Eq]]]; [auto | right*].
+  rewrite Eq.
+  esplit; esplit; reflexivity.
 Qed.
 
-Lemma const_app_eq : forall c1 vl1 c2 vl2,
+Lemma const_app_eq c1 vl1 c2 vl2 :
   const_app c1 vl1 = const_app c2 vl2 -> c1 = c2 /\ vl1 = vl2.
 Proof.
-  intros.
   gen vl2.
   induction vl1 using rev_ind; intros.
-    unfold const_app in H.
     destruct vl2 using rev_ind; simpl in H.
       inversions* H.
-    rewrite fold_left_app in H. simpl in H. discriminate.
+    rewrite const_app_app in H; discriminate.
   destruct vl2 using rev_ind; repeat rewrite const_app_app in H.
     discriminate.
   inversions H; clear H.
   destruct (IHvl1 _ H1).
   subst*.
 Qed.
-
 
 (* Extra properties *)
 
@@ -1205,19 +1193,13 @@ Qed.
 
 Global Hint Resolve All_kind_types_subst : core.
 
-Lemma typ_fvars_app : forall Xs Ys,
+Lemma typ_fvars_app Xs Ys :
   typ_fvars (Xs++Ys) = typ_fvars Xs ++ typ_fvars Ys.
-Proof.
-  unfold typ_fvars; intros; apply map_app.
-Qed.
+Proof. apply map_app. Qed.
 
-Lemma types_typ_fvars : forall Xs,
+Lemma types_typ_fvars Xs :
   types (length Xs) (typ_fvars Xs).
-Proof.
-  unfold typ_fvars; intro; split.
-    rewrite* map_length.
-  induction Xs; simpl*.
-Qed.
+Proof. splits*; induction Xs; simpl*. Qed.
 Global Hint Immediate types_typ_fvars : core.
 
 (** Schemes are stable by type substitution. *)
@@ -1227,12 +1209,9 @@ Lemma typ_open_other_type : forall Us Vs T,
   types (length Us) Vs ->
   type (typ_open T Vs).
 Proof.
-  induction T; simpl; intros.
-      destruct H0.
-      gen Us Vs; induction n; destruct Us; destruct Vs;
-        simpl in *; intros; try discriminate;
-        inversion* H1.
-    simpl*.
+  induction T; simpl*; intros TU [LV TV].
+  gen Us Vs; induction n; destruct Us, Vs; intros;
+    simpl in *; try discriminate; inversions* TV.
 Qed.
 
 Lemma typ_open_vars_type : forall Xs Ys T,
@@ -1241,11 +1220,9 @@ Lemma typ_open_vars_type : forall Xs Ys T,
   type (typ_open_vars T Ys).
 Proof.
   intros.
-  unfold typ_open_vars.
-  apply (typ_open_other_type (typ_fvars Xs)). apply H.
-  replace (length (typ_fvars Xs)) with (length Ys).
-    apply types_typ_fvars.
-  unfold typ_fvars. rewrite* map_length.
+  apply* typ_open_other_type.
+  destruct (types_typ_fvars Ys).
+  splits*.
 Qed.
 
 Lemma type_open_vars_subst S T Xs :
