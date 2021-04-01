@@ -179,6 +179,10 @@ Section Combine.
     rewrite* IHl1.
   Qed.
 
+  Lemma map_combine {C : Set} (f : B->C) Xs Ys :
+    map f (combine Xs Ys) = combine Xs (List.map f Ys).
+  Proof. revert Ys; induction Xs; destruct Ys; simpl*. rewrite* IHXs. Qed.
+
   Lemma in_snd (x : A) (y : B) l : In (x,y) l -> In y (list_snd l).
   Proof. induction l; simpl*; intros []; subst*. Qed.
 
@@ -1262,6 +1266,16 @@ Proof.
   destruct H0.
     subst*.
   use (IHXs _ _ (proj2 H)).
+Qed.
+
+Lemma disjoint_fresh : forall n L1 Xs L2,
+  fresh L1 n Xs ->
+  disjoint L2 (mkset Xs) ->
+  fresh L2 n Xs.
+Proof.
+  induction n; destruct Xs; simpl; intros; auto; try discriminate.
+  splits*.
+  apply* fresh_union_l.
 Qed.
 
 Lemma list_forall2_binds : forall (A:Set) (Ks':list A) Xs K,

@@ -79,15 +79,6 @@ Global Hint Extern 1 (_ << _) => solve [disjoint_solve] : core.
 Global Hint Extern 1 (_ \notin _) => solve [disjoint_solve] : core.
 Global Hint Extern 1 (disjoint _ _) => solve [disjoint_solve] : core.
 
-Lemma disjoint_fresh : forall n L1 Xs L2,
-  fresh L1 n Xs ->
-  disjoint L2 (mkset Xs) ->
-  fresh L2 n Xs.
-Proof.
-  induction n; destruct Xs; simpl; intros; auto; try discriminate.
-  split2*.
-Qed.
-
 Ltac env_ok_hyps :=
   repeat match goal with
   | H: env_ok _ _ _ |- _ => destruct H
@@ -743,10 +734,6 @@ Proof.
   rewrite* dom_combine.
   use (kind_fv_fresh _ _ _ _ H Fr).
 Qed.
-
-Lemma map_combine {A B : Set} (f : A->B) Xs Ys :
-  map f (combine Xs Ys) = combine Xs (List.map f Ys).
-Proof. revert Ys; induction Xs; destruct Ys; simpl*. rewrite* IHXs. Qed.
 
 Lemma kinds_subst_open_vars S Ks Xs :
   fresh (dom S) (length Xs) Xs ->
