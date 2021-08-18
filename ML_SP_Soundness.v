@@ -88,6 +88,93 @@ Global Hint Resolve scheme_weaken env_ok_weaken scheme_add_qitem
      env_ok_add_qitem env_ok_add_qitem' : core.
 
 (* ********************************************************************** *)
+(** Monotonicity of typing; relies on weakening *)
+
+Definition moregen_scheme M1 M2 :=
+  forall K Us, proper_instance K (sch_kinds M2) Us ->
+    exists Vs, proper_instance K (sch_kinds M1) Vs /\
+               sch_open M1 Vs = sch_open M2 Us.
+
+Definition moregen_env E1 E2 :=
+  forall x M2, binds x M2 E2 ->
+    exists M1, binds x M1 E1 /\ moregen_scheme M1 M2.
+
+Lemma moregen_refl M : moregen_scheme M M.
+Proof. intros K Us PI. exists* Us. Qed.
+
+Lemma moregen_env_add E1 E2 F :
+  moregen_env E1 E2 -> moregen_env (E1 & F) (E2 & F).
+Proof.
+  intros MGE x M2 B.
+  binds_cases B.
+    destruct* (MGE x M2) as [M1 [BM1 MG]].
+  subst.
+  exists M2; splits*.
+  apply moregen_refl.
+Qed.
+
+Lemma scheme_mono Q K X : scheme Q K (Sch (typ_fvar X) nil).
+Proof.
+  constructor; simpl; auto.
+  intros []; simpl; try discriminate.
+  unfold typ_open_vars.
+  rewrite* typ_open_type.
+  splits*.
+  exact S.empty.
+Qed.
+
+Lemma typing_monotone Q K E1 E2 gc t T :
+  moregen_env E1 E2 -> env_ok Q K E1 ->
+  [ Q ; K ; E2 |(gc,GcAny)|= t ~: T ] ->
+  [ Q ; K ; E1 |(gc,GcAny)|= t ~: T ].
+Proof.
+introv MGE Ok1 Typt.
+gen_eq (gc, GcAny) as gc0.
+revert E1 MGE Ok1.
+induction Typt; intros; subst; auto*.
+- destruct* (MGE x M) as [M1 [BM1 MG]].
+  destruct* (MG K Us) as [Vs [PI Eq]].
+  rewrite <- Eq.
+  now constructor.
+- inversions H.
+  apply_fresh* (@typing_abs (gc,GcAny) Q) as y.
+  apply* H5.
+    apply* moregen_env_add.
+  destruct Ok1 as [Ok1 SOk1].
+  split; auto.
+  intros x M1 B.
+  apply in_ok_binds in B; auto.
+  binds_cases B.
+    apply* SOk1.
+  subst.
+  apply scheme_mono.
+- apply_fresh* (@typing_let (gc,GcAny) Q M (L1 \u dom K)) as y.
+    intros.
+    apply* H0.
+    forward~ (H Xs).
+  apply* H2.
+    apply* moregen_env_add.
+  split; auto.
+  destruct Ok1 as [Ok1 SOk1].
+  intros x M1 B.
+  apply in_ok_binds in B; auto.
+  binds_cases B.
+    apply* SOk1.
+  subst.
+  forward~ (H1 x); intros.
+  assert (env_ok Q K (E & x ~ M)) by auto.
+  destruct* H4.
+- apply_fresh* (@typing_gc (gc,GcAny) Q Ks) as y.
+  intros Xs Fr.
+  apply* H1.
+  forward~ (H0 Xs).
+- apply* (@typing_rigid (gc, GcAny) Q L).
+  intros.
+  apply* H3.
+  forward~ (H2 R Xs).
+Qed.
+
+(* ********************************************************************** *)
 (** Typing is preserved by weakening *)
 
 Lemma typing_weaken : forall gc G E F Q K t T,
