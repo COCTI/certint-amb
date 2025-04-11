@@ -31,7 +31,7 @@ Proof.
 Qed.
 
 Lemma InA_In : forall v L, SetoidList.InA E.eq v L -> In v L.
-  induction 1; auto.
+  induction 1; try rewrite H; simpl; auto.
 Qed.
 
 Lemma cons_append : forall (A:Set) (a:A) l, a :: l = (a :: nil) ++ l.
@@ -45,11 +45,9 @@ Section Nth.
     In x Xs -> exists n, n < length Xs /\ x = nth n Xs d.
   Proof.
     induction Xs; intros. elim H.
-    simpl in H; destruct* H.
-      exists 0; rewrite H; simpl; split2*. apply lt_O_Sn.
+    simpl in H; destruct H.
+      exists 0; rewrite H; simpl; split2*. auto with arith.
     destruct* IHXs as [n [Hlen EQ]].
-    exists (S n). simpl; split2*.
-    apply* lt_n_S.
   Qed.
 End Nth.
 
@@ -84,13 +82,13 @@ Section Index.
     destruct (eq_dec a a0).
       subst.
       inversions H.
-      split2*.
+      split2~.
       replace (n0 - n0) with 0 by omega.
       auto with arith.
     destruct (IHl _ _ H).
     split. omega.
     case_eq (n0 - n); intros.
-      elimtype False; omega.
+      assert False; omega.
     replace n2 with (n0 - S n) by omega.
     destruct H1.
     auto with arith.
@@ -113,7 +111,7 @@ Section Combine.
     length (list_fst l) = length (list_snd l).
   Proof.
     intros; unfold list_fst, list_snd.
-    do 2 rewrite map_length. auto.
+    do 2 rewrite length_map. auto.
   Qed.
 
   Lemma split_combine : forall (l:list (A*B)) l1 l2,
@@ -224,7 +222,7 @@ Section Map.
     List.map f1 l = List.map f2 l.
   Proof.
     intros. induction l. auto.
-    simpl. rewrite* H. rewrite* IHl.
+    simpl. rewrite H; intuition. rewrite IHl; intuition.
   Qed.
 End Map.
 
@@ -293,9 +291,9 @@ Section Forall.
     list_forall Q (List.map f l).
   Proof.
     intros; induction l.
-    simpl*.
+      simpl*.
     inversion H0.
-    simpl; constructor; auto.
+    simpl; constructor; auto*.
   Qed.
 
   Lemma list_for_n_map : forall f n l,
@@ -304,7 +302,7 @@ Section Forall.
     list_for_n Q n (List.map f l).
   Proof.
     intros.
-    destruct H0; split. rewrite* map_length.
+    destruct H0; split. rewrite* length_map.
     apply* list_forall_map.
   Qed.
 End Forall.
@@ -403,9 +401,9 @@ Lemma list_forall2_nth : forall d1 d2 n l1 l2,
   list_forall2 P l1 l2 -> n < length l1 ->
   P (nth n l1 d1) (nth n l2 d2).
 Proof.
-  induction n; intros; inversions H; try elim (lt_n_O _ H0).
+  induction n; intros; inversions H; try elim (Nat.nlt_0_r _ H0).
     auto.
-  simpl. apply* IHn. simpl in H0; auto with arith.
+  simpl. apply* IHn.
 Qed.
 
 Lemma list_forall2_rev : forall l1 l2,
@@ -475,7 +473,7 @@ Section Cut.
     induction n; simpl; intros.
       inversions* H0.
     destruct l; simpl in *.
-      elimtype False; omega.
+      assert False; omega.
     assert (n <= length l) by omega.
     case_rewrite R (cut n l).
     inversions* H0.
@@ -498,7 +496,7 @@ Proof.
   induction Xs; intros. elim H.
   simpl.
   simpl in H; destruct H.
-    apply S.union_2. auto with sets.
+    apply S.union_2. apply* S.singleton_2.
   apply* S.union_3.
 Qed.
 
@@ -530,7 +528,7 @@ Hint Resolve mem_3 : core.
 Lemma in_vars_dec : forall v S, {v \in S}+{v \notin S}.
 Proof.
   intros.
-  case_eq (S.mem v S); intros; auto with sets.
+  case_eq (S.mem v S); intros; auto. left; apply* S.mem_2.
 Qed.
 
 Lemma remove_4 : forall y x L, y \in S.remove x L -> ~E.eq x y.
@@ -889,10 +887,10 @@ Section Map.
     ok E -> ok (map f E).
   Proof.
     intros.
-    rewrite (app_nil_end (map f E)).
+    rewrite <- (app_nil_r (map f E)).
     fold (nil & map f E).
     apply ok_map.
-    unfold concat; rewrite* <- (app_nil_end E).
+    unfold concat; rewrite* (app_nil_r E).
   Qed.
 
   Lemma map_snd_env_map : forall l,
@@ -963,7 +961,7 @@ Section Env_prop.
   Lemma env_prop_single_inv : forall x a,
     env_prop P (x ~ a) -> P a.
   Proof.
-    intros; apply* H.
+    intros; apply* H; left*.
   Qed.
 
   Lemma env_prop_map : forall (f:A->A) E,
@@ -1020,7 +1018,7 @@ Section Fv_in.
     induction E. simpl*.
     simpl in *. destruct a.
     sets_solve.
-      refine (H v _ _ _ H0). auto.
+      refine (H v _ _ _ H0). left*.
     refine (IHE _ _ H0).
     intro; intros. apply* (H x).
   Qed.
@@ -1030,10 +1028,11 @@ Section Fv_in.
   Proof.
     induction E; simpl; intros. auto.
     destruct a.
-    assert (In (v,a) F) by auto.
+    assert (In (v,a) F) by apply* H.
     use (fv_in_spec fv _ _ _ H0).
     simpl in *.
     forward~ (IHE F) as G.
+    auto*.
   Qed.
 
   Lemma fv_in_binds : forall x E,
@@ -1054,15 +1053,17 @@ Hint Resolve list_forall_env_prop in_or_concat : core.
 Hint Immediate binds_in : core.
 Hint Unfold extends : core.
 
+(*
 Ltac instantiate_fail :=
   instantiate;
   try ((instantiate (1 := nil) || instantiate (1:={})) ; fail 1);
   try (match goal with H: _ |- _ =>
    (instantiate (1:=nil) in H || instantiate (1:={}) in H) end;
    fail 1).
+*)
 
 Ltac env_prop_hyps P :=
-  instantiate_fail;
+  (* instantiate_fail; *)
   repeat match goal with
   | H: env_prop P (_ & _) |- _ => destruct (env_prop_concat_inv _ _ H); clear H
   | H: env_prop P (_ ~ _) |- _ => puts (env_prop_single_inv H); clear H
@@ -1089,7 +1090,7 @@ Proof.
 Qed.
 
 Ltac ok_hyps :=
-  instantiate_fail;
+  (* instantiate_fail; *)
   repeat match goal with
   | H: ok (_ & _) |- _ =>
     puts (ok_disjoint _ _ H); destruct (ok_concat_inv _ _ H); clear H
@@ -1198,7 +1199,7 @@ Proof.
   replace (((v, a) :: combine Xs Ks') & K)
     with (combine Xs Ks' & (v ~ a & K)).
     apply IHKs'. rewrite dom_concat. simpl. auto.
-  unfold concat. rewrite app_ass. reflexivity.
+  unfold concat. rewrite <- app_assoc. reflexivity.
 Qed.
 
 (** Results on \notin *)

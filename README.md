@@ -1,5 +1,5 @@
 ## A Certified Interpreter for ML with Structural Polymorphism
-### Jacques Garrigue, updated April 2020
+### Jacques Garrigue, updated April 2025
 
 The files in this archive contain a proof of type soundness for structural
 polymorphism based on local constraints [1], together with soundness
@@ -30,20 +30,20 @@ Of the above, Definitions, Infrastructure and Soundness are base on
 the core ML proof, but were heavily modified.
 Eval, Unify, Inference and Domain are completely new.
 
-All the above development were checked with coq 8.11.0.
-(Porting to 8.11.0 is the only change wrt. the version of september 2010)
+All the above development were checked with coq 8.2010.
+(Porting to 8.20.1 is the only change wrt. the version of september 2010)
 You can compile them with "sh build.sh"
 
 You can also play with the type checker. It does not work inside Coq
 at this point, but you should compile typinf.mli and typinf.ml
-(obtained by running Extraction.v), and look at use_typinf.ml for how
+(obtained by running ML_SP_Extraction.v), and look at use_typinf.ml for how
 to use them. (It contains a number of petty printers and conversion
 functions that make things easier).
 
 Here are all the steps: (the first 3 steps are optional)
 ```
 $ sh mkmakefile.sh
-$ make Extraction.vo
+$ make
 $ make html
 $ ocamlc -c typinf.mli
 $ ocamlc -c typinf.ml

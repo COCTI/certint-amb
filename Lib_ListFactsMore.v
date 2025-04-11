@@ -55,7 +55,7 @@ Lemma list_for_n_concat : forall (A : Set) (P : A -> Prop) n1 n2 L1 L2,
   list_for_n P (n1+n2) (L1 ++ L2).
 Proof.
   unfold list_for_n. intros. split. 
-  rewrite* app_length. apply* list_forall_concat.
+  rewrite* length_app. apply* list_forall_concat.
 Qed.
 
 Hint Extern 1 (?n = length ?xs) => 

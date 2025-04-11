@@ -627,19 +627,15 @@ Proof.
   assert (pairs_size S pairs < h1) by (unfold h1; omega).
   clearbody h1.
   gen pairs h1; induction h0; simpl; intros. discriminate.
-  destruct h1. elimtype False; omega.
+  destruct h1. exfalso; omega.
   simpl.
   destruct pairs. auto.
   destruct p.
   puts (pairs_size_decr S t t0 pairs).
   case_rewrite R1 (typ_subst S t); case_rewrite R2 (typ_subst S t0); auto.
-      destruct (n === n0). subst.
-        apply* IHh0. omega.
-      auto.
-    destruct (v == v0). subst.
-      apply* IHh0. omega.
-    auto.
-  apply* IHh0.
+      destruct* (n === n0).
+    destruct* (v == v0).
+  apply~ IHh0.
   clear IHh0 H H2; unfold pairs_size in *; simpl in *.
   rewrite <- (typ_subst_idem t H0) in H1.
   rewrite <- (typ_subst_idem t0 H0) in H1.
@@ -760,7 +756,7 @@ Proof.
       try solve [apply* (IHkr0 _ _ H)]; inversions H1; clear H1;
         destruct (unify_kind_rel_keep _ _ _ _ H).
       puts (H1 _ (assoc_sound _ _ _ R1)); clear H1.
-      assert (In (t0,t1) pairs) by auto.
+      assert (In (t0,t1) pairs) by auto*.
       use (H0 _ _ H1).
       rewrite* H4.
     apply* in_map_snd.
@@ -915,7 +911,7 @@ Proof.
   intros until K1.
   intros R3 H R1 R2 HS HS1 n IHh HK Dis.
   subst S1 K1.
-  destruct* IHh.
+  destruct~ IHh.
       constructor. repeat apply ok_remove_env. auto.
       rewrite* dom_remove_env.
     simpl.
@@ -1352,10 +1348,10 @@ Lemma cardinal_decr : forall v T S K pairs,
   S.cardinal (really_all_fv S K ((typ_fvar v, T) :: pairs)).
 Proof.
   intros.
-  use (really_all_fv_decr (pairs:=pairs) _ _ H H0 H1).
-  use (le_lt_n_Sm _ _ (cardinal_subset H2)).
+  puts (really_all_fv_decr (pairs:=pairs) _ _ H H0 H1).
+  puts (PeanoNat.le_lt_n_Sm _ _ (cardinal_subset H2)).
   rewrite cardinal_remove in H3.
-    eapply le_lt_trans; try apply H3.
+    eapply Nat.le_lt_trans; try apply H3.
     apply cardinal_subset.
     unfold really_all_fv. rewrite map_remove_env.
     sets_solve.
@@ -1393,9 +1389,9 @@ Lemma size_pairs_decr' : forall S0 K0 t t0 pairs h v,
   size_pairs (compose (v ~ typ_subst S0 t0) S0) (remove_env K0 v) pairs < h.
 Proof.
   intros.
-  use (typ_subst_res_fresh' _ H H3).
-  use (typ_subst_disjoint t0 H).
-  eapply lt_le_trans.
+  puts (typ_subst_res_fresh' _ H H3).
+  puts (typ_subst_disjoint t0 H).
+  eapply Nat.lt_le_trans.
     apply* size_pairs_decr.
   replace (size_pairs S0 K0 ((typ_fvar v, typ_subst S0 t0) :: pairs))
     with (size_pairs S0 K0 ((t, t0) :: pairs)).
@@ -1458,7 +1454,7 @@ Proof.
       clearbody pairs kr'.
       rewrite <- map_app.
       gen pairs kr'; induction (kr ++ kr0); simpl; intros.
-        rewrite <- union_assoc; auto with sets.
+        now rewrite <- union_assoc, union_empty_l.
       destruct a; simpl in *.
       case_rewrite R (Cstr.unique (Cstr.lub kc kc0) a).
         case_rewrite R1 (assoc Cstr.eq_dec a kr');
@@ -1501,10 +1497,10 @@ Lemma size_pairs_decr_vars : forall S0 K0 t t0 pairs h v v0 x0 l,
     (remove_env (remove_env K0 v) v0 & v0 ~ x0) (l ++ pairs) < h.
 Proof.
   intros.
-  use (typ_subst_res_fresh' _ H H3).
+  puts (typ_subst_res_fresh' _ H H3).
   poses Hv (typ_subst_res_fresh' _ H H2).
-  use (typ_subst_disjoint t0 H).
-  eapply lt_le_trans; try apply (lt_n_Sm_le _ _ H1).
+  puts (typ_subst_disjoint t0 H).
+  eapply Nat.lt_le_trans; [| apply (PeanoNat.lt_n_Sm_le _ _ H1)].
   clear H1.
   unfold size_pairs.
   assert (v \in really_all_fv S0 K0 ((t,t0)::pairs)).
@@ -1514,7 +1510,7 @@ Proof.
   simpl.
   set (S := compose (v ~ typ_fvar v0) S0).
   poses Hfv (unify_kinds_fv _ _ S H5).
-  apply le_lt_n_Sm.
+  apply PeanoNat.le_lt_n_Sm.
   apply cardinal_subset.
   sets_solve.
   replace (really_all_fv S0 K0 ((t, t0) :: pairs))
@@ -1587,18 +1583,18 @@ Proof.
   intros until t0; intros R1 R2 Hsz HS0 HK0 WS IHh Hext Heq HT.
   unfold unify_nv.
   assert (In (t,t0) ((t,t0)::pairs)) by simpl*.
-  use (Heq _ _ H); clear H.
+  puts (Heq _ _ H); clear H.
   rewrite <- Hext in H0; rewrite R1 in H0.
   rewrite <- (Hext t0) in H0; rewrite R2 in H0.
   case_eq (S.mem v (typ_fv T)); intros.
-    elimtype False.
-    use (S.mem_2 H).
+    exfalso.
+    puts (S.mem_2 H).
     clear -H0 H1 HT.
     destruct T. elim (in_empty H1).
       elim (HT v); rewrite* (S.singleton_1 H1).
     assert (1 < typ_size (typ_arrow T1 T2)).
       destruct T1; simpl; omega.
-    use (typ_subst_no_cycle S _ H1 H).
+    puts (typ_subst_no_cycle S _ H1 H).
     rewrite H0 in H2; omega.
   intro.
   case_rewrite R3 (get_kind v K0).
@@ -1609,9 +1605,9 @@ Proof.
     destruct (typ_subst S0 t0); try discriminate.
     elim (HT v). auto.
   rewrite <- R2 in H.
-  use (size_pairs_decr' HS0 HK0 H Hsz R1).
+  puts (size_pairs_decr' HS0 HK0 H Hsz R1).
   rewrite R2 in H2.
-  use (typ_subst_res_fresh' _ HS0 R1).
+  puts (typ_subst_res_fresh' _ HS0 R1).
   rewrite R2 in H.
   revert H1; apply* IHh; clear IHh.
       intro. rewrite* typ_subst_compose.
@@ -1659,7 +1655,7 @@ Proof.
   set (S0' := compose (v ~ typ_fvar v0) S0) in *.
   assert (HS0': is_subst S0') by (unfold S0'; auto*).
   assert (HK0': forall y, ok (remove_env (remove_env K0 v) v0 & v0 ~ y)).
-    use (ok_remove_env v HK0).
+    puts (ok_remove_env v HK0).
     constructor. apply* ok_remove_env.
     rewrite* dom_remove_env.
   assert (Hext': forall T, typ_subst S (typ_subst S0' T) = typ_subst S T).
@@ -1690,11 +1686,11 @@ Proof.
   destruct H as [[G G0]|[v1 [Hv1 [KEv KEv0]]]].
     rewrite G; rewrite G0.
     simpl unify_kinds. lazy iota beta.
-    apply* IHh.
+    apply~ IHh.
         intro; auto*.
       intro; intros.
       binds_cases H.
-        use (binds_orig_remove_env _ (ok_remove_env v HK0) B).
+        puts (binds_orig_remove_env _ (ok_remove_env v HK0) B).
         destruct (Z == v).
           subst. elim (binds_fresh H).
           rewrite dom_remove_env. apply S.remove_1. reflexivity. auto.
@@ -1705,7 +1701,7 @@ Proof.
   destruct (unify_kinds_complete _ _ _ _ KEv KEv0)
     as [k1 [l [HU [Heql KEk1]]]].
   rewrite HU.
-  apply* IHh.
+  apply~ IHh.
       intro; intros. destruct* (in_app_or _ _ _ H).
     intro; intros.
     binds_cases H.
@@ -1731,14 +1727,14 @@ Lemma unify_complete0 : forall h pairs K0 S0,
   complete_spec S0 K0 pairs h.
 Proof.
   induction h.
-    intros; intro; intros; elimtype False; omega.
+    intros; intro; intros; exfalso; omega.
   intros; intros HS0 HK0 Hext Heq WS Hsz.
   simpl.
   set (h0 := pairs_size S0 pairs + 1).
   assert (Hsz0: pairs_size S0 pairs < h0) by (unfold h0; omega).
   clearbody h0.
   gen pairs; induction h0; intros.
-    elimtype False; omega.
+    exfalso; omega.
   destruct pairs.
     intro; discriminate.
   destruct p.
@@ -1747,7 +1743,7 @@ Proof.
   case_eq (typ_subst S0 t); introv R1; case_eq (typ_subst S0 t0); introv R2.
           destruct (n === n0).
            subst.
-           apply* (IHh0 pairs).
+           apply~ (IHh0 pairs).
              puts (size_pairs_tl S0 K0 t t0 pairs). omega.
            puts (pairs_size_decr S0 t t0 pairs). omega.
           assert (In (t,t0) ((t,t0)::pairs)) by simpl*.
@@ -1756,7 +1752,7 @@ Proof.
           rewrite <- (Hext t0) in Ht; rewrite R2 in Ht.
           simpl in Ht. inversions* Ht.
          rewrite size_pairs_comm in Hsz.
-         apply* (unify_complete_nv R2 R1 Hsz).
+         apply~ (unify_complete_nv R2 R1 Hsz).
            intro; simpl; intros. destruct H; subst.
              inversions H; symmetry; apply* Heq.
            apply* Heq.
@@ -1766,31 +1762,31 @@ Proof.
         rewrite <- Hext in Ht; rewrite R1 in Ht.
         rewrite <- (Hext t0) in Ht; rewrite R2 in Ht.
         simpl in Ht; inversions Ht.
-       apply* (unify_complete_nv R1 R2 Hsz).
+       apply~ (unify_complete_nv R1 R2 Hsz).
        intros x Hx; discriminate.
       destruct (v == v0).
        subst.
-       apply* (IHh0 pairs).
+       apply~ (IHh0 pairs).
          puts (size_pairs_tl S0 K0 t t0 pairs). omega.
        puts (pairs_size_decr S0 t t0 pairs). omega.
       apply* unify_complete_vars.
-     apply* unify_complete_nv.
+     apply~ unify_complete_nv; eauto.
      intro; discriminate.
-    assert (In (t,t0) ((t,t0)::pairs)) by auto.
+    assert (In (t,t0) ((t,t0)::pairs)) by auto*.
     poses E (Heq _ _ H).
     rewrite <- (Hext t) in E. rewrite R1 in E.
     rewrite <- (Hext t0) in E. rewrite R2 in E.
     discriminate.
    rewrite size_pairs_comm in Hsz.
-   apply* unify_complete_nv.
+   apply~ unify_complete_nv; eauto.
      intro; simpl; intros. destruct H; subst.
        inversions H; symmetry; apply* Heq.
      apply* Heq.
    intro; discriminate.
-  apply* IHh0.
+  apply~ IHh0.
     clear IHh Hsz; intro; intros.
-    assert (In (t,t0) ((t,t0)::pairs)) by auto.
-    use (Heq _ _ H0).
+    assert (In (t,t0) ((t,t0)::pairs)) by auto*.
+    puts (Heq _ _ H0).
     rewrite <- (Hext t) in H1.
     rewrite <- (Hext t0) in H1.
     rewrite R1 in H1; rewrite R2 in H1.
@@ -1798,7 +1794,7 @@ Proof.
     simpl in H; destruct H. inversions* H.
     destruct H. inversions* H.
     apply* Heq.
-   eapply le_lt_trans; [|apply Hsz].
+   eapply Nat.le_lt_trans; [|apply Hsz].
    unfold size_pairs, really_all_fv, all_fv.
    simpl.
    rewrite <- (typ_subst_idem t HS0).
@@ -1808,7 +1804,7 @@ Proof.
    rewrite (union_comm (typ_fv (typ_subst S0 t3))).
    repeat rewrite union_assoc. 
    omega.
-  eapply lt_le_trans; [|apply lt_n_Sm_le; apply Hsz0].
+  eapply Nat.lt_le_trans; [|apply PeanoNat.lt_n_Sm_le, Hsz0].
   unfold pairs_size; simpl.
   rewrite <- (typ_subst_idem t HS0).
   rewrite <- (typ_subst_idem t0 HS0).

@@ -71,7 +71,7 @@ Proof.
     use (proj2 (H2 a0) (InA_cons_tl a H5)).
     inversions* H6.
   elim (sort_lt_notin (cons_sort H H0) (cons_leA _ _ _ _ l1)).
-  apply* (proj2 (H2 a0)). auto with ordered_type.
+  apply* (proj2 (H2 a0)).
 Qed.
 
 Lemma remove_union : forall a L1 L2,
@@ -220,7 +220,9 @@ Proof.
     intro; split; intro.
       destruct* (a1 == a0).
       apply InA_cons_tl.
-      auto with sets.
+      apply S.elements_1.
+      apply* S.remove_2.
+      apply* S.elements_2.
     destruct (a0 == a1).
       subst.
       apply S.elements_1.
@@ -228,7 +230,8 @@ Proof.
       apply S.elements_2.
       rewrite* <- Heqelts. auto with ordered_type.
     inversions H. elim n0; auto.
-    eauto with sets.
+    apply S.elements_1.
+    now apply (S.remove_3 (S.elements_2 H1)).
   rewrite* <- (@elements_tl a0 elts L).
 Qed.
 
@@ -253,13 +256,13 @@ Proof.
     auto with ordered_type.
   assert (InA S.E.eq a elts).
     subst.
-    auto with sets.
+    now apply S.elements_1, S.union_3.
   subst.
   destruct (InA_split H1) as [l1 [y [l2 [Hl1 Hl]]]].
   rewrite Hl.
-  rewrite app_length.
+  rewrite length_app.
   simpl. rewrite <- plus_n_Sm.
-  rewrite <- app_length.
+  rewrite <- length_app.
   apply (f_equal S).
   apply* (IHelts2 (S.remove a L1) (S.remove a L2)); clear IHelts2.
     apply (f_equal S.elements).
@@ -337,9 +340,9 @@ Proof.
   remember (S.elements L1) as elts1.
   gen L1; induction elts1; simpl; intros.
     omega.
-  use (elements_tl (sym_eq Heqelts1)).
-  use (IHelts1 _ (sym_eq H0) (S.remove a L2)).
-  use (H1 (remove_subset H)).
+  puts (elements_tl (sym_eq Heqelts1)).
+  puts (IHelts1 _ (sym_eq H0) (S.remove a L2)).
+  puts (H1 (remove_subset H)).
   assert (a \in L2).
     apply H.
     apply S.elements_2.
@@ -353,9 +356,10 @@ Lemma cardinal_empty : S.cardinal {} = 0.
 Proof.
   rewrite S.cardinal_1.
   case_eq (S.elements {}); intros. simpl*.
-  assert (In e (e::l)) by auto.
+  assert (In e (e::l)) by simpl*.
   rewrite <- H in H0.
-  assert (e \in {}). auto with sets ordered_type.
+  assert (e \in {}).
+    now apply S.elements_2, Var_as_OT_Facts.ListIn_In.
   elim (in_empty H1).
 Qed.
 

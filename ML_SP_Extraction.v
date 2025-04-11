@@ -50,13 +50,13 @@ Inductive type_n (n:nat) : typ -> Prop :=
 Hint Constructors type_n : core.
 
 Definition type_n_dec : forall n , decidable (type_n n).
-  introv T; induction* T.
-    destruct* (le_lt_dec n n0).
-    right*; intro. inversions H. Omega.omega.
+  introv T; induction T; simpl; auto.
+    destruct~ (le_lt_dec n n0).
+    right; intro. inversions H. Omega.omega.
   destruct IHT1.
     destruct* IHT2.
-    right*; intro. inversions* H.
-  right*; intro. inversions* H.
+    right; intro. inversions* H.
+  right; intro. inversions* H.
 Defined.
 
 Lemma type_n_typ_body : forall T Xs,
@@ -65,10 +65,11 @@ Proof.
   unfold typ_open_vars.
   intros; split.
     induction 1; simpl*.
-  induction T; simpl*; intros.
-    destruct* (le_lt_dec (length Xs) n).
+    apply* Delta.type_nth_typ_vars.
+  induction T; simpl; intros; auto.
+    destruct~ (le_lt_dec (length Xs) n).
     unfold typ_fvars in H.
-    rewrite <- (map_length typ_fvar) in l.
+    rewrite <- (length_map typ_fvar) in l.
     rewrite (nth_overflow _ _ l) in H. inversion H.
   inversions* H.
 Qed.
@@ -78,7 +79,7 @@ Definition list_forall_dec : forall (A:Set) (P:A->Prop),
   introv HP l; induction l.
     left*.
   destruct* (HP a).
-  right*; intro. inversion* H.
+  right; intro. inversion* H.
 Defined.
   
 Definition scheme_dec : decidable scheme.

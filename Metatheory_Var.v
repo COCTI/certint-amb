@@ -4,7 +4,7 @@
 ***************************************************************************)
 
 Set Implicit Arguments.
-Require Import List Max Omega OrderedType OrderedTypeEx.
+Require Import List Omega OrderedType OrderedTypeEx.
 Require Import Lib_Tactic Lib_ListFacts Lib_FinSet Lib_FinSetImpl.
 Require Export Lib_ListFactsMore.
 

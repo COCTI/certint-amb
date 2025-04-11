@@ -54,6 +54,8 @@ val add : nat -> nat -> nat
 
 val sub : nat -> nat -> nat
 
+val max : nat -> nat -> nat
+
 module type EqLtLe =
  sig
   type t
@@ -68,8 +70,6 @@ module MakeOrderTac :
 
 module Nat :
  sig
-  val max : nat -> nat -> nat
-
   val eq_dec : nat -> nat -> sumbool
  end
 

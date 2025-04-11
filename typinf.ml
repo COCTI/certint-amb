@@ -87,6 +87,15 @@ let rec sub n m =
             | O -> n
             | S l -> sub k l)
 
+(** val max : nat -> nat -> nat **)
+
+let rec max n m =
+  match n with
+  | O -> m
+  | S n' -> (match m with
+             | O -> n
+             | S m' -> S (max n' m'))
+
 module type EqLtLe =
  sig
   type t
@@ -101,15 +110,6 @@ module MakeOrderTac =
 
 module Nat =
  struct
-  (** val max : nat -> nat -> nat **)
-
-  let rec max n m =
-    match n with
-    | O -> m
-    | S n' -> (match m with
-               | O -> n
-               | S m' -> S (max n' m'))
-
   (** val eq_dec : nat -> nat -> sumbool **)
 
   let rec eq_dec n m =
@@ -735,8 +735,8 @@ module Raw =
     | Cons (y, l0) ->
       (match s' with
        | Nil -> GT
-       | Cons (a, l1) ->
-         (match X.compare y a with
+       | Cons (e, l1) ->
+         (match X.compare y e with
           | LT -> LT
           | EQ -> (match compare l0 l1 with
                    | LT -> LT
@@ -774,18 +774,18 @@ module MakeRaw =
 
   (** val mem : elt -> t -> bool **)
 
-  let mem x s =
-    Raw.mem x (this s)
+  let mem =
+    Raw.mem
 
   (** val add : elt -> t -> t **)
 
   let add x s =
-    coq_Build_slist' (Raw.add x (this s))
+    coq_Build_slist' (Raw.add x s)
 
   (** val remove : elt -> t -> t **)
 
   let remove x s =
-    coq_Build_slist' (Raw.remove x (this s))
+    coq_Build_slist' (Raw.remove x s)
 
   (** val singleton : elt -> t **)
 
@@ -795,27 +795,27 @@ module MakeRaw =
   (** val union : t -> t -> t **)
 
   let union s s' =
-    coq_Build_slist' (Raw.union (this s) (this s'))
+    coq_Build_slist' (Raw.union s s')
 
   (** val inter : t -> t -> t **)
 
   let inter s s' =
-    coq_Build_slist' (Raw.inter (this s) (this s'))
+    coq_Build_slist' (Raw.inter s s')
 
   (** val diff : t -> t -> t **)
 
   let diff s s' =
-    coq_Build_slist' (Raw.diff (this s) (this s'))
+    coq_Build_slist' (Raw.diff s s')
 
   (** val equal : t -> t -> bool **)
 
-  let equal s s' =
-    Raw.equal (this s) (this s')
+  let equal =
+    Raw.equal
 
   (** val subset : t -> t -> bool **)
 
-  let subset s s' =
-    Raw.subset (this s) (this s')
+  let subset =
+    Raw.subset
 
   (** val empty : t **)
 
@@ -824,64 +824,64 @@ module MakeRaw =
 
   (** val is_empty : t -> bool **)
 
-  let is_empty s =
-    Raw.is_empty (this s)
+  let is_empty =
+    Raw.is_empty
 
   (** val elements : t -> elt list **)
 
-  let elements s =
-    Raw.elements (this s)
+  let elements =
+    Raw.elements
 
   (** val min_elt : t -> elt option **)
 
-  let min_elt s =
-    Raw.min_elt (this s)
+  let min_elt =
+    Raw.min_elt
 
   (** val max_elt : t -> elt option **)
 
-  let max_elt s =
-    Raw.max_elt (this s)
+  let max_elt =
+    Raw.max_elt
 
   (** val choose : t -> elt option **)
 
-  let choose s =
-    Raw.choose (this s)
+  let choose =
+    Raw.choose
 
   (** val fold : (elt -> 'a1 -> 'a1) -> t -> 'a1 -> 'a1 **)
 
-  let fold f s =
-    Raw.fold f (this s)
+  let fold =
+    Raw.fold
 
   (** val cardinal : t -> nat **)
 
-  let cardinal s =
-    Raw.cardinal (this s)
+  let cardinal =
+    Raw.cardinal
 
   (** val filter : (elt -> bool) -> t -> t **)
 
   let filter f s =
-    coq_Build_slist' (Raw.filter f (this s))
+    coq_Build_slist' (Raw.filter f s)
 
   (** val for_all : (elt -> bool) -> t -> bool **)
 
-  let for_all f s =
-    Raw.for_all f (this s)
+  let for_all =
+    Raw.for_all
 
   (** val exists_ : (elt -> bool) -> t -> bool **)
 
-  let exists_ f s =
-    Raw.exists_ f (this s)
+  let exists_ =
+    Raw.exists_
 
   (** val partition : (elt -> bool) -> t -> (t, t) prod **)
 
   let partition f s =
-    let p = Raw.partition f (this s) in
+    let p = Raw.partition f s in
     Pair ((coq_Build_slist' (fst p)), (coq_Build_slist' (snd p)))
 
   (** val compare : t -> t -> t compare0 **)
 
   let compare s s' =
-    match Raw.compare (this s) (this s') with
+    match Raw.compare s s' with
     | LT -> LT
     | EQ -> EQ
     | GT -> GT
@@ -1244,17 +1244,17 @@ module MkDefs =
   (** val sch_open : sch -> typ list -> typ **)
 
   let sch_open m =
-    typ_open (sch_type m)
+    typ_open m.sch_type
 
   (** val sch_open_vars : sch -> Variables.var list -> typ **)
 
   let sch_open_vars m =
-    typ_open_vars (sch_type m)
+    typ_open_vars m.sch_type
 
   (** val kind_types : kind -> typ list **)
 
   let kind_types = function
-  | Some k0 -> list_snd (kind_rel k0)
+  | Some k0 -> list_snd k0.kind_rel
   | None -> Nil
 
   (** val ckind_map_spec : (typ -> typ) -> ckind -> ckind **)
@@ -1407,8 +1407,7 @@ module MkDefs =
   (** val sch_fv : sch -> Variables.VarSet.S.t **)
 
   let sch_fv m =
-    Variables.VarSet.S.union (typ_fv (sch_type m))
-      (kind_fv_list (sch_kinds m))
+    Variables.VarSet.S.union (typ_fv m.sch_type) (kind_fv_list m.sch_kinds)
 
   (** val env_fv : sch Env.env -> Variables.vars **)
 
@@ -2200,7 +2199,7 @@ module MkInfer =
     let unify_dep t1 t2 k s =
       let o = Unify.unify (Cons ((Pair (t1, t2)), Nil)) k s in
       (match o with
-       | Some a -> Inleft a
+       | Some p -> Inleft p
        | None -> Inright)
 
     (** val close_fvars :
@@ -2294,9 +2293,9 @@ module MkInfer =
     let rec trm_depth = function
     | Unify.MyEval.Rename.Sound.Infra.Defs.Coq_trm_abs t1 -> S (trm_depth t1)
     | Unify.MyEval.Rename.Sound.Infra.Defs.Coq_trm_let (t1, t2) ->
-      S (Nat.max (trm_depth t1) (trm_depth t2))
+      S (max (trm_depth t1) (trm_depth t2))
     | Unify.MyEval.Rename.Sound.Infra.Defs.Coq_trm_app (t1, t2) ->
-      S (Nat.max (trm_depth t1) (trm_depth t2))
+      S (max (trm_depth t1) (trm_depth t2))
     | _ -> O
 
     (** val get_dep : Variables.var -> 'a1 Env.env -> 'a1 sumor **)
@@ -2571,7 +2570,7 @@ module Cstr =
      | Left -> Right
      | Right ->
        (match c.cstr_high with
-        | Some a -> set_incl Nat.eq_dec c.cstr_low a
+        | Some l -> set_incl Nat.eq_dec c.cstr_low l
         | None -> Left))
  end
 
@@ -2839,9 +2838,9 @@ type 'a decidable0 = 'a -> sumbool
 let rec ok_dec = function
 | Nil -> Left
 | Cons (y, l0) ->
-  let Pair (a, _) = y in
+  let Pair (v, _) = y in
   (match ok_dec l0 with
-   | Left -> (match Env.get a l0 with
+   | Left -> (match Env.get v l0 with
               | Some _ -> Right
               | None -> Left)
    | Right -> Right)
@@ -2889,8 +2888,8 @@ let scheme_dec x =
 let rec env_prop_dec hP = function
 | Nil -> Left
 | Cons (y, l) ->
-  let Pair (_, b) = y in
-  let s = hP b in (match s with
+  let Pair (_, a) = y in
+  let s = hP a in (match s with
                    | Left -> env_prop_dec hP l
                    | Right -> Right)
 
@@ -2911,7 +2910,7 @@ let typinf1 e t0 =
        (match s0 with
         | Left ->
           (match Infer2.typinf' e t0 with
-           | Some a -> Inl a
+           | Some p -> Inl p
            | None -> Inr Right)
         | Right -> Inr Right)
      | Right -> Inr Right)

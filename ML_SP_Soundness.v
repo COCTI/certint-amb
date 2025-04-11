@@ -108,7 +108,7 @@ Lemma proper_instance_subst : forall K K' K'' Ks Us S,
 Proof.
   introv TS PI WS.
   destruct* PI.
-  split. rewrite map_length. apply* typ_subst_type_list.
+  split. rewrite length_map. apply* typ_subst_type_list.
   rewrite* <- kinds_subst_open.
 Qed.
 
@@ -199,7 +199,7 @@ Proof.
    rewrite* <- sch_subst_open_vars.
    rewrite* <- kinds_subst_open_vars.
    rewrite concat_assoc. rewrite <- map_concat.
-   rewrite map_length in Fr.
+   rewrite length_map in Fr.
    apply* H0; clear H0.
      apply* well_subst_fresh.
    rewrite* concat_assoc.
@@ -210,7 +210,7 @@ Proof.
   rewrite* sch_subst_open.
   assert (disjoint (dom S) (sch_fv (Delta.type c))).
     intro x. rewrite* Delta.closed.
-  rewrite* sch_subst_fresh.
+  rewrite sch_subst_fresh; try disjoint_solve.
   apply* typing_cst.
   rewrite* <- (sch_subst_fresh S H2).
   destruct (Delta.type c) as [T Ks]; simpl.
@@ -218,7 +218,7 @@ Proof.
   (* GC *)
   apply* (@typing_gc gc (List.map (kind_subst S) Ks)
                      (L \u dom S \u dom K \u dom K'')).
-   rewrite map_length; intros.
+   rewrite length_map; intros.
    rewrite* <- kinds_subst_open_vars.
    rewrite concat_assoc. rewrite <- map_concat.
    apply* (H1 Xs); clear H1.
@@ -534,7 +534,7 @@ Proof.
     clear IHt1_2.
     destruct (IHt1_1 _ _ H3) as [c [vl [Hlen [Heq Hv]]]].
     exists c. exists (vl ++ t2 :: nil).
-    split. rewrite app_length. rewrite <- Hlen. simpl. ring.
+    split. rewrite length_app. rewrite <- Hlen. simpl. ring.
     split. rewrite Heq. unfold const_app.
       rewrite fold_left_app. simpl. auto.
     apply* list_forall_concat.

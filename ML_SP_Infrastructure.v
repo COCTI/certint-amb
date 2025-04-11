@@ -20,7 +20,7 @@ Import Defs.
 (* These tactics needs definitions *)
 
 Ltac length_hyps :=
-  instantiate_fail;
+  (* instantiate_fail; *)
   repeat match goal with
   | H: fresh _ _ _ |- _ => puts (fresh_length _ _ _ H); clear H
   | H: types _ _ |- _ => puts (proj1 H); clear H
@@ -30,7 +30,7 @@ Ltac length_hyps :=
   end;
   repeat progress
     (simpl in *; unfold typ_fvars, kinds_open_vars, kinds_open in *;
-      try rewrite map_length in *; try rewrite app_length in *).
+      try rewrite length_map in *; try rewrite length_app in *).
 
 Hint Extern 1 (_ = length _) => length_hyps; omega : core.
 Hint Extern 1 (length _ = _) => length_hyps; omega : core.
@@ -63,7 +63,7 @@ Ltac disjoint_simpls :=
   end.
 
 Ltac disjoint_solve :=
-  instantiate_fail;
+  (* instantiate_fail; *)
   disjoint_simpls;
   fold kind in *; unfold env_fv in *;
   repeat progress
@@ -550,7 +550,7 @@ Lemma typ_subst_intro : forall Xs Us T,
   (typ_open T Us) = typ_subst (combine Xs Us) (typ_open_vars T Xs).
 Proof.
   intros.
-  rewrite (app_nil_end (combine Xs Us)).
+  rewrite <- (app_nil_r (combine Xs Us)).
   fold (empty(A:=typ)).
   pattern T at 1.
   rewrite <- (typ_subst_fresh empty T).
@@ -678,7 +678,7 @@ Qed.
 
 Lemma entails_refl : forall k, entails k k.
 Proof.
-  intros. split2*.
+  intros. split2*. apply Cstr.entails_refl.
 Qed.
 Hint Resolve entails_refl : core.
 
@@ -947,7 +947,7 @@ Lemma types_typ_fvars : forall Xs,
   types (length Xs) (typ_fvars Xs).
 Proof.
   unfold typ_fvars; intro; split.
-    rewrite* map_length.
+    rewrite* length_map.
   induction Xs; simpl*.
 Qed.
 Hint Immediate types_typ_fvars : core.
@@ -978,7 +978,7 @@ Proof.
   apply (typ_open_other_type (typ_fvars Xs)). apply H.
   replace (length (typ_fvars Xs)) with (length Ys).
     apply types_typ_fvars.
-  unfold typ_fvars. rewrite* map_length.
+  unfold typ_fvars. rewrite* length_map.
 Qed.
 
 Lemma sch_subst_type : forall S M,
@@ -987,7 +987,7 @@ Proof.
   unfold scheme. intros S [T Ks] TU K.
   simpls.
   introv Len.
-  rewrite map_length in Len.
+  rewrite length_map in Len.
   destruct (var_freshes (dom S) (length Ks)) as [Ys Fr].
   destruct* (K Ys); clear K.
   assert (LenYs: length Xs = length Ys) by rewrite* <- Len.
@@ -1011,7 +1011,7 @@ Hint Resolve sch_subst_type : core.
 Lemma sch_subst_arity : forall S M, 
   sch_arity (sch_subst S M) = sch_arity M.
 Proof.
-  intros. simpl; rewrite* map_length.
+  intros. simpl; rewrite* length_map.
 Qed.
 
 (** ** Opening a scheme with a list of types gives a type *)

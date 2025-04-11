@@ -619,8 +619,9 @@ Lemma fv_in_spec : forall E, env_prop (fun a => fv a << fv_in E) E.
 Proof.
   induction E; intro; simpl; intros. elim H.
   destruct H; intro; intros.
-    subst. auto with sets.
+    subst. now apply S.union_2.
   destruct a.
+  apply S.union_3.
   puts (IHE _ _ H).
   auto with sets.
 Qed.

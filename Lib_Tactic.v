@@ -355,9 +355,9 @@ Tactic Notation "forward" constr(x) :=
     in both cases calls [auto*]. *)
 
 Tactic Notation "auto" "*" :=
-  try solve [ auto | intuition eauto ].
+  try solve [ auto | intuition (eauto with *) ].
 Tactic Notation "auto" "*" int_or_var(n) :=
-  try solve [ auto | intuition (eauto n) ].
+  try solve [ auto | intuition (eauto n with *) ].
 Tactic Notation "asserts" "*" ident(H) constr(E) :=
   assert (H : E); [ auto* | idtac ].
 Tactic Notation "apply" "*" constr(H) :=
